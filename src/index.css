@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* 1. POLICE DES CHIFFRES EN TIMES NEW ROMAN */
+.font-mono,
+.font-times,
+.font-numbers,
+.stat-number,
+.kpi-number,
+.digit-number,
+input[type="number"],
+input[type="date"],
+input[type="time"],
+.font-serif {
+  font-family: 'Times New Roman', Times, 'Liberation Serif', 'Nimbus Roman No9 L', Georgia, serif !important;
+}
+
+/* 2. BORDURES DES INPUTS HAUTEMENT VISIBLES ET NETTES */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]),
+select,
+textarea {
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: #64748b !important; /* Bordure nette, contrastée et visible (slate-500) */
+  background-color: #ffffff;
+  color: #1c1917;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):hover,
+select:hover,
+textarea:hover {
+  border-color: #334155 !important; /* Plus sombre au survol */
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):focus,
+select:focus,
+textarea:focus {
+  border-color: #EA580C !important; /* Orange Caterpillar éclatant au focus */
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.25) !important;
+}
+
+/* 3. COULEURS RICHES POUR LES BOX D'INFORMATION */
+/* Bleu Nuit */
+.bg-bleu-nuit {
+  background-color: #0B132B !important;
+  color: #F8FAFC !important;
+  border-color: #1E293B !important;
+}
+
+/* Orange Caterpillar */
+.bg-caterpillar {
+  background-color: #FF9900 !important;
+  color: #0F172A !important;
+  border-color: #D97706 !important;
+}
+
+/* Vert Forêt / Émeraude */
+.bg-vert-emeraude {
+  background-color: #064E3B !important;
+  color: #ECFDF5 !important;
+  border-color: #047857 !important;
+}
+
+/* Violet Impérial */
+.bg-violet-royal {
+  background-color: #4C1D95 !important;
+  color: #F5F3FF !important;
+  border-color: #6D28D9 !important;
+}

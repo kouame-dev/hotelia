@@ -1,0 +1,6 @@
+{
+  "name": "PostgreSQL Hotel DB Architect",
+  "description": "Système complet de gestion hôtelière PMS Hotelia : menu de réservation de chambres avec sous-menus (ajouter une réservation, listes des réservations en attente, terminées, annulées), architecture anti-surbooking, notifications sonores DG & Chef de Réception, rapports financiers Mobile Money et suivi des dépenses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
