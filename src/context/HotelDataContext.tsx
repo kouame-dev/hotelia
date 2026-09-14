@@ -9,7 +9,9 @@ import {
   ReservationType,
   PaymentMethod,
   ReservationItem,
-  ReservationStatus
+  ReservationStatus,
+  UserRole,
+  ThermalPrinterConfig
 } from '../types.ts';
 import {
   INITIAL_ROOM_TYPES,
@@ -18,7 +20,8 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_EXPENSES,
   INITIAL_REVENUES,
-  INITIAL_RESERVATIONS
+  INITIAL_RESERVATIONS,
+  DEFAULT_THERMAL_PRINTER_CONFIG
 } from '../data/mockHotelData.ts';
 import { playLuxuryBellSound, playAlertChime } from '../utils/soundNotification.ts';
 
@@ -35,11 +38,21 @@ interface HotelDataContextType {
   updateChambre: (id: string, updated: Partial<ChambreConfig>) => void;
   deleteChambre: (id: string) => void;
 
-  // 3. Utilisateurs & Profils
+  // 3. Utilisateurs & Profils (Gestion Super Admin)
   userProfiles: Record<string, UserProfile>;
+  usersList: UserProfile[];
   currentUserProfile: UserProfile;
+  activeProfileKey: string;
   updateCurrentUserProfile: (updated: Partial<UserProfile>) => void;
-  switchUserRole: (role: 'Directeur Général' | 'Chef de Réception') => void;
+  addUserProfile: (newUser: Omit<UserProfile, 'id'>) => UserProfile;
+  updateUserProfile: (id: string, updated: Partial<UserProfile>) => void;
+  deleteUserProfile: (id: string) => void;
+  toggleUserStatus: (id: string) => void;
+  switchUserRole: (keyOrRole: string) => void;
+
+  // 4. Imprimante Thermique Paramétrable
+  thermalPrinterConfig: ThermalPrinterConfig;
+  updateThermalPrinterConfig: (config: Partial<ThermalPrinterConfig>) => void;
 
   // 4. Notifications sonores & visuelles
   notifications: ReservationNotification[];
@@ -133,23 +146,43 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setChambres((prev) => prev.filter((c) => c.id !== id));
   };
 
-  // --- C. Profils Utilisateurs ---
+  // --- C. Profils Utilisateurs & Gestion des Rôles (Super Admin) ---
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>(() => {
     try {
       const saved = localStorage.getItem('hotelia_user_profiles');
-      return saved ? JSON.parse(saved) : INITIAL_USER_PROFILES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure default caisse exists if missing in saved cache
+        if (!parsed.caisse) {
+          parsed.caisse = INITIAL_USER_PROFILES.caisse;
+        }
+        return parsed;
+      }
+      return INITIAL_USER_PROFILES;
     } catch {
       return INITIAL_USER_PROFILES;
     }
   });
 
-  const [activeProfileKey, setActiveProfileKey] = useState<string>('directeur');
+  const [activeProfileKey, setActiveProfileKey] = useState<string>(() => {
+    try {
+      const savedKey = localStorage.getItem('hotelia_active_user_key');
+      return savedKey || 'directeur';
+    } catch {
+      return 'directeur';
+    }
+  });
 
   useEffect(() => {
     localStorage.setItem('hotelia_user_profiles', JSON.stringify(userProfiles));
   }, [userProfiles]);
 
+  useEffect(() => {
+    localStorage.setItem('hotelia_active_user_key', activeProfileKey);
+  }, [activeProfileKey]);
+
   const currentUserProfile = userProfiles[activeProfileKey] || userProfiles.directeur;
+  const usersList = Object.values(userProfiles);
 
   const updateCurrentUserProfile = (updated: Partial<UserProfile>) => {
     setUserProfiles((prev) => ({
@@ -161,15 +194,143 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }));
   };
 
-  const switchUserRole = (role: 'Directeur Général' | 'Chef de Réception') => {
-    if (role === 'Directeur Général') {
+  const addUserProfile = (newUser: Omit<UserProfile, 'id'>): UserProfile => {
+    const newId = `usr-${Date.now()}`;
+    // Key based on username or sanitized name
+    const profileKey = newUser.username
+      ? newUser.username.toLowerCase().replace(/[^a-z0-9]/g, '_')
+      : `user_${Date.now()}`;
+
+    const createdUser: UserProfile = {
+      ...newUser,
+      id: newId,
+      status: newUser.status || 'actif',
+      dateCreation: newUser.dateCreation || new Date().toISOString().split('T')[0],
+      permissions: newUser.permissions || (
+        newUser.role === 'Caisse'
+          ? ['reservations', 'encaissements', 'facturation']
+          : newUser.role === 'Chef de Réception'
+          ? ['gantt', 'reservations', 'chambres', 'alertes']
+          : ['all']
+      )
+    };
+
+    setUserProfiles((prev) => ({
+      ...prev,
+      [profileKey]: createdUser
+    }));
+
+    return createdUser;
+  };
+
+  const updateUserProfile = (id: string, updated: Partial<UserProfile>) => {
+    setUserProfiles((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        const user = next[key];
+        if (user && user.id === id) {
+          next[key] = {
+            ...user,
+            ...updated
+          };
+          break;
+        }
+      }
+      return next;
+    });
+  };
+
+  const deleteUserProfile = (id: string) => {
+    // Cannot delete main super admin
+    setUserProfiles((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        const user = next[key];
+        if (user && user.id === id) {
+          if (key === 'directeur') {
+            alert('Le compte Directeur Général principal ne peut pas être supprimé.');
+            return prev;
+          }
+          delete next[key];
+          break;
+        }
+      }
+      return next;
+    });
+    if (currentUserProfile.id === id) {
       setActiveProfileKey('directeur');
-    } else {
-      setActiveProfileKey('reception');
     }
   };
 
-  // --- D. Notifications & Alertes Sonores ---
+  const toggleUserStatus = (id: string) => {
+    setUserProfiles((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        const user = next[key];
+        if (user && user.id === id) {
+          if (key === 'directeur') {
+            alert('Le compte Super Admin ne peut pas être suspendu.');
+            return prev;
+          }
+          const currentStatus = user.status || 'actif';
+          next[key] = {
+            ...user,
+            status: currentStatus === 'actif' ? 'suspendu' : 'actif'
+          };
+          break;
+        }
+      }
+      return next;
+    });
+  };
+
+  const switchUserRole = (keyOrRole: string) => {
+    // Check if it matches a direct profile key
+    if (userProfiles[keyOrRole]) {
+      setActiveProfileKey(keyOrRole);
+      return;
+    }
+    const profilesList = Object.entries(userProfiles) as [string, UserProfile][];
+    // Check if it matches an id
+    const foundById = profilesList.find(([, u]) => u.id === keyOrRole);
+    if (foundById) {
+      setActiveProfileKey(foundById[0]);
+      return;
+    }
+    // Check by role name
+    if (keyOrRole === 'Directeur Général') {
+      setActiveProfileKey('directeur');
+    } else if (keyOrRole === 'Chef de Réception') {
+      const rec = profilesList.find(([, u]) => u.role === 'Chef de Réception');
+      setActiveProfileKey(rec ? rec[0] : 'reception');
+    } else if (keyOrRole === 'Caisse' || keyOrRole === 'Caissier') {
+      const caisseUser = profilesList.find(([, u]) => u.role === 'Caisse');
+      setActiveProfileKey(caisseUser ? caisseUser[0] : 'caisse');
+    }
+  };
+
+  // --- D. Configuration Imprimante Thermique (80mm / 58mm) ---
+  const [thermalPrinterConfig, setThermalPrinterConfig] = useState<ThermalPrinterConfig>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_thermal_printer_config');
+      return saved ? JSON.parse(saved) : DEFAULT_THERMAL_PRINTER_CONFIG;
+    } catch {
+      return DEFAULT_THERMAL_PRINTER_CONFIG;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_thermal_printer_config', JSON.stringify(thermalPrinterConfig));
+  }, [thermalPrinterConfig]);
+
+  const updateThermalPrinterConfig = (config: Partial<ThermalPrinterConfig>) => {
+    setThermalPrinterConfig((prev) => ({
+      ...prev,
+      ...config
+    }));
+  };
+
+  // --- E. Notifications & Alertes Sonores ---
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<ReservationNotification[]>(() => {
     try {
@@ -428,9 +589,17 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateChambre,
         deleteChambre,
         userProfiles,
+        usersList,
         currentUserProfile,
+        activeProfileKey,
         updateCurrentUserProfile,
+        addUserProfile,
+        updateUserProfile,
+        deleteUserProfile,
+        toggleUserStatus,
         switchUserRole,
+        thermalPrinterConfig,
+        updateThermalPrinterConfig,
         notifications,
         unreadCount,
         markNotificationAsRead,

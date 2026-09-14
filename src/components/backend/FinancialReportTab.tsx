@@ -167,14 +167,14 @@ export const FinancialReportTab: React.FC = () => {
         </div>
 
         {/* Sélecteurs de Période Rapide */}
-        <div className="flex flex-wrap items-center bg-stone-100 p-1.5 rounded-xl border border-stone-200 text-xs font-semibold gap-1">
+        <div className="flex flex-wrap items-center bg-[#141414] p-1.5 rounded-xl border border-stone-800 text-xs font-semibold gap-1.5">
           <button
             type="button"
             onClick={() => setPeriod('jour')}
-            className={`px-3 py-2 rounded-lg transition-all ${
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer font-bold ${
               period === 'jour'
-                ? 'bg-[#C5A880] text-slate-950 shadow-xs font-bold'
-                : 'text-stone-600 hover:text-stone-900'
+                ? 'bg-[#0B132B] text-white border-2 border-blue-400 shadow-md ring-1 ring-blue-500/40'
+                : 'bg-[#0B132B]/50 text-blue-200 border border-blue-900/60 hover:bg-[#0B132B] hover:text-white'
             }`}
           >
             Journalier
@@ -182,10 +182,10 @@ export const FinancialReportTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setPeriod('semaine')}
-            className={`px-3 py-2 rounded-lg transition-all ${
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer font-bold ${
               period === 'semaine'
-                ? 'bg-[#C5A880] text-slate-950 shadow-xs font-bold'
-                : 'text-stone-600 hover:text-stone-900'
+                ? 'bg-[#FF9900] text-slate-950 border-2 border-[#D97706] shadow-md ring-1 ring-amber-500/40'
+                : 'bg-[#FF9900]/25 text-[#FF9900] border border-[#FF9900]/50 hover:bg-[#FF9900] hover:text-slate-950'
             }`}
           >
             Hebdomadaire
@@ -193,10 +193,10 @@ export const FinancialReportTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setPeriod('annee')}
-            className={`px-3 py-2 rounded-lg transition-all ${
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer font-bold ${
               period === 'annee'
-                ? 'bg-[#C5A880] text-slate-950 shadow-xs font-bold'
-                : 'text-stone-600 hover:text-stone-900'
+                ? 'bg-[#064E3B] text-emerald-100 border-2 border-emerald-400 shadow-md ring-1 ring-emerald-500/40'
+                : 'bg-[#064E3B]/50 text-emerald-200 border border-emerald-900/60 hover:bg-[#064E3B] hover:text-white'
             }`}
           >
             Annuel (2026)
@@ -204,10 +204,10 @@ export const FinancialReportTab: React.FC = () => {
           <button
             type="button"
             onClick={() => setPeriod('personnalise')}
-            className={`px-3 py-2 rounded-lg transition-all ${
+            className={`px-3.5 py-2 rounded-lg transition-all cursor-pointer font-bold ${
               period === 'personnalise'
-                ? 'bg-[#C5A880] text-slate-950 shadow-xs font-bold'
-                : 'text-stone-600 hover:text-stone-900'
+                ? 'bg-[#4C1D95] text-purple-100 border-2 border-purple-400 shadow-md ring-1 ring-purple-500/40'
+                : 'bg-[#4C1D95]/50 text-purple-200 border border-purple-900/60 hover:bg-[#4C1D95] hover:text-white'
             }`}
           >
             Date à Date

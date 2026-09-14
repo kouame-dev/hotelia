@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
   Lock,
   Mail,
@@ -10,6 +11,7 @@ import {
   ShieldCheck,
   Building,
   UserCheck,
+  CreditCard,
   HelpCircle,
   ChevronLeft
 } from 'lucide-react';
@@ -20,6 +22,7 @@ interface AdminLoginPageProps {
 }
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, onBackToSite }) => {
+  const { switchUserRole, usersList } = useHotelData();
   const [email, setEmail] = useState('manager@hotelia.dekouassiholding.com');
   const [password, setPassword] = useState('HoteliaAdmin2026!');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,12 +44,24 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
     // Simulation d'authentification sécurisée
     setTimeout(() => {
       setIsLoading(false);
-      onLoginSuccess({
-        nom: 'Koua Dibi (Dekouassi Holding)',
-        role: 'Directeur Général & Administrateur',
-        email
-      });
-    }, 600);
+      // Trouver profil correspondant ou défaut DG
+      const matched = usersList.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (matched) {
+        switchUserRole(matched.id);
+        onLoginSuccess({
+          nom: matched.nom,
+          role: matched.role,
+          email: matched.email
+        });
+      } else {
+        switchUserRole('Directeur Général');
+        onLoginSuccess({
+          nom: 'Koua Dibi (Dekouassi Holding)',
+          role: 'Directeur Général & Administrateur',
+          email
+        });
+      }
+    }, 500);
   };
 
   const handleQuickLogin = (roleName: string, userEmail: string) => {
@@ -55,11 +70,28 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      onLoginSuccess({
-        nom: roleName,
-        role: roleName.includes('Directeur') ? 'Directeur Général' : 'Chef de Réception',
-        email: userEmail
-      });
+      if (roleName.includes('Caisse')) {
+        switchUserRole('Caisse');
+        onLoginSuccess({
+          nom: 'Mariam Diarra (Caisse)',
+          role: 'Caisse',
+          email: userEmail
+        });
+      } else if (roleName.includes('Chef')) {
+        switchUserRole('Chef de Réception');
+        onLoginSuccess({
+          nom: 'Aminata Koné (Chef Réception)',
+          role: 'Chef de Réception',
+          email: userEmail
+        });
+      } else {
+        switchUserRole('Directeur Général');
+        onLoginSuccess({
+          nom: 'Koua Dibi (Directeur Général)',
+          role: 'Directeur Général',
+          email: userEmail
+        });
+      }
     }, 400);
   };
 
@@ -213,10 +245,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
           {/* Profils Démo en Accès 1-Clic */}
           <div className="pt-4 border-t border-stone-800 space-y-2.5">
             <span className="text-[10px] uppercase font-mono tracking-wider text-stone-400 block text-center">
-              Accès Démo Instantané (1 Clic) :
+              Accès Démo Instantané aux Rôles (1 Clic) :
             </span>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* 1. Directeur Général */}
               <button
                 type="button"
                 onClick={() =>
@@ -225,30 +258,49 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                     'directeur@hotelia.dekouassiholding.com'
                   )
                 }
-                className="p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#34332F] border border-stone-700 text-left transition-all group"
+                className="p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#34332F] border border-stone-700 text-left transition-all group cursor-pointer"
               >
                 <div className="flex items-center gap-1.5 text-[#C5A880] font-bold text-[11px]">
-                  <UserCheck className="w-3.5 h-3.5" />
-                  <span>Directeur Général</span>
+                  <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Directeur Général</span>
                 </div>
-                <div className="text-[10px] text-stone-400 font-mono mt-0.5">Accès Complet</div>
+                <div className="text-[10px] text-stone-400 font-mono mt-0.5">Super Admin (Total)</div>
               </button>
 
+              {/* 2. Chef de Réception */}
               <button
                 type="button"
                 onClick={() =>
                   handleQuickLogin(
-                    'Fatou B. (Chef Réception)',
+                    'Aminata Koné (Chef Réception)',
                     'reception@hotelia.dekouassiholding.com'
                   )
                 }
-                className="p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#34332F] border border-stone-700 text-left transition-all group"
+                className="p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#34332F] border border-stone-700 text-left transition-all group cursor-pointer"
               >
-                <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[11px]">
-                  <Building className="w-3.5 h-3.5" />
-                  <span>Chef Réception</span>
+                <div className="flex items-center gap-1.5 text-blue-300 font-bold text-[11px]">
+                  <Building className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Chef Réception</span>
                 </div>
-                <div className="text-[10px] text-stone-400 font-mono mt-0.5">Gantt &amp; Check-ins</div>
+                <div className="text-[10px] text-stone-400 font-mono mt-0.5">Gantt &amp; Chambres</div>
+              </button>
+
+              {/* 3. Caisse */}
+              <button
+                type="button"
+                onClick={() =>
+                  handleQuickLogin(
+                    'Mariam Diarra (Caisse)',
+                    'caisse@hotelia.dekouassiholding.com'
+                  )
+                }
+                className="p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#34332F] border border-[#FF9900]/50 text-left transition-all group cursor-pointer"
+              >
+                <div className="flex items-center gap-1.5 text-[#FF9900] font-bold text-[11px]">
+                  <CreditCard className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Caisse</span>
+                </div>
+                <div className="text-[10px] text-amber-200/80 font-mono mt-0.5">Réservations Seules</div>
               </button>
             </div>
           </div>

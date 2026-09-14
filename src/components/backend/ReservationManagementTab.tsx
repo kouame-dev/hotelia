@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
+import { InvoicePrintModal } from './InvoicePrintModal.tsx';
 import {
   ReservationItem,
   ReservationStatus,
@@ -311,156 +312,181 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
             </p>
           </div>
 
-          {/* Bouton rapide d'ajout */}
+          {/* Bouton rapide d'ajout -> ORANGE CATERPILLAR */}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setActiveSubTab('ajouter')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-sm cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer ${
                 activeSubTab === 'ajouter'
-                  ? 'bg-[#C5A880] text-slate-950 ring-2 ring-[#C5A880]/50'
-                  : 'bg-stone-900 hover:bg-stone-800 text-white'
+                  ? 'bg-[#FF9900] text-slate-950 border-2 border-[#D97706] ring-2 ring-amber-500/40'
+                  : 'bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold border border-[#D97706]'
               }`}
             >
-              <Plus className="w-4 h-4 text-[#C5A880]" />
+              <Plus className="w-4 h-4 text-slate-950" />
               <span>Ajouter une réservation</span>
             </button>
           </div>
         </div>
 
-        {/* Barre de métriques rapides */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-stone-100 text-xs">
-          <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3">
-            <span className="text-amber-800 font-semibold block mb-0.5">En Attente</span>
-            <span className="text-xl sm:text-2xl font-bold text-amber-950 font-mono">
+        {/* Barre de métriques rapides avec background-colors intenses (Orange Caterpillar, Bleu Nuit, Vert Émeraude, Violet Royal) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-5 border-t border-stone-200 text-xs">
+          {/* Box 1 : En Attente -> ORANGE CATERPILLAR */}
+          <div className="bg-[#FF9900] text-slate-950 border-2 border-[#D97706] rounded-2xl p-4 shadow-md transition-all hover:scale-[1.01]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-slate-950 font-black text-xs uppercase tracking-wider">En Attente</span>
+              <div className="p-1.5 rounded-lg bg-black/15 text-slate-950">
+                <Clock className="w-4 h-4" />
+              </div>
+            </div>
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-950 font-mono block">
               {pendingReservationsCount}
             </span>
-            <span className="text-[11px] text-amber-700/80 block mt-0.5">À valider / acomptes</span>
+            <span className="text-[11px] font-semibold text-slate-900 block mt-1">À valider / acomptes</span>
           </div>
-          <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3">
-            <span className="text-blue-800 font-semibold block mb-0.5">Confirmées / En cours</span>
-            <span className="text-xl sm:text-2xl font-bold text-blue-950 font-mono">
+
+          {/* Box 2 : Confirmées / En cours -> BLEU NUIT */}
+          <div className="bg-[#0B132B] text-white border-2 border-blue-500/40 rounded-2xl p-4 shadow-md transition-all hover:scale-[1.01]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-blue-300 font-bold text-xs uppercase tracking-wider">Confirmées / En cours</span>
+              <div className="p-1.5 rounded-lg bg-blue-900/60 text-blue-300">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+            </div>
+            <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono block">
               {reservations.filter((r) => r.statutReservation === 'confirmee' || r.statutReservation === 'en_cours').length}
             </span>
-            <span className="text-[11px] text-blue-700/80 block mt-0.5">Clients accueillis</span>
+            <span className="text-[11px] font-medium text-blue-200/80 block mt-1">Clients accueillis</span>
           </div>
-          <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3">
-            <span className="text-emerald-800 font-semibold block mb-0.5">Terminées</span>
-            <span className="text-xl sm:text-2xl font-bold text-emerald-950 font-mono">
+
+          {/* Box 3 : Terminées -> VERT ÉMERAUDE */}
+          <div className="bg-[#064E3B] text-white border-2 border-emerald-500/40 rounded-2xl p-4 shadow-md transition-all hover:scale-[1.01]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-emerald-300 font-bold text-xs uppercase tracking-wider">Terminées</span>
+              <div className="p-1.5 rounded-lg bg-emerald-900/60 text-emerald-300">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-100 font-mono block">
               {completedReservationsCount}
             </span>
-            <span className="text-[11px] text-emerald-700/80 block mt-0.5">Check-outs effectués</span>
+            <span className="text-[11px] font-medium text-emerald-200/80 block mt-1">Check-outs effectués</span>
           </div>
-          <div className="bg-rose-50/70 border border-rose-200/80 rounded-xl p-3">
-            <span className="text-rose-800 font-semibold block mb-0.5">Annulées</span>
-            <span className="text-xl sm:text-2xl font-bold text-rose-950 font-mono">
+
+          {/* Box 4 : Annulées -> VIOLET ROYAL */}
+          <div className="bg-[#4C1D95] text-white border-2 border-purple-500/40 rounded-2xl p-4 shadow-md transition-all hover:scale-[1.01]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-purple-300 font-bold text-xs uppercase tracking-wider">Annulées</span>
+              <div className="p-1.5 rounded-lg bg-purple-900/60 text-purple-300">
+                <XCircle className="w-4 h-4" />
+              </div>
+            </div>
+            <span className="text-2xl sm:text-3xl font-extrabold text-purple-100 font-mono block">
               {cancelledReservationsCount}
             </span>
-            <span className="text-[11px] text-rose-700/80 block mt-0.5">Chambres libérées</span>
+            <span className="text-[11px] font-medium text-purple-200/80 block mt-1">Chambres libérées</span>
           </div>
         </div>
       </div>
 
-      {/* 2. SOUS-MENUS DE NAVIGATION (Onglets demandés) */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-2 shadow-sm flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-        {/* Sous-menu 1 : Ajouter une réservation */}
+      {/* 2. SOUS-MENUS DE NAVIGATION (Onglets avec background-colors distinctes) */}
+      <div className="bg-[#141414] rounded-2xl border-2 border-stone-800 p-2.5 shadow-lg flex items-center gap-2 overflow-x-auto no-scrollbar">
+        {/* Sous-menu 1 : Ajouter une réservation -> ORANGE CATERPILLAR */}
         <button
           type="button"
           onClick={() => setActiveSubTab('ajouter')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
             activeSubTab === 'ajouter'
-              ? 'bg-[#C5A880] text-slate-950 shadow-sm font-bold'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+              ? 'bg-[#FF9900] text-slate-950 border-2 border-[#D97706] shadow-md ring-2 ring-amber-500/40'
+              : 'bg-[#FF9900]/25 text-[#FF9900] border border-[#FF9900]/60 hover:bg-[#FF9900] hover:text-slate-950'
           }`}
         >
-          <Plus className="w-4 h-4 text-stone-900" />
+          <Plus className="w-4 h-4" />
           <span>Ajouter une réservation</span>
         </button>
 
-        <span className="text-stone-300">|</span>
-
-        {/* Sous-menu 2 : En attente */}
+        {/* Sous-menu 2 : En attente -> AMBRE / ORANGE VIF */}
         <button
           type="button"
           onClick={() => setActiveSubTab('en_attente')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
             activeSubTab === 'en_attente'
-              ? 'bg-amber-600 text-white shadow-sm font-bold'
-              : 'text-stone-600 hover:text-amber-800 hover:bg-amber-50'
+              ? 'bg-[#D97706] text-white border-2 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+              : 'bg-amber-950/45 text-amber-200 border border-amber-700/60 hover:bg-[#D97706] hover:text-white'
           }`}
         >
           <Clock className="w-4 h-4 text-amber-300" />
           <span>Réservations en attente</span>
           <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold font-mono ${
-            activeSubTab === 'en_attente' ? 'bg-amber-800 text-white' : 'bg-amber-200 text-amber-900'
+            activeSubTab === 'en_attente' ? 'bg-amber-950 text-white' : 'bg-amber-500 text-slate-950'
           }`}>
             {pendingReservationsCount}
           </span>
         </button>
 
-        {/* Sous-menu 3 : Terminées */}
+        {/* Sous-menu 3 : Terminées -> VERT ÉMERAUDE */}
         <button
           type="button"
           onClick={() => setActiveSubTab('terminees')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
             activeSubTab === 'terminees'
-              ? 'bg-emerald-700 text-white shadow-sm font-bold'
-              : 'text-stone-600 hover:text-emerald-800 hover:bg-emerald-50'
+              ? 'bg-[#064E3B] text-emerald-100 border-2 border-emerald-400 shadow-md ring-2 ring-emerald-500/30'
+              : 'bg-[#064E3B]/50 text-emerald-200 border border-emerald-800/80 hover:bg-[#064E3B] hover:text-white'
           }`}
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-300" />
           <span>Réservations terminées</span>
           <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold font-mono ${
-            activeSubTab === 'terminees' ? 'bg-emerald-900 text-white' : 'bg-emerald-100 text-emerald-900'
+            activeSubTab === 'terminees' ? 'bg-emerald-950 text-emerald-100' : 'bg-emerald-600 text-white'
           }`}>
             {completedReservationsCount}
           </span>
         </button>
 
-        {/* Sous-menu 4 : Annulées */}
+        {/* Sous-menu 4 : Annulées -> VIOLET ROYAL */}
         <button
           type="button"
           onClick={() => setActiveSubTab('annulees')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
             activeSubTab === 'annulees'
-              ? 'bg-rose-700 text-white shadow-sm font-bold'
-              : 'text-stone-600 hover:text-rose-800 hover:bg-rose-50'
+              ? 'bg-[#4C1D95] text-purple-100 border-2 border-purple-400 shadow-md ring-2 ring-purple-500/30'
+              : 'bg-[#4C1D95]/50 text-purple-200 border border-purple-800/80 hover:bg-[#4C1D95] hover:text-white'
           }`}
         >
-          <XCircle className="w-4 h-4 text-rose-300" />
+          <XCircle className="w-4 h-4 text-purple-300" />
           <span>Réservations annulées</span>
           <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold font-mono ${
-            activeSubTab === 'annulees' ? 'bg-rose-900 text-white' : 'bg-rose-100 text-rose-900'
+            activeSubTab === 'annulees' ? 'bg-purple-950 text-purple-100' : 'bg-purple-600 text-white'
           }`}>
             {cancelledReservationsCount}
           </span>
         </button>
 
-        {/* Sous-menu 5 : Confirmées / En cours */}
+        {/* Sous-menu 5 : Confirmées / En cours -> BLEU NUIT */}
         <button
           type="button"
           onClick={() => setActiveSubTab('confirmees')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
             activeSubTab === 'confirmees'
-              ? 'bg-blue-700 text-white shadow-sm font-bold'
-              : 'text-stone-600 hover:text-blue-800 hover:bg-blue-50'
+              ? 'bg-[#0B132B] text-blue-100 border-2 border-blue-400 shadow-md ring-2 ring-blue-500/30'
+              : 'bg-[#0B132B]/55 text-blue-200 border border-blue-900/80 hover:bg-[#0B132B] hover:text-white'
           }`}
         >
           <ShieldCheck className="w-4 h-4 text-blue-300" />
           <span>Confirmées / En cours</span>
         </button>
 
-        {/* Sous-menu 6 : Toutes les réservations */}
+        {/* Sous-menu 6 : Toutes les réservations -> ARDOISE / GRIS FONCÉ */}
         <button
           type="button"
           onClick={() => setActiveSubTab('toutes')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
             activeSubTab === 'toutes'
-              ? 'bg-stone-900 text-white shadow-sm font-bold'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+              ? 'bg-[#1E293B] text-white border-2 border-slate-300 shadow-md ring-2 ring-slate-400/30'
+              : 'bg-[#1E293B]/55 text-slate-300 border border-slate-700/80 hover:bg-[#1E293B] hover:text-white'
           }`}
         >
-          <FileText className="w-4 h-4 text-stone-400" />
+          <FileText className="w-4 h-4 text-slate-400" />
           <span>Toutes ({reservations.length})</span>
         </button>
       </div>
@@ -500,36 +526,36 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                 <button
                   type="button"
                   onClick={() => setFormMode('nuit')}
-                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer shadow-xs ${
                     formMode === 'nuit'
-                      ? 'border-[#C5A880] bg-[#C5A880]/15 ring-2 ring-[#C5A880]/40'
-                      : 'border-stone-200 hover:border-stone-300 bg-[#FAF9F5]'
+                      ? 'border-blue-400 bg-[#0B132B] text-white shadow-md ring-2 ring-blue-500/30'
+                      : 'border-stone-300 hover:border-stone-400 bg-[#FAF9F5]'
                   }`}
                 >
-                  <div className={`p-2.5 rounded-lg ${formMode === 'nuit' ? 'bg-[#C5A880] text-slate-950' : 'bg-stone-200 text-stone-700'}`}>
+                  <div className={`p-2.5 rounded-lg ${formMode === 'nuit' ? 'bg-blue-600 text-white' : 'bg-stone-200 text-stone-700'}`}>
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-sm text-stone-900 block">Séjour à la Nuitée</span>
-                    <span className="text-xs text-stone-500">Arrivée 15h00 • Départ 11h00</span>
+                    <span className={`font-bold text-sm block ${formMode === 'nuit' ? 'text-white' : 'text-stone-900'}`}>Séjour à la Nuitée</span>
+                    <span className={`text-xs ${formMode === 'nuit' ? 'text-blue-200' : 'text-stone-500'}`}>Arrivée 15h00 • Départ 11h00</span>
                   </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setFormMode('heure')}
-                  className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer shadow-xs ${
                     formMode === 'heure'
-                      ? 'border-[#C5A880] bg-[#C5A880]/15 ring-2 ring-[#C5A880]/40'
-                      : 'border-stone-200 hover:border-stone-300 bg-[#FAF9F5]'
+                      ? 'border-[#D97706] bg-[#FF9900] text-slate-950 shadow-md ring-2 ring-amber-500/30'
+                      : 'border-stone-300 hover:border-stone-400 bg-[#FAF9F5]'
                   }`}
                 >
-                  <div className={`p-2.5 rounded-lg ${formMode === 'heure' ? 'bg-[#C5A880] text-slate-950' : 'bg-stone-200 text-stone-700'}`}>
+                  <div className={`p-2.5 rounded-lg ${formMode === 'heure' ? 'bg-black/20 text-slate-950' : 'bg-stone-200 text-stone-700'}`}>
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-sm text-stone-900 block">Courte Durée (Day-Use)</span>
-                    <span className="text-xs text-stone-500">De 1h à 8h en journée</span>
+                    <span className={`font-bold text-sm block ${formMode === 'heure' ? 'text-slate-950' : 'text-stone-900'}`}>Courte Durée (Day-Use)</span>
+                    <span className={`text-xs ${formMode === 'heure' ? 'text-slate-900 font-medium' : 'text-stone-500'}`}>De 1h à 8h en journée</span>
                   </div>
                 </button>
               </div>
@@ -783,19 +809,19 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
               />
             </div>
 
-            {/* Récapitulatif tarifaire & Bouton d'enregistrement */}
-            <div className="p-4 rounded-xl bg-stone-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Récapitulatif tarifaire & Bouton d'enregistrement -> BLEU NUIT & ORANGE CATERPILLAR */}
+            <div className="p-5 rounded-2xl bg-[#0B132B] border-2 border-blue-900 text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
               <div className="flex items-center gap-6">
                 <div>
-                  <span className="text-[11px] text-stone-400 block uppercase font-mono">Montant Total</span>
-                  <span className="text-xl font-bold font-mono text-[#C5A880]">
+                  <span className="text-[11px] text-blue-300 block uppercase font-mono tracking-wider font-bold">Montant Total</span>
+                  <span className="text-2xl font-extrabold font-mono text-[#FF9900]">
                     {formatPrice(calculatedTotal)}
                   </span>
                 </div>
                 {formAcompte > 0 && (
-                  <div>
-                    <span className="text-[11px] text-stone-400 block uppercase font-mono">Reste à payer</span>
-                    <span className="text-lg font-bold font-mono text-amber-400">
+                  <div className="border-l border-blue-900/80 pl-6">
+                    <span className="text-[11px] text-amber-300 block uppercase font-mono tracking-wider font-bold">Reste à payer</span>
+                    <span className="text-xl font-bold font-mono text-amber-400">
                       {formatPrice(Math.max(0, calculatedTotal - formAcompte))}
                     </span>
                   </div>
@@ -806,15 +832,15 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                 <button
                   type="button"
                   onClick={() => setActiveSubTab('toutes')}
-                  className="px-4 py-2.5 rounded-xl border border-stone-700 text-stone-300 hover:text-white hover:bg-stone-800 text-xs font-semibold transition-all cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl border border-blue-800 text-blue-200 hover:text-white hover:bg-blue-950 text-xs font-semibold transition-all cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b0936b] text-slate-950 text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer border border-[#D97706]"
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 text-slate-950" />
                   <span>Enregistrer la Réservation</span>
                 </button>
               </div>
@@ -876,17 +902,27 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
             </div>
           </div>
 
-          {/* En-tête de la vue sous-menu active */}
-          <div className="px-5 py-3 bg-stone-50 border-b border-stone-200 flex items-center justify-between text-xs text-stone-600">
+          {/* En-tête de la vue sous-menu active avec fond coloré contextuel */}
+          <div className={`px-5 py-3 border-b flex items-center justify-between text-xs ${
+            activeSubTab === 'en_attente'
+              ? 'bg-[#FF9900]/15 border-[#FF9900]/40 text-amber-950'
+              : activeSubTab === 'terminees'
+              ? 'bg-[#064E3B]/15 border-[#064E3B]/40 text-emerald-950'
+              : activeSubTab === 'annulees'
+              ? 'bg-[#4C1D95]/15 border-[#4C1D95]/40 text-purple-950'
+              : activeSubTab === 'confirmees'
+              ? 'bg-[#0B132B]/10 border-[#0B132B]/30 text-blue-950'
+              : 'bg-stone-100 border-stone-200 text-stone-700'
+          }`}>
             <div className="font-semibold flex items-center gap-2">
-              <span>Affichage :</span>
-              {activeSubTab === 'en_attente' && <strong className="text-amber-800">Réservations en attente de validation</strong>}
-              {activeSubTab === 'terminees' && <strong className="text-emerald-800">Réservations terminées (Séjours passés)</strong>}
-              {activeSubTab === 'annulees' && <strong className="text-rose-800">Réservations annulées</strong>}
-              {activeSubTab === 'confirmees' && <strong className="text-blue-800">Réservations confirmées &amp; en cours</strong>}
-              {activeSubTab === 'toutes' && <strong className="text-stone-800">Toutes les réservations enregistrées</strong>}
+              <span className="opacity-75">Affichage actif :</span>
+              {activeSubTab === 'en_attente' && <strong className="text-amber-900 font-bold">Réservations en attente de validation</strong>}
+              {activeSubTab === 'terminees' && <strong className="text-emerald-900 font-bold">Réservations terminées (Séjours passés)</strong>}
+              {activeSubTab === 'annulees' && <strong className="text-purple-900 font-bold">Réservations annulées</strong>}
+              {activeSubTab === 'confirmees' && <strong className="text-blue-900 font-bold">Réservations confirmées &amp; en cours</strong>}
+              {activeSubTab === 'toutes' && <strong className="text-stone-900 font-bold">Toutes les réservations enregistrées</strong>}
             </div>
-            <span className="font-mono">{filteredReservations.length} résultat(s)</span>
+            <span className="font-mono font-bold">{filteredReservations.length} résultat(s)</span>
           </div>
 
           {/* Tableau des réservations */}
@@ -1158,122 +1194,12 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
         </div>
       )}
 
-      {/* 6. MODAL FACTURE / REÇU CLIENT */}
+      {/* 6. MODAL FACTURE / REÇU CLIENT AVEC IMPRESSION A4 ET THERMIQUE (80MM / 58MM) */}
       {invoiceModalRes && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-stone-200 space-y-6 max-h-[90vh] overflow-y-auto">
-            {/* Header Facture */}
-            <div className="flex items-center justify-between border-b border-stone-200 pb-5">
-              <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#C5A880] block font-bold">
-                  {settings.holdingName || 'DEKOUASSI HOLDING'}
-                </span>
-                <h3 className="text-xl font-serif font-bold text-stone-900">
-                  {settings.appName || 'HOTELIA'} • FACTURE REÇU
-                </h3>
-                <span className="text-xs text-stone-500 font-mono">
-                  Réf: {invoiceModalRes.id}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInvoiceModalRes(null)}
-                className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Infos Client & Établissement */}
-            <div className="grid grid-cols-2 gap-4 text-xs bg-[#FAF9F5] p-4 rounded-xl border border-stone-200">
-              <div>
-                <span className="font-semibold text-stone-400 uppercase text-[10px] block">Facturé à</span>
-                <span className="font-bold text-stone-900 text-sm block">{invoiceModalRes.clientNom}</span>
-                <span className="font-mono text-stone-600 block">{invoiceModalRes.clientTelephone}</span>
-                {invoiceModalRes.clientEmail && (
-                  <span className="text-stone-500 block truncate">{invoiceModalRes.clientEmail}</span>
-                )}
-              </div>
-              <div>
-                <span className="font-semibold text-stone-400 uppercase text-[10px] block">Établissement</span>
-                <span className="font-bold text-stone-900 block">{settings.hotelName || 'Hotelia Resort & Spa'}</span>
-                <span className="text-stone-600 block">{settings.contactAddress || 'Abidjan, Côte d’Ivoire'}</span>
-                <span className="text-stone-500 block font-mono">{settings.contactPhone || '+225 07 00 00 00 00'}</span>
-              </div>
-            </div>
-
-            {/* Détails du séjour */}
-            <div className="space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
-                Détail des prestations
-              </span>
-              <div className="border border-stone-200 rounded-xl overflow-hidden text-xs">
-                <table className="w-full">
-                  <thead className="bg-stone-100 text-stone-600 font-semibold border-b border-stone-200">
-                    <tr>
-                      <th className="py-2.5 px-3">Description</th>
-                      <th className="py-2.5 px-3">Créneau</th>
-                      <th className="py-2.5 px-3 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    <tr>
-                      <td className="py-3 px-3">
-                        <div className="font-bold text-stone-900">
-                          Chambre {invoiceModalRes.chambreNumero} - {invoiceModalRes.chambreType}
-                        </div>
-                        <span className="text-[11px] text-stone-500">
-                          Formule {invoiceModalRes.typeReservation === 'nuit' ? 'Nuitée hôtelière' : 'Créneau horaire (Day-Use)'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-mono text-stone-700">
-                        {invoiceModalRes.typeReservation === 'nuit'
-                          ? `${invoiceModalRes.dateDebut} au ${invoiceModalRes.dateFin} (${invoiceModalRes.nbNuits || 1} nuit)`
-                          : `${invoiceModalRes.dateDebut} (${invoiceModalRes.heureDebut || '14:00'}-${invoiceModalRes.heureFin || '17:00'})`}
-                      </td>
-                      <td className="py-3 px-3 text-right font-bold font-mono text-stone-900">
-                        {formatPrice(invoiceModalRes.montantTotal)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Règlement & Modes */}
-            <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between text-xs">
-              <div>
-                <span className="text-stone-500 block">Mode de paiement utilisé</span>
-                <span className="font-bold text-stone-900">{invoiceModalRes.modePaiement}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-stone-500 block">Statut paiement</span>
-                <span className="font-bold font-mono text-emerald-700 uppercase">
-                  {invoiceModalRes.statutPaiement === 'paye' ? 'Acquitté 100%' : 'En attente de solde'}
-                </span>
-              </div>
-            </div>
-
-            {/* Actions modal */}
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5 text-[#C5A880]" />
-                <span>Imprimer la facture</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setInvoiceModalRes(null)}
-                className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-semibold hover:bg-stone-100 cursor-pointer"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
+        <InvoicePrintModal
+          reservation={invoiceModalRes}
+          onClose={() => setInvoiceModalRes(null)}
+        />
       )}
     </div>
   );

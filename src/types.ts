@@ -64,16 +64,35 @@ export interface ChambreConfig {
   imageUrl?: string;
 }
 
-// Profil utilisateur modifiable
+// Profil utilisateur et rôles du système
+export type UserRole = 'Directeur Général' | 'Chef de Réception' | 'Caisse' | 'Gérant' | 'Réceptionniste';
+
 export interface UserProfile {
   id: string;
   nom: string;
-  role: 'Directeur Général' | 'Chef de Réception' | 'Gérant' | 'Réceptionniste';
+  role: UserRole;
   email: string;
   telephone: string;
   photoUrl: string;
   username: string;
   password?: string;
+  status?: 'actif' | 'suspendu';
+  dateCreation?: string;
+  dernierAcces?: string;
+  permissions?: string[];
+}
+
+// Configuration de l'imprimante thermique de caisse (Ticket 80mm / 58mm)
+export interface ThermalPrinterConfig {
+  width: '80mm' | '58mm';
+  fontSize: 'compact' | 'normal' | 'large';
+  showLogo: boolean;
+  operatorName?: string;
+  headerMessage: string;
+  footerMessage: string;
+  showTaxDetails: boolean;
+  showBarcode: boolean;
+  paperFeedLines: number; // Lignes de saut avant coupe papier
 }
 
 // Notification sonore et visuelle de réservation

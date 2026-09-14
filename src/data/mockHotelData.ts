@@ -5,7 +5,8 @@ import {
   RevenueItem,
   ReservationNotification,
   UserProfile,
-  ReservationItem
+  ReservationItem,
+  ThermalPrinterConfig
 } from '../types.ts';
 
 // 1. Types de chambre initiaux
@@ -162,8 +163,37 @@ export const INITIAL_USER_PROFILES: Record<string, UserProfile> = {
     email: 'reception@hotelia.dekouassiholding.com',
     telephone: '+225 05 44 55 66 77',
     photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-    password: '••••••••'
+    password: '••••••••',
+    status: 'actif',
+    dateCreation: '2026-08-15',
+    permissions: ['gantt', 'reservations', 'chambres', 'alertes']
+  },
+  caisse: {
+    id: 'usr-3',
+    nom: 'Mariam Diallo',
+    username: 'caisse_md',
+    role: 'Caisse',
+    email: 'caisse@hotelia.dekouassiholding.com',
+    telephone: '+225 07 11 22 33 44',
+    photoUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+    password: '••••••••',
+    status: 'actif',
+    dateCreation: '2026-09-01',
+    permissions: ['reservations', 'encaissements', 'facturation']
   }
+};
+
+// Configuration par défaut de l'imprimante thermique
+export const DEFAULT_THERMAL_PRINTER_CONFIG: ThermalPrinterConfig = {
+  width: '80mm',
+  fontSize: 'normal',
+  showLogo: true,
+  operatorName: 'Caisse Principale',
+  headerMessage: 'HOTELIA RÉSIDENCE & SUITES\nLuxe, Confort & Discrétion\nAbidjan - Côte d’Ivoire',
+  footerMessage: 'Code Wi-Fi : HOTELIA_VIP (Fibre 1Gbps)\nClé à restituer au check-out.\nMerci de votre confiance et bon séjour !',
+  showTaxDetails: true,
+  showBarcode: true,
+  paperFeedLines: 3
 };
 
 // 4. Notifications de réservation initiales (avec contact client)

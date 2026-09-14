@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminGanttDashboard } from '../AdminGanttDashboard.tsx';
 import { AntiOverbookingCode } from '../AntiOverbookingCode.tsx';
 import { PricingFunctionPlayground } from '../PricingFunctionPlayground.tsx';
@@ -40,7 +40,14 @@ import {
   XCircle,
   BookmarkCheck,
   CalendarCheck,
-  FileText
+  FileText,
+  Lock,
+  CreditCard,
+  Users,
+  Building,
+  Check,
+  AlertTriangle,
+  X
 } from 'lucide-react';
 
 export type BackOfficeTab =
@@ -74,12 +81,45 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     pendingReservationsCount,
     completedReservationsCount,
     cancelledReservationsCount,
-    reservations
+    reservations,
+    usersList,
+    switchUserRole
   } = useHotelData();
+
   const [activeTab, setActiveTab] = useState<BackOfficeTab>('gantt');
   const [reservationSubTab, setReservationSubTab] = useState<ReservationSubTab>('toutes');
   const [isReservationMenuOpen, setIsReservationMenuOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [restrictedModalMessage, setRestrictedModalMessage] = useState<string | null>(null);
+
+  // Role permissions checks
+  const isCaisse = currentUserProfile.role === 'Caisse';
+  const isChefReception = currentUserProfile.role === 'Chef de Réception';
+  const isDG = currentUserProfile.role === 'Directeur Général';
+
+  // Guard: If Caisse is active, force activeTab to reservations if attempting unauthorized access
+  useEffect(() => {
+    if (isCaisse && activeTab !== 'reservations' && activeTab !== 'profile') {
+      setActiveTab('reservations');
+    }
+  }, [isCaisse, activeTab]);
+
+  const handleTabClick = (tab: BackOfficeTab) => {
+    if (isCaisse && tab !== 'reservations' && tab !== 'profile') {
+      setRestrictedModalMessage(
+        "Accès Réservé : Votre compte Caisse a été configuré par le Super Admin pour gérer exclusivement les Réservations, les Encaissements et la Facturation client."
+      );
+      return;
+    }
+    if (isChefReception && (tab === 'finance' || tab === 'expenses' || tab === 'settings' || tab === 'erd' || tab === 'pricing' || tab === 'antioverbooking')) {
+      setRestrictedModalMessage(
+        "Accès Administrateur Restreint : Les bilans financiers, dépenses de gestion et paramètres généraux sont réservés au Directeur Général (Super Admin)."
+      );
+      return;
+    }
+    setActiveTab(tab);
+  };
 
   return (
     <div className="min-h-screen bg-[#FAF9F5] text-stone-900 font-sans selection:bg-[#C5A880] selection:text-white">
@@ -105,9 +145,19 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   <span className="font-serif font-bold text-lg text-white uppercase">
                     {settings.appName || 'HOTELIA'} BACK-OFFICE
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
-                    PMS Connecté
-                  </span>
+                  {isCaisse ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#FF9900]/25 text-[#FF9900] border border-[#FF9900]/50 font-bold">
+                      Session Caisse
+                    </span>
+                  ) : isChefReception ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">
+                      Chef Réception
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
+                      Super Admin (DG)
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] font-mono text-[#C5A880] uppercase tracking-wider block">
                   {settings.holdingName || 'DEKOUASSI HOLDING'} • GESTION HÔTELIÈRE
@@ -137,34 +187,112 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 <span className="hidden sm:inline text-xs font-semibold">Alertes</span>
               </button>
 
-              {/* Connected User Badge (clickable to open profile) */}
-              <button
-                type="button"
-                onClick={() => setActiveTab('profile')}
-                className="hidden md:flex items-center space-x-2.5 px-3 py-1.5 rounded-xl bg-[#2A2925] hover:bg-[#383631] border border-stone-700 text-xs transition-all text-left cursor-pointer"
-                title="Modifier mon profil utilisateur"
-              >
-                <img
-                  src={currentUserProfile.photoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80'}
-                  alt={currentUserProfile.nom}
-                  className="w-7 h-7 rounded-lg object-cover border border-[#C5A880]"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="text-left">
-                  <span className="font-bold text-stone-200 block text-[11px] leading-tight truncate max-w-[150px]">
-                    {currentUserProfile.nom}
-                  </span>
-                  <span className="text-[10px] text-[#C5A880] font-mono leading-none block">
-                    {currentUserProfile.role}
-                  </span>
-                </div>
-              </button>
+              {/* Sélecteur / Dropdown de Profil & Rôles */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center space-x-2.5 px-3 py-1.5 rounded-xl bg-[#2A2925] hover:bg-[#383631] border border-stone-700 text-xs transition-all text-left cursor-pointer"
+                  title="Changer d'utilisateur ou voir le profil"
+                >
+                  <img
+                    src={currentUserProfile.photoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80'}
+                    alt={currentUserProfile.nom}
+                    className="w-7 h-7 rounded-lg object-cover border border-[#C5A880]"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="text-left hidden sm:block">
+                    <span className="font-bold text-stone-200 block text-[11px] leading-tight truncate max-w-[130px]">
+                      {currentUserProfile.nom}
+                    </span>
+                    <span className="text-[10px] text-[#C5A880] font-mono leading-none block">
+                      {currentUserProfile.role}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-stone-400" />
+                </button>
+
+                {/* Dropdown menu */}
+                {isUserMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-[#1C1B18] border border-stone-700 shadow-2xl z-50 p-2.5 space-y-2 text-xs text-stone-200">
+                      <div className="p-2 bg-stone-900/80 rounded-xl border border-stone-800">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={currentUserProfile.photoUrl}
+                            alt="Avatar"
+                            className="w-8 h-8 rounded-lg object-cover border border-[#C5A880]"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="truncate">
+                            <span className="font-bold text-white block truncate">{currentUserProfile.nom}</span>
+                            <span className="text-[10px] text-[#C5A880] font-mono block truncate">{currentUserProfile.email}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="px-2 pt-1 text-[10px] font-mono uppercase text-stone-400 font-semibold tracking-wider">
+                        Bascule Rapide de Session :
+                      </div>
+
+                      <div className="space-y-1 max-h-48 overflow-y-auto">
+                        {usersList.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => {
+                              switchUserRole(u.id);
+                              setIsUserMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all cursor-pointer ${
+                              currentUserProfile.id === u.id
+                                ? 'bg-[#C5A880]/20 text-white font-bold border border-[#C5A880]/40'
+                                : 'hover:bg-stone-800 text-stone-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="text-sm">
+                                {u.role === 'Caisse' ? '💳' : u.role === 'Chef de Réception' ? '🏨' : '👑'}
+                              </span>
+                              <div className="truncate">
+                                <span className="block text-xs font-semibold truncate">{u.nom}</span>
+                                <span className="block text-[10px] text-stone-400 font-mono truncate">{u.role}</span>
+                              </div>
+                            </div>
+                            {currentUserProfile.id === u.id && (
+                              <Check className="w-3.5 h-3.5 text-[#C5A880]" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="border-t border-stone-800 pt-2 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('profile');
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="text-xs text-[#C5A880] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>Gérer profil &amp; comptes</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
 
               {/* View Front-end Button */}
               <button
                 type="button"
                 onClick={onGoToPublicSite}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 text-xs font-semibold transition-all"
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 text-xs font-semibold transition-all cursor-pointer"
                 title="Voir le site public Hotelia"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-[#C5A880]" />
@@ -175,7 +303,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               <button
                 type="button"
                 onClick={onLogout}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs font-semibold transition-all"
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 text-xs font-semibold transition-all cursor-pointer"
                 title="Fermer la session"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -186,21 +314,24 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
           {/* Sub-Navigation Tabs */}
           <div className="flex overflow-x-auto space-x-2 py-2 border-t border-stone-800 no-scrollbar text-xs">
-            {/* Tab 1 : Planning Gantt */}
+            {/* Tab 1 : Planning Gantt -> BLEU NUIT */}
             <button
               type="button"
-              onClick={() => setActiveTab('gantt')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'gantt'
-                  ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800'
+              onClick={() => handleTabClick('gantt')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'gantt'
+                  ? 'bg-[#0B132B] text-white border-2 border-blue-400 shadow-md ring-2 ring-blue-500/30'
+                  : 'bg-[#0B132B]/55 text-blue-200 border border-blue-900/80 hover:bg-[#0B132B] hover:text-white'
               }`}
             >
-              <Calendar className="w-3.5 h-3.5" />
+              {isCaisse ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Calendar className="w-3.5 h-3.5 text-blue-300" />}
               <span>Tableau de Bord &amp; Gantt</span>
+              {isCaisse && <span className="text-[9px] font-mono text-stone-500">[DG / Réception]</span>}
             </button>
 
-            {/* Menu Principal : Réservations de Chambres avec Sous-Menus */}
+            {/* Menu Principal : Réservations de Chambres avec Sous-Menus -> ORANGE CATERPILLAR */}
             <div className="relative inline-block text-left">
               <div className="flex items-center">
                 <button
@@ -209,20 +340,25 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                     setActiveTab('reservations');
                     setIsReservationMenuOpen((prev) => !prev);
                   }}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-l-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-l-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
                     activeTab === 'reservations'
-                      ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                      : 'text-stone-300 hover:text-white hover:bg-stone-800'
+                      ? 'bg-[#FF9900] text-slate-950 border-2 border-[#D97706] shadow-md ring-2 ring-amber-500/35'
+                      : 'bg-[#FF9900]/25 text-[#FF9900] border border-[#FF9900]/60 hover:bg-[#FF9900] hover:text-slate-950'
                   }`}
                 >
                   <CalendarCheck className="w-3.5 h-3.5" />
                   <span>Réservations</span>
+                  {isCaisse && (
+                    <span className="px-1.5 py-0.2 rounded bg-slate-950 text-[#FF9900] font-mono text-[9px] font-bold">
+                      Caisse Active
+                    </span>
+                  )}
                   {pendingReservationsCount > 0 && (
                     <span
                       className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono ${
                         activeTab === 'reservations'
-                          ? 'bg-amber-900 text-white'
-                          : 'bg-amber-500 text-slate-950 animate-pulse'
+                          ? 'bg-slate-950 text-white'
+                          : 'bg-[#FF9900] text-slate-950 animate-pulse'
                       }`}
                       title={`${pendingReservationsCount} réservation(s) en attente`}
                     >
@@ -238,8 +374,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   }}
                   className={`p-2 rounded-r-xl border-l transition-all cursor-pointer ${
                     activeTab === 'reservations'
-                      ? 'bg-[#b0936b] text-slate-950 border-[#9a7f59]'
-                      : 'bg-stone-800 text-stone-300 hover:text-white hover:bg-stone-700 border-stone-700'
+                      ? 'bg-[#e08600] text-slate-950 border-2 border-l-0 border-[#D97706]'
+                      : 'bg-[#FF9900]/20 text-[#FF9900] hover:bg-[#FF9900]/40 border border-l-0 border-[#FF9900]/60'
                   }`}
                   title="Ouvrir les sous-menus de réservations"
                 >
@@ -288,18 +424,18 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         setReservationSubTab('en_attente');
                         setIsReservationMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-amber-950/40 text-left text-amber-200 transition-all cursor-pointer font-semibold"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-800 text-left text-amber-300 transition-all cursor-pointer font-semibold"
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
                           <Clock className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <span className="block font-bold">Réservations en attente</span>
-                          <span className="text-[11px] text-stone-400 font-normal">À valider / acomptes</span>
+                          <span className="block font-bold">En attente de validation</span>
+                          <span className="text-[11px] text-stone-400 font-normal">À traiter d'urgence</span>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-amber-500/20 text-amber-300">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-amber-500/20 text-amber-400">
                         {pendingReservationsCount}
                       </span>
                     </button>
@@ -312,18 +448,18 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         setReservationSubTab('terminees');
                         setIsReservationMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-emerald-950/40 text-left text-emerald-200 transition-all cursor-pointer font-semibold"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-800 text-left text-emerald-300 transition-all cursor-pointer font-semibold"
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <span className="block font-bold">Réservations terminées</span>
-                          <span className="text-[11px] text-stone-400 font-normal">Séjours clôturés</span>
+                          <span className="block font-bold">Réservations Terminées</span>
+                          <span className="text-[11px] text-stone-400 font-normal">Séjours achevés</span>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-500/20 text-emerald-300">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-500/20 text-emerald-400">
                         {completedReservationsCount}
                       </span>
                     </button>
@@ -336,23 +472,23 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         setReservationSubTab('annulees');
                         setIsReservationMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-rose-950/40 text-left text-rose-200 transition-all cursor-pointer font-semibold"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-800 text-left text-rose-300 transition-all cursor-pointer font-semibold"
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
                           <XCircle className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <span className="block font-bold">Réservations annulées</span>
-                          <span className="text-[11px] text-stone-400 font-normal">Motifs d'annulation</span>
+                          <span className="block font-bold">Réservations Annulées</span>
+                          <span className="text-[11px] text-stone-400 font-normal">Chambres libérées</span>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-rose-500/20 text-rose-300">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-rose-500/20 text-rose-400">
                         {cancelledReservationsCount}
                       </span>
                     </button>
 
-                    {/* Sous-menu 5 : Confirmées / En cours */}
+                    {/* Sous-menu 5 : Confirmées & En cours */}
                     <button
                       type="button"
                       onClick={() => {
@@ -360,11 +496,11 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         setReservationSubTab('confirmees');
                         setIsReservationMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-blue-950/40 text-left text-blue-200 transition-all cursor-pointer font-semibold"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-800 text-left text-blue-300 transition-all cursor-pointer font-semibold"
                     >
                       <div className="flex items-center gap-2.5">
                         <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
-                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <BookmarkCheck className="w-3.5 h-3.5" />
                         </div>
                         <div>
                           <span className="block font-bold">Confirmées &amp; En cours</span>
@@ -389,7 +525,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         </div>
                         <div>
                           <span className="block font-bold">Toutes les réservations</span>
-                          <span className="text-[11px] text-stone-400 font-normal">Historique général</span>
+                          <span className="text-[11px] text-stone-400 font-normal">Historique &amp; Factures</span>
                         </div>
                       </div>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-stone-800 text-stone-300">
@@ -401,114 +537,133 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               )}
             </div>
 
-            {/* Tab 2 : Chambres & Configuration des Types */}
+            {/* Tab 2 : Chambres & Configuration des Types -> VERT FORÊT / ÉMERAUDE */}
             <button
               type="button"
-              onClick={() => setActiveTab('chambres')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'chambres'
-                  ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800'
+              onClick={() => handleTabClick('chambres')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'chambres'
+                  ? 'bg-[#064E3B] text-emerald-100 border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/30'
+                  : 'bg-[#064E3B]/55 text-emerald-200 border border-emerald-900/80 hover:bg-[#064E3B] hover:text-white'
               }`}
             >
-              <Bed className="w-3.5 h-3.5" />
+              {isCaisse ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Bed className="w-3.5 h-3.5 text-emerald-300" />}
               <span>Chambres &amp; Types</span>
+              {isCaisse && <span className="text-[9px] font-mono text-stone-500">[DG / Réception]</span>}
             </button>
 
-            {/* Tab 3 : Rapports Financiers (MTN, Orange, MOOV) */}
+            {/* Tab 3 : Rapports Financiers (MTN, Orange, MOOV) -> VIOLET IMPÉRIAL */}
             <button
               type="button"
-              onClick={() => setActiveTab('finance')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'finance'
-                  ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800'
+              onClick={() => handleTabClick('finance')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse || isChefReception
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'finance'
+                  ? 'bg-[#4C1D95] text-purple-100 border-2 border-purple-400 shadow-lg ring-2 ring-purple-500/30'
+                  : 'bg-[#4C1D95]/55 text-purple-200 border border-purple-900/80 hover:bg-[#4C1D95] hover:text-white'
               }`}
             >
-              <PieChart className="w-3.5 h-3.5" />
-              <span>Rapport Financier &amp; Mobile Money</span>
+              {isCaisse || isChefReception ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <PieChart className="w-3.5 h-3.5 text-purple-300" />}
+              <span>Rapport Financier</span>
+              {(isCaisse || isChefReception) && <span className="text-[9px] font-mono text-stone-500">[DG]</span>}
             </button>
 
-            {/* Tab 4 : Module Dépenses (Ménage & Réparation) */}
+            {/* Tab 4 : Module Dépenses (Ménage & Réparation) -> ROUGE BORDEAUX */}
             <button
               type="button"
-              onClick={() => setActiveTab('expenses')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'expenses'
-                  ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800'
+              onClick={() => handleTabClick('expenses')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse || isChefReception
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'expenses'
+                  ? 'bg-[#991B1B] text-rose-100 border-2 border-rose-400 shadow-lg ring-2 ring-rose-500/30'
+                  : 'bg-[#991B1B]/55 text-rose-200 border border-rose-900/80 hover:bg-[#991B1B] hover:text-white'
               }`}
             >
-              <Receipt className="w-3.5 h-3.5" />
+              {isCaisse || isChefReception ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Receipt className="w-3.5 h-3.5 text-rose-300" />}
               <span>Dépenses (Ménage &amp; Réparation)</span>
+              {(isCaisse || isChefReception) && <span className="text-[9px] font-mono text-stone-500">[DG]</span>}
             </button>
 
-            {/* Tab 5 : Profil Utilisateur */}
+            {/* Tab 5 : Profil Utilisateur & Gestion des Comptes -> BLEU PÉTROLE / CYAN */}
             <button
               type="button"
-              onClick={() => setActiveTab('profile')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+              onClick={() => handleTabClick('profile')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
                 activeTab === 'profile'
-                  ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800'
+                  ? 'bg-[#0369A1] text-sky-100 border-2 border-sky-400 shadow-lg ring-2 ring-sky-500/30'
+                  : 'bg-[#0369A1]/55 text-sky-200 border border-sky-900/80 hover:bg-[#0369A1] hover:text-white'
               }`}
             >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Mon Profil</span>
+              <UserCheck className="w-3.5 h-3.5 text-sky-300" />
+              <span>{isDG ? 'Utilisateurs & Profil (Super Admin)' : 'Mon Profil'}</span>
             </button>
 
-            {/* Tab 6 : Paramètres de l'Hôtel */}
+            {/* Tab 6 : Paramètres de l'Hôtel -> AMBRE / BRUN CHAUD */}
             <button
               type="button"
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'settings'
-                  ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                  : 'text-amber-300 hover:text-white hover:bg-stone-800'
+              onClick={() => handleTabClick('settings')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse || isChefReception
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'settings'
+                  ? 'bg-[#92400E] text-amber-100 border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/30'
+                  : 'bg-[#92400E]/55 text-amber-200 border border-amber-900/80 hover:bg-[#92400E] hover:text-white'
               }`}
             >
-              <Settings className="w-3.5 h-3.5 text-[#C5A880]" />
+              {isCaisse || isChefReception ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Settings className="w-3.5 h-3.5 text-amber-300" />}
               <span>Paramètres de l'Hôtel</span>
+              {(isCaisse || isChefReception) && <span className="text-[9px] font-mono text-stone-500">[DG]</span>}
             </button>
 
-            {/* Tab 7 : Moteur Anti-Surbooking */}
+            {/* Tab 7 : Code Anti-Surbooking -> CYAN FONCÉ */}
             <button
               type="button"
-              onClick={() => setActiveTab('antioverbooking')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'antioverbooking'
-                  ? 'bg-emerald-600 text-white shadow-md font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800'
+              onClick={() => handleTabClick('antioverbooking')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse || isChefReception
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'antioverbooking'
+                  ? 'bg-[#155E75] text-cyan-100 border-2 border-cyan-400 shadow-lg ring-2 ring-cyan-500/30'
+                  : 'bg-[#155E75]/55 text-cyan-200 border border-cyan-900/80 hover:bg-[#155E75] hover:text-white'
               }`}
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Moteur Anti-Surbooking</span>
+              {isCaisse || isChefReception ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <ShieldCheck className="w-3.5 h-3.5 text-cyan-300" />}
+              <span>Code Anti-Surbooking</span>
             </button>
 
-            {/* Tab 8 : Testeur Prix */}
+            {/* Tab 8 : Testeur Calcul Prix -> VIOLET FONCÉ */}
             <button
               type="button"
-              onClick={() => setActiveTab('pricing')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'pricing'
-                  ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800'
+              onClick={() => handleTabClick('pricing')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse || isChefReception
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'pricing'
+                  ? 'bg-[#581C87] text-purple-100 border-2 border-purple-400 shadow-lg ring-2 ring-purple-500/30'
+                  : 'bg-[#581C87]/55 text-purple-200 border border-purple-900/80 hover:bg-[#581C87] hover:text-white'
               }`}
             >
-              <Calculator className="w-3.5 h-3.5" />
-              <span>Testeur API Prix</span>
+              {isCaisse || isChefReception ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Calculator className="w-3.5 h-3.5 text-purple-300" />}
+              <span>Testeur Prix</span>
             </button>
 
-            {/* Tab 9 : Diagramme ERD */}
+            {/* Tab 9 : Diagramme ERD -> ARDOISE / GRIS FONCÉ */}
             <button
               type="button"
-              onClick={() => setActiveTab('erd')}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'erd'
-                  ? 'bg-[#C5A880] text-slate-950 shadow-md font-bold'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800'
+              onClick={() => handleTabClick('erd')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse || isChefReception
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'erd'
+                  ? 'bg-[#334155] text-white border-2 border-slate-300 shadow-lg ring-2 ring-slate-400/30'
+                  : 'bg-[#334155]/55 text-slate-300 border border-slate-700/80 hover:bg-[#334155] hover:text-white'
               }`}
             >
+              {isCaisse || isChefReception ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : null}
               <span>Diagramme BDD (ERD)</span>
             </button>
           </div>
@@ -516,38 +671,68 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       </header>
 
       {/* 2. Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Tab 1 : Planning Gantt + Dashboard Amélioré avec Couleurs & Graphiques Circulaires */}
-        {activeTab === 'gantt' && <AdminGanttDashboard />}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Bannière de Session Caisse : Confirmation du périmètre exclusif réservations */}
+        {isCaisse && (
+          <div className="bg-[#FF9900]/15 border-2 border-[#FF9900] text-stone-900 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-[#FF9900] text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block">
+                  SESSION CAISSE ACTIVE • PÉRIMÈTRE RÉSERVATIONS EXCLUSIF
+                </span>
+                <p className="text-xs text-stone-700">
+                  Votre profil de <strong>Caisse</strong> est configuré pour gérer uniquement les réservations, les règlements et la génération de factures (A4 et thermique paramétrable).
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('reservations');
+                setReservationSubTab('ajouter');
+              }}
+              className="px-4 py-2 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Créer une Réservation</span>
+            </button>
+          </div>
+        )}
 
-        {/* Tab Réservations de Chambres avec Sous-Menus (Ajouter, En attente, Terminées, Annulées) */}
+        {/* Tab 1 : Planning Gantt */}
+        {activeTab === 'gantt' && !isCaisse && <AdminGanttDashboard />}
+
+        {/* Tab Réservations de Chambres avec Sous-Menus */}
         {activeTab === 'reservations' && (
           <ReservationManagementTab key={reservationSubTab} initialSubTab={reservationSubTab} />
         )}
 
         {/* Tab 2 : Gestion Complète des Chambres & Types de Chambres */}
-        {activeTab === 'chambres' && <RoomManagementTab />}
+        {activeTab === 'chambres' && !isCaisse && <RoomManagementTab />}
 
-        {/* Tab 3 : Rapports Financiers (Quotidien, Hebdomadaire, Annuel, Graphique circulaire & bâtons) */}
-        {activeTab === 'finance' && <FinancialReportTab />}
+        {/* Tab 3 : Rapports Financiers */}
+        {activeTab === 'finance' && isDG && <FinancialReportTab />}
 
-        {/* Tab 4 : Module Dépenses (Ménage & Réparations) */}
-        {activeTab === 'expenses' && <ExpensesTab />}
+        {/* Tab 4 : Module Dépenses */}
+        {activeTab === 'expenses' && isDG && <ExpensesTab />}
 
-        {/* Tab 5 : Profil Utilisateur (Identifiant, Mot de passe, Email, Tél, Photo) */}
+        {/* Tab 5 : Profil Utilisateur & Gestion des Comptes (Super Admin) */}
         {activeTab === 'profile' && <UserProfileTab />}
 
-        {/* Tab 6 : Paramètres de l'Application (Logo, Devises, Annulation, SEO, Bannières) */}
-        {activeTab === 'settings' && <HotelSettingsTab />}
+        {/* Tab 6 : Paramètres de l'Application */}
+        {activeTab === 'settings' && isDG && <HotelSettingsTab />}
 
         {/* Tab 7 : Code PostgreSQL Anti-Surbooking */}
-        {activeTab === 'antioverbooking' && <AntiOverbookingCode />}
+        {activeTab === 'antioverbooking' && isDG && <AntiOverbookingCode />}
 
         {/* Tab 8 : Testeur API Prix */}
-        {activeTab === 'pricing' && <PricingFunctionPlayground />}
+        {activeTab === 'pricing' && isDG && <PricingFunctionPlayground />}
 
         {/* Tab 9 : Diagramme ERD */}
-        {activeTab === 'erd' && <ErdDiagram />}
+        {activeTab === 'erd' && isDG && <ErdDiagram />}
       </main>
 
       {/* Modal Notifications Sonores & Contacts Clients */}
@@ -555,6 +740,55 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         isOpen={isNotifModalOpen}
         onClose={() => setIsNotifModalOpen(false)}
       />
+
+      {/* Modal d'Alerte : Accès Restreint par le Contrôle de Rôle (RBAC) */}
+      {restrictedModalMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+              <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5" />
+                <span>Accès Restreint par les Droits Utilisateur</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRestrictedModalMessage(null)}
+                className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              {restrictedModalMessage}
+            </p>
+
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-[11px] text-stone-500">
+              Rôle actuel : <strong className="text-stone-900">{currentUserProfile.role}</strong> ({currentUserProfile.nom}). Pour obtenir des droits élargis, connectez-vous avec le compte Directeur Général (Super Admin).
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRestrictedModalMessage(null);
+                  setActiveTab('reservations');
+                }}
+                className="px-4 py-2 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-xs cursor-pointer shadow-xs"
+              >
+                Aller aux Réservations
+              </button>
+              <button
+                type="button"
+                onClick={() => setRestrictedModalMessage(null)}
+                className="px-4 py-2 rounded-xl border border-stone-300 text-stone-700 text-xs font-semibold hover:bg-stone-100 cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
