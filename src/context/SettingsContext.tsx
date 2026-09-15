@@ -45,6 +45,115 @@ export interface PromoBanner {
   badgeText: string;
 }
 
+// 7. Configurations des APIs Passerelles Mobile Money (Orange, MTN, Moov)
+export interface OrangeMoneyConfig {
+  enabled: boolean;
+  environment: 'sandbox' | 'production';
+  merchantKey: string;
+  clientId: string;
+  clientSecret: string;
+  authHeaderToken: string;
+  partnerCode: string;
+  merchantPhone: string;
+  tokenUrl: string;
+  paymentUrl: string;
+  notificationUrl: string;
+  returnUrl: string;
+  cancelUrl: string;
+  currency: string;
+  lastPingStatus?: 'success' | 'error' | 'idle';
+  lastPingDate?: string;
+  lastPingMessage?: string;
+}
+
+export interface MtnMoneyConfig {
+  enabled: boolean;
+  environment: 'sandbox' | 'production';
+  subscriptionKeyPrimary: string;
+  subscriptionKeySecondary: string;
+  apiUserId: string; // UUID v4
+  apiKey: string;
+  targetEnvironment: string; // sandbox | mtnivorycoast | mtnbenin | mtncameroon | mtnghana
+  merchantPhone: string;
+  callbackHost: string;
+  collectionUrl: string;
+  currency: string;
+  lastPingStatus?: 'success' | 'error' | 'idle';
+  lastPingDate?: string;
+  lastPingMessage?: string;
+}
+
+export interface MoovMoneyConfig {
+  enabled: boolean;
+  environment: 'sandbox' | 'production';
+  merchantId: string;
+  secretKey: string;
+  posId: string;
+  merchantPhone: string;
+  apiEndpoint: string;
+  ipnUrl: string;
+  returnUrl: string;
+  cancelUrl: string;
+  currency: string;
+  lastPingStatus?: 'success' | 'error' | 'idle';
+  lastPingDate?: string;
+  lastPingMessage?: string;
+}
+
+export interface MobileMoneySettings {
+  orangeMoney: OrangeMoneyConfig;
+  mtnMoney: MtnMoneyConfig;
+  moovMoney: MoovMoneyConfig;
+}
+
+export const DEFAULT_MOBILE_MONEY_SETTINGS: MobileMoneySettings = {
+  orangeMoney: {
+    enabled: true,
+    environment: 'sandbox',
+    merchantKey: 'OM_MCH_CI_849201',
+    clientId: 'om_client_app_hotelia_sandbox_7a9f',
+    clientSecret: 'sec_om_dev_9824bf20a3e94471',
+    authHeaderToken: 'Basic b21fY2xpZW50X2FwcDpzZWNfb21fZGV2',
+    partnerCode: 'CI_HOTELIA_01',
+    merchantPhone: '+225 07 48 12 34 56',
+    tokenUrl: 'https://api.orange.com/oauth/v3/token',
+    paymentUrl: 'https://api.orange.com/orange-money-webpay/dev/v1/webpayment',
+    notificationUrl: 'https://hotelia.dekouassiholding.com/api/webhooks/orange-money',
+    returnUrl: 'https://hotelia.dekouassiholding.com/reservation/succes',
+    cancelUrl: 'https://hotelia.dekouassiholding.com/reservation/annulation',
+    currency: 'XOF',
+    lastPingStatus: 'idle'
+  },
+  mtnMoney: {
+    enabled: true,
+    environment: 'sandbox',
+    subscriptionKeyPrimary: '9d4f2b1a8c3e475aa5d2019e8b7c6d5e',
+    subscriptionKeySecondary: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d',
+    apiUserId: 'd3b07384-d113-4632-bc58-5d2f82bb5d8a',
+    apiKey: '9c5f87b21e034988bf2c1847e93da012',
+    targetEnvironment: 'sandbox',
+    merchantPhone: '+225 05 55 98 76 54',
+    callbackHost: 'https://hotelia.dekouassiholding.com/api/webhooks/mtn-momo',
+    collectionUrl: 'https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay',
+    currency: 'XOF',
+    lastPingStatus: 'idle'
+  },
+  moovMoney: {
+    enabled: true,
+    environment: 'sandbox',
+    merchantId: 'MOOV_MCH_CI_339102',
+    secretKey: 'flooz_sec_991823abce1287e',
+    posId: 'POS_HOTELIA_REC_01',
+    merchantPhone: '+225 01 02 03 04 05',
+    apiEndpoint: 'https://api.moov-africa.ci/flooz/v2/payment/request',
+    ipnUrl: 'https://hotelia.dekouassiholding.com/api/webhooks/moov-flooz',
+    returnUrl: 'https://hotelia.dekouassiholding.com/reservation/succes',
+    cancelUrl: 'https://hotelia.dekouassiholding.com/reservation/annulation',
+    currency: 'XOF',
+    lastPingStatus: 'idle'
+  }
+};
+
 export interface HotelSettings {
   // 1. Identité de marque & Logo
   appName: string;
@@ -82,6 +191,9 @@ export interface HotelSettings {
 
   // 6. Bannières de Promotion
   promoBanner: PromoBanner;
+
+  // 7. Passerelles Mobile Money (Moov, Orange, MTN)
+  mobileMoney: MobileMoneySettings;
 }
 
 export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
@@ -123,7 +235,9 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
     bgColor: '#1C1B18',
     textColor: '#E8D4B8',
     badgeText: 'PROMOTION'
-  }
+  },
+
+  mobileMoney: DEFAULT_MOBILE_MONEY_SETTINGS
 };
 
 interface SettingsContextType {
@@ -141,7 +255,25 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const saved = localStorage.getItem('hotelia_settings');
       if (saved) {
-        return { ...DEFAULT_HOTEL_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_HOTEL_SETTINGS,
+          ...parsed,
+          mobileMoney: {
+            orangeMoney: {
+              ...DEFAULT_MOBILE_MONEY_SETTINGS.orangeMoney,
+              ...(parsed.mobileMoney?.orangeMoney || {})
+            },
+            mtnMoney: {
+              ...DEFAULT_MOBILE_MONEY_SETTINGS.mtnMoney,
+              ...(parsed.mobileMoney?.mtnMoney || {})
+            },
+            moovMoney: {
+              ...DEFAULT_MOBILE_MONEY_SETTINGS.moovMoney,
+              ...(parsed.mobileMoney?.moovMoney || {})
+            }
+          }
+        };
       }
     } catch (e) {
       console.error('Erreur lecture localStorage settings', e);

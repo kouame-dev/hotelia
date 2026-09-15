@@ -10,6 +10,10 @@ import { ExpensesTab } from './ExpensesTab.tsx';
 import { FinancialReportTab } from './FinancialReportTab.tsx';
 import { NotificationCenterModal } from './NotificationCenterModal.tsx';
 import { ReservationManagementTab, ReservationSubTab } from './ReservationManagementTab.tsx';
+import { PaidServicesTab } from './PaidServicesTab.tsx';
+import { PosSystemTab } from './PosSystemTab.tsx';
+import { StockManagementTab } from './StockManagementTab.tsx';
+import { GlobalInvoiceView } from './GlobalInvoiceView.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
@@ -47,12 +51,21 @@ import {
   Building,
   Check,
   AlertTriangle,
-  X
+  X,
+  Smartphone,
+  Utensils,
+  Boxes,
+  FileSpreadsheet,
+  ShoppingBag
 } from 'lucide-react';
 
 export type BackOfficeTab =
   | 'gantt'
   | 'reservations'
+  | 'pos'
+  | 'services'
+  | 'facture_globale'
+  | 'stock'
   | 'chambres'
   | 'finance'
   | 'expenses'
@@ -88,6 +101,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
   const [activeTab, setActiveTab] = useState<BackOfficeTab>('gantt');
   const [reservationSubTab, setReservationSubTab] = useState<ReservationSubTab>('toutes');
+  const [settingsSubSection, setSettingsSubSection] = useState<'general' | 'mobile_money'>('general');
   const [isReservationMenuOpen, setIsReservationMenuOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -537,6 +551,65 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               )}
             </div>
 
+            {/* Tab POS : Point de Vente (Nourriture, Boissons, Services) -> AMBRE / OR CHAUD */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('pos')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                activeTab === 'pos'
+                  ? 'bg-amber-600 text-stone-950 border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/30'
+                  : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
+              }`}
+            >
+              <Utensils className="w-3.5 h-3.5 text-amber-400" />
+              <span>Point de Vente (POS)</span>
+            </button>
+
+            {/* Tab Services : Services Payants de l'Hôtel -> ÉMÉRAUDE DORÉ */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('services')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                activeTab === 'services'
+                  ? 'bg-[#C5A880] text-stone-950 border-2 border-amber-300 shadow-lg ring-2 ring-[#C5A880]/30'
+                  : 'bg-stone-900 text-[#C5A880] border border-stone-700 hover:bg-stone-800 hover:text-white'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Services Payants</span>
+            </button>
+
+            {/* Tab Facture Globale : Facture Consolidée -> ROSE BORDEAUX ÉLÉGANT */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('facture_globale')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                activeTab === 'facture_globale'
+                  ? 'bg-amber-500 text-stone-950 border-2 border-amber-300 shadow-lg ring-2 ring-amber-400/30'
+                  : 'bg-stone-900 text-stone-300 border border-stone-700 hover:bg-stone-800 hover:text-white'
+              }`}
+            >
+              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+              <span>Facture Globale</span>
+            </button>
+
+            {/* Tab Stock : Gestion de Stock & Entrepôts -> CYAN / TEAL */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('stock')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'stock'
+                  ? 'bg-[#0E7490] text-cyan-100 border-2 border-cyan-400 shadow-lg ring-2 ring-cyan-500/30'
+                  : 'bg-[#0E7490]/50 text-cyan-200 border border-cyan-900/80 hover:bg-[#0E7490] hover:text-white'
+              }`}
+            >
+              {isCaisse ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Boxes className="w-3.5 h-3.5 text-cyan-300" />}
+              <span>Gestion de Stock</span>
+              {isCaisse && <span className="text-[9px] font-mono text-stone-500">[DG / Réception]</span>}
+            </button>
+
             {/* Tab 2 : Chambres & Configuration des Types -> VERT FORÊT / ÉMERAUDE */}
             <button
               type="button"
@@ -605,11 +678,14 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             {/* Tab 6 : Paramètres de l'Hôtel -> AMBRE / BRUN CHAUD */}
             <button
               type="button"
-              onClick={() => handleTabClick('settings')}
+              onClick={() => {
+                setSettingsSubSection('general');
+                handleTabClick('settings');
+              }}
               className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
                 isCaisse || isChefReception
                   ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
-                  : activeTab === 'settings'
+                  : activeTab === 'settings' && settingsSubSection === 'general'
                   ? 'bg-[#92400E] text-amber-100 border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/30'
                   : 'bg-[#92400E]/55 text-amber-200 border border-amber-900/80 hover:bg-[#92400E] hover:text-white'
               }`}
@@ -617,6 +693,28 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               {isCaisse || isChefReception ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Settings className="w-3.5 h-3.5 text-amber-300" />}
               <span>Paramètres de l'Hôtel</span>
               {(isCaisse || isChefReception) && <span className="text-[9px] font-mono text-stone-500">[DG]</span>}
+            </button>
+
+            {/* Tab 6.bis : Passerelles Mobile Money (Moov, Orange, MTN) */}
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsSubSection('mobile_money');
+                handleTabClick('settings');
+              }}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse || isChefReception
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'settings' && settingsSubSection === 'mobile_money'
+                  ? 'bg-emerald-800 text-emerald-100 border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/30'
+                  : 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/80 hover:bg-emerald-900 hover:text-white'
+              }`}
+            >
+              {isCaisse || isChefReception ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Smartphone className="w-3.5 h-3.5 text-emerald-400" />}
+              <span>APIs Mobile Money</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                Moov / Orange / MTN
+              </span>
             </button>
 
             {/* Tab 7 : Code Anti-Surbooking -> CYAN FONCÉ */}
@@ -710,6 +808,18 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           <ReservationManagementTab key={reservationSubTab} initialSubTab={reservationSubTab} />
         )}
 
+        {/* Tab Point de Vente (POS) */}
+        {activeTab === 'pos' && <PosSystemTab />}
+
+        {/* Tab Services Payants */}
+        {activeTab === 'services' && <PaidServicesTab />}
+
+        {/* Tab Facture Globale Consolidée */}
+        {activeTab === 'facture_globale' && <GlobalInvoiceView />}
+
+        {/* Tab Gestion de Stock & Approvisionnements */}
+        {activeTab === 'stock' && !isCaisse && <StockManagementTab />}
+
         {/* Tab 2 : Gestion Complète des Chambres & Types de Chambres */}
         {activeTab === 'chambres' && !isCaisse && <RoomManagementTab />}
 
@@ -723,7 +833,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {activeTab === 'profile' && <UserProfileTab />}
 
         {/* Tab 6 : Paramètres de l'Application */}
-        {activeTab === 'settings' && isDG && <HotelSettingsTab />}
+        {activeTab === 'settings' && isDG && (
+          <HotelSettingsTab initialSubSection={settingsSubSection} />
+        )}
 
         {/* Tab 7 : Code PostgreSQL Anti-Surbooking */}
         {activeTab === 'antioverbooking' && isDG && <AntiOverbookingCode />}

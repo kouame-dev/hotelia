@@ -11,7 +11,19 @@ import {
   ReservationItem,
   ReservationStatus,
   UserRole,
-  ThermalPrinterConfig
+  ThermalPrinterConfig,
+  PaidService,
+  ServiceOrder,
+  ServiceOrderItem,
+  PosProduct,
+  PosSale,
+  Entrepot,
+  Fournisseur,
+  StockItem,
+  MouvementStock,
+  BonAchat,
+  FactureGlobaleData,
+  OrderStatus
 } from '../types.ts';
 import {
   INITIAL_ROOM_TYPES,
@@ -23,6 +35,17 @@ import {
   INITIAL_RESERVATIONS,
   DEFAULT_THERMAL_PRINTER_CONFIG
 } from '../data/mockHotelData.ts';
+import {
+  INITIAL_PAID_SERVICES,
+  INITIAL_ENTREPOTS,
+  INITIAL_FOURNISSEURS,
+  INITIAL_STOCK_ITEMS,
+  INITIAL_POS_PRODUCTS,
+  INITIAL_MOUVEMENTS_STOCK,
+  INITIAL_BONS_ACHAT,
+  INITIAL_SERVICE_ORDERS,
+  INITIAL_POS_SALES
+} from '../data/mockServicesAndStockData.ts';
 import { playLuxuryBellSound, playAlertChime } from '../utils/soundNotification.ts';
 
 interface HotelDataContextType {
@@ -81,6 +104,62 @@ interface HotelDataContextType {
   pendingReservationsCount: number;
   completedReservationsCount: number;
   cancelledReservationsCount: number;
+
+  // 8. Services Payants (Catalogue & Tarifs)
+  paidServices: PaidService[];
+  addPaidService: (newService: Omit<PaidService, 'id'>) => PaidService;
+  updatePaidService: (id: string, updated: Partial<PaidService>) => void;
+  deletePaidService: (id: string) => void;
+  togglePaidServiceStatus: (id: string) => void;
+
+  // 9. Commandes de Services
+  serviceOrders: ServiceOrder[];
+  addServiceOrder: (newOrder: Omit<ServiceOrder, 'id' | 'numeroCommande'>) => ServiceOrder;
+  updateServiceOrder: (id: string, updated: Partial<ServiceOrder>) => void;
+  updateServiceOrderStatus: (id: string, newStatus: OrderStatus) => void;
+  deleteServiceOrder: (id: string) => void;
+
+  // 10. Point de Vente (POS Caisse Restaurant / Bar / Services)
+  posProducts: PosProduct[];
+  addPosProduct: (newProduct: Omit<PosProduct, 'id'>) => PosProduct;
+  updatePosProduct: (id: string, updated: Partial<PosProduct>) => void;
+  deletePosProduct: (id: string) => void;
+  posSales: PosSale[];
+  addPosSale: (newSale: Omit<PosSale, 'id' | 'numeroTicket'>) => PosSale;
+  deletePosSale: (id: string) => void;
+
+  // 11. Gestion de Stock & Entrepôts
+  entrepots: Entrepot[];
+  addEntrepot: (newEntrepot: Omit<Entrepot, 'id'>) => Entrepot;
+  updateEntrepot: (id: string, updated: Partial<Entrepot>) => void;
+  deleteEntrepot: (id: string) => void;
+
+  fournisseurs: Fournisseur[];
+  addFournisseur: (newFournisseur: Omit<Fournisseur, 'id'>) => Fournisseur;
+  updateFournisseur: (id: string, updated: Partial<Fournisseur>) => void;
+  deleteFournisseur: (id: string) => void;
+
+  stockItems: StockItem[];
+  addStockItem: (newItem: Omit<StockItem, 'id'>) => StockItem;
+  updateStockItem: (id: string, updated: Partial<StockItem>) => void;
+  deleteStockItem: (id: string) => void;
+  adjustStockQuantity: (
+    id: string,
+    delta: number,
+    type: MouvementStock['type'],
+    motif: string,
+    refDoc?: string
+  ) => void;
+
+  mouvementsStock: MouvementStock[];
+  addMouvementStock: (mvt: Omit<MouvementStock, 'id'>) => void;
+
+  bonsAchat: BonAchat[];
+  addBonAchat: (newBon: Omit<BonAchat, 'id' | 'numero'>) => BonAchat;
+  receptionnerBonAchat: (id: string) => void;
+
+  // 12. Facture Globale Consolidée
+  generateGlobalInvoice: (reservationId?: string, chambreNumero?: string) => FactureGlobaleData | null;
 }
 
 const HotelDataContext = createContext<HotelDataContextType | undefined>(undefined);
@@ -577,6 +656,638 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     (r) => r.statutReservation === 'annulee'
   ).length;
 
+  // =========================================================================
+  // 8. SERVICES PAYANTS (Catalogue & Tarifs)
+  // =========================================================================
+  const [paidServices, setPaidServices] = useState<PaidService[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_paid_services');
+      return saved ? JSON.parse(saved) : INITIAL_PAID_SERVICES;
+    } catch {
+      return INITIAL_PAID_SERVICES;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_paid_services', JSON.stringify(paidServices));
+  }, [paidServices]);
+
+  const addPaidService = (newService: Omit<PaidService, 'id'>): PaidService => {
+    const created: PaidService = {
+      ...newService,
+      id: `srv-${Date.now()}`
+    };
+    setPaidServices((prev) => [created, ...prev]);
+    return created;
+  };
+
+  const updatePaidService = (id: string, updated: Partial<PaidService>) => {
+    setPaidServices((prev) => prev.map((s) => (s.id === id ? { ...s, ...updated } : s)));
+  };
+
+  const deletePaidService = (id: string) => {
+    setPaidServices((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const togglePaidServiceStatus = (id: string) => {
+    setPaidServices((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, actif: !s.actif } : s))
+    );
+  };
+
+  // =========================================================================
+  // 9. COMMANDES DE SERVICES
+  // =========================================================================
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_service_orders');
+      return saved ? JSON.parse(saved) : INITIAL_SERVICE_ORDERS;
+    } catch {
+      return INITIAL_SERVICE_ORDERS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_service_orders', JSON.stringify(serviceOrders));
+  }, [serviceOrders]);
+
+  const addServiceOrder = (newOrder: Omit<ServiceOrder, 'id' | 'numeroCommande'>): ServiceOrder => {
+    const id = `srv-ord-${Date.now()}`;
+    const numeroCommande = `CMD-SRV-${String(serviceOrders.length + 1).padStart(3, '0')}`;
+    const fullOrder: ServiceOrder = {
+      ...newOrder,
+      id,
+      numeroCommande
+    };
+
+    setServiceOrders((prev) => [fullOrder, ...prev]);
+
+    // Enregistrer l'encaissement si acompte ou paiement effectué
+    if (fullOrder.acompteVerse > 0) {
+      addRevenue({
+        date: fullOrder.date,
+        clientNom: fullOrder.clientNom,
+        chambreNumero: fullOrder.chambreNumero || 'Service Externe',
+        typeReservation: 'heure',
+        modePaiement: fullOrder.modePaiement,
+        montant: fullOrder.acompteVerse,
+        statut: 'paye'
+      });
+    }
+
+    return fullOrder;
+  };
+
+  const updateServiceOrder = (id: string, updated: Partial<ServiceOrder>) => {
+    setServiceOrders((prev) =>
+      prev.map((ord) => {
+        if (ord.id !== id) return ord;
+        const merged = { ...ord, ...updated };
+        if (updated.totalGlobal !== undefined || updated.acompteVerse !== undefined) {
+          const tot = updated.totalGlobal !== undefined ? updated.totalGlobal : ord.totalGlobal;
+          const acp = updated.acompteVerse !== undefined ? updated.acompteVerse : ord.acompteVerse;
+          merged.resteAPayer = Math.max(0, tot - acp);
+          merged.statutPaiement = merged.resteAPayer === 0 ? 'paye' : 'en_attente';
+        }
+        return merged;
+      })
+    );
+  };
+
+  const updateServiceOrderStatus = (id: string, newStatus: OrderStatus) => {
+    setServiceOrders((prev) =>
+      prev.map((ord) => (ord.id === id ? { ...ord, statutCommande: newStatus } : ord))
+    );
+  };
+
+  const deleteServiceOrder = (id: string) => {
+    setServiceOrders((prev) => prev.filter((ord) => ord.id !== id));
+  };
+
+  // =========================================================================
+  // 10. POINT DE VENTE (POS) : PRODUITS & VENTES
+  // =========================================================================
+  const [posProducts, setPosProducts] = useState<PosProduct[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_pos_products');
+      return saved ? JSON.parse(saved) : INITIAL_POS_PRODUCTS;
+    } catch {
+      return INITIAL_POS_PRODUCTS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_pos_products', JSON.stringify(posProducts));
+  }, [posProducts]);
+
+  const addPosProduct = (newProduct: Omit<PosProduct, 'id'>): PosProduct => {
+    const id = `pos-prod-${Date.now()}`;
+    const fullProd: PosProduct = { ...newProduct, id };
+    setPosProducts((prev) => [fullProd, ...prev]);
+    return fullProd;
+  };
+
+  const updatePosProduct = (id: string, updated: Partial<PosProduct>) => {
+    setPosProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+  };
+
+  const deletePosProduct = (id: string) => {
+    setPosProducts((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const [posSales, setPosSales] = useState<PosSale[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_pos_sales');
+      return saved ? JSON.parse(saved) : INITIAL_POS_SALES;
+    } catch {
+      return INITIAL_POS_SALES;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_pos_sales', JSON.stringify(posSales));
+  }, [posSales]);
+
+  // =========================================================================
+  // 11. GESTION DE STOCK : ENTREPÔTS, FOURNISSEURS, ARTICLES, MOUVEMENTS
+  // =========================================================================
+  const [entrepots, setEntrepots] = useState<Entrepot[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_entrepots');
+      return saved ? JSON.parse(saved) : INITIAL_ENTREPOTS;
+    } catch {
+      return INITIAL_ENTREPOTS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_entrepots', JSON.stringify(entrepots));
+  }, [entrepots]);
+
+  const addEntrepot = (newEntrepot: Omit<Entrepot, 'id'>): Entrepot => {
+    const id = `ent-${Date.now()}`;
+    const fullEnt: Entrepot = { ...newEntrepot, id };
+    setEntrepots((prev) => [...prev, fullEnt]);
+    return fullEnt;
+  };
+
+  const updateEntrepot = (id: string, updated: Partial<Entrepot>) => {
+    setEntrepots((prev) => prev.map((e) => (e.id === id ? { ...e, ...updated } : e)));
+  };
+
+  const deleteEntrepot = (id: string) => {
+    setEntrepots((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_fournisseurs');
+      return saved ? JSON.parse(saved) : INITIAL_FOURNISSEURS;
+    } catch {
+      return INITIAL_FOURNISSEURS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_fournisseurs', JSON.stringify(fournisseurs));
+  }, [fournisseurs]);
+
+  const addFournisseur = (newFournisseur: Omit<Fournisseur, 'id'>): Fournisseur => {
+    const id = `fourn-${Date.now()}`;
+    const fullFourn: Fournisseur = { ...newFournisseur, id };
+    setFournisseurs((prev) => [...prev, fullFourn]);
+    return fullFourn;
+  };
+
+  const updateFournisseur = (id: string, updated: Partial<Fournisseur>) => {
+    setFournisseurs((prev) => prev.map((f) => (f.id === id ? { ...f, ...updated } : f)));
+  };
+
+  const deleteFournisseur = (id: string) => {
+    setFournisseurs((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const [stockItems, setStockItems] = useState<StockItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_stock_items');
+      return saved ? JSON.parse(saved) : INITIAL_STOCK_ITEMS;
+    } catch {
+      return INITIAL_STOCK_ITEMS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_stock_items', JSON.stringify(stockItems));
+  }, [stockItems]);
+
+  const addStockItem = (newItem: Omit<StockItem, 'id'>): StockItem => {
+    const id = `stk-${Date.now()}`;
+    const fullItem: StockItem = { ...newItem, id };
+    setStockItems((prev) => [fullItem, ...prev]);
+    return fullItem;
+  };
+
+  const updateStockItem = (id: string, updated: Partial<StockItem>) => {
+    setStockItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updated } : item)));
+  };
+
+  const deleteStockItem = (id: string) => {
+    setStockItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const [mouvementsStock, setMouvementsStock] = useState<MouvementStock[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_stock_mouvements');
+      return saved ? JSON.parse(saved) : INITIAL_MOUVEMENTS_STOCK;
+    } catch {
+      return INITIAL_MOUVEMENTS_STOCK;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_stock_mouvements', JSON.stringify(mouvementsStock));
+  }, [mouvementsStock]);
+
+  const addMouvementStock = (mvt: Omit<MouvementStock, 'id'>) => {
+    const fullMvt: MouvementStock = {
+      ...mvt,
+      id: `mvt-${Date.now()}`
+    };
+    setMouvementsStock((prev) => [fullMvt, ...prev]);
+  };
+
+  const adjustStockQuantity = (
+    id: string,
+    delta: number,
+    type: MouvementStock['type'],
+    motif: string,
+    refDoc?: string
+  ) => {
+    setStockItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const newQty = Math.max(0, item.quantite + delta);
+
+        // Enregistrer le mouvement de stock
+        addMouvementStock({
+          date: new Date().toISOString().split('T')[0],
+          heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          articleId: item.id,
+          articleDesignation: item.designation,
+          entrepotId: item.entrepotId,
+          entrepotNom: item.entrepotNom,
+          type,
+          quantite: Math.abs(delta),
+          prixUnitaire: item.prixAchatUnitaire,
+          valeurTotale: Math.abs(delta) * item.prixAchatUnitaire,
+          referenceDoc: refDoc || 'AJUST-MANUEL',
+          responsable: currentUserProfile.nom,
+          motif
+        });
+
+        return { ...item, quantite: newQty };
+      })
+    );
+  };
+
+  const [bonsAchat, setBonsAchat] = useState<BonAchat[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_bons_achat');
+      return saved ? JSON.parse(saved) : INITIAL_BONS_ACHAT;
+    } catch {
+      return INITIAL_BONS_ACHAT;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_bons_achat', JSON.stringify(bonsAchat));
+  }, [bonsAchat]);
+
+  const addBonAchat = (newBon: Omit<BonAchat, 'id' | 'numero'>): BonAchat => {
+    const id = `ba-${Date.now()}`;
+    const numero = `BA-${new Date().getFullYear()}-${String(bonsAchat.length + 1).padStart(3, '0')}`;
+    const fullBon: BonAchat = { ...newBon, id, numero };
+    setBonsAchat((prev) => [fullBon, ...prev]);
+    return fullBon;
+  };
+
+  const receptionnerBonAchat = (id: string) => {
+    setBonsAchat((prev) =>
+      prev.map((bon) => {
+        if (bon.id !== id || bon.statut === 'receptionne') return bon;
+        const updatedBon: BonAchat = {
+          ...bon,
+          statut: 'receptionne',
+          statutPaiement: 'paye'
+        };
+
+        // Mettre à jour les stocks de chaque article du bon d'achat
+        bon.items.forEach((line) => {
+          setStockItems((prevStk) =>
+            prevStk.map((s) => {
+              if (s.id === line.articleId) {
+                return {
+                  ...s,
+                  quantite: s.quantite + line.quantiteCommandee,
+                  dernierReassort: new Date().toISOString().split('T')[0]
+                };
+              }
+              return s;
+            })
+          );
+
+          // Enregistrer le mouvement d'entrée
+          addMouvementStock({
+            date: new Date().toISOString().split('T')[0],
+            heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            articleId: line.articleId,
+            articleDesignation: line.designation,
+            entrepotId: bon.entrepotId,
+            entrepotNom: bon.entrepotNom,
+            type: 'entree_achat',
+            quantite: line.quantiteCommandee,
+            prixUnitaire: line.prixUnitaireAchat,
+            valeurTotale: line.totalLigne,
+            referenceDoc: bon.numero,
+            responsable: currentUserProfile.nom,
+            motif: `Réception Bon d'Achat fournisseur ${bon.fournisseurNom}`
+          });
+        });
+
+        // Ajouter une dépense d'achat
+        addExpense({
+          date: new Date().toISOString().split('T')[0],
+          titre: `Achat stock - Bon ${bon.numero} (${bon.fournisseurNom})`,
+          categorie: 'Fournitures',
+          montant: bon.montantTotal,
+          chambreConcernee: 'Économat / Réserve',
+          payePar: currentUserProfile.nom,
+          modePaiement: bon.modePaiement,
+          notes: `Réception automatique stock Bon #${bon.numero}`
+        });
+
+        return updatedBon;
+      })
+    );
+  };
+
+  // Ajout d'une vente POS avec décrémentation de stock et flux financier
+  const addPosSale = (newSale: Omit<PosSale, 'id' | 'numeroTicket'>): PosSale => {
+    const id = `pos-sale-${Date.now()}`;
+    const numeroTicket = `TKT-${Date.now().toString().slice(-6)}`;
+    const fullSale: PosSale = {
+      ...newSale,
+      id,
+      numeroTicket
+    };
+
+    setPosSales((prev) => [fullSale, ...prev]);
+
+    // 1. Décrémenter les stocks pour les articles vendus
+    fullSale.items.forEach((item) => {
+      // Décrémenter stock produit POS
+      setPosProducts((prevProds) =>
+        prevProds.map((p) => {
+          if (p.id === item.productId && p.categorie !== 'service') {
+            return {
+              ...p,
+              stockActuel: Math.max(0, p.stockActuel - item.quantite)
+            };
+          }
+          return p;
+        })
+      );
+
+      // Si article correspondant dans stockItems, décrémenter et enregistrer mouvement
+      const matchingStockItem = stockItems.find(
+        (s) =>
+          s.designation.toLowerCase().includes(item.nom.toLowerCase().slice(0, 10)) ||
+          item.nom.toLowerCase().includes(s.designation.toLowerCase().slice(0, 10))
+      );
+
+      if (matchingStockItem) {
+        setStockItems((prev) =>
+          prev.map((stk) =>
+            stk.id === matchingStockItem.id
+              ? { ...stk, quantite: Math.max(0, stk.quantite - item.quantite) }
+              : stk
+          )
+        );
+
+        addMouvementStock({
+          date: fullSale.date,
+          heure: fullSale.heure,
+          articleId: matchingStockItem.id,
+          articleDesignation: matchingStockItem.designation,
+          entrepotId: matchingStockItem.entrepotId,
+          entrepotNom: matchingStockItem.entrepotNom,
+          type: 'sortie_vente_pos',
+          quantite: item.quantite,
+          prixUnitaire: matchingStockItem.prixAchatUnitaire,
+          valeurTotale: item.quantite * matchingStockItem.prixAchatUnitaire,
+          referenceDoc: numeroTicket,
+          responsable: fullSale.serveurNom,
+          motif: `Vente POS - ${fullSale.clientNom} (Chambre ${fullSale.chambreNumero || 'Comptoir'})`
+        });
+      }
+    });
+
+    // 2. Enregistrer l'encaissement si paiement immédiat
+    if (fullSale.montantEncaisse > 0) {
+      addRevenue({
+        date: fullSale.date,
+        clientNom: fullSale.clientNom,
+        chambreNumero: fullSale.chambreNumero || 'Caisse Directe',
+        typeReservation: 'heure',
+        modePaiement: fullSale.modePaiement,
+        montant: fullSale.montantEncaisse,
+        statut: 'paye'
+      });
+    }
+
+    return fullSale;
+  };
+
+  const deletePosSale = (id: string) => {
+    setPosSales((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  // =========================================================================
+  // 12. GÉNÉRATEUR DE FACTURE GLOBALE CONSOLIDÉE
+  // =========================================================================
+  const generateGlobalInvoice = (
+    reservationId?: string,
+    chambreNumero?: string
+  ): FactureGlobaleData | null => {
+    // 1. Trouver la réservation cible
+    let targetRes: ReservationItem | undefined;
+    if (reservationId) {
+      targetRes = reservations.find((r) => r.id === reservationId);
+    } else if (chambreNumero) {
+      // Trouver la réservation active ou la plus récente de cette chambre
+      targetRes = reservations
+        .filter((r) => r.chambreNumero === chambreNumero && r.statutReservation !== 'annulee')
+        .sort((a, b) => new Date(b.dateDebut).getTime() - new Date(a.dateDebut).getTime())[0];
+    }
+
+    const targetRoomNumber = targetRes ? targetRes.chambreNumero : chambreNumero;
+    const clientName = targetRes ? targetRes.clientNom : 'Client de Passage';
+    const clientPhone = targetRes ? targetRes.clientTelephone : '';
+    const clientEmail = targetRes ? targetRes.clientEmail : '';
+
+    // 2. Récupérer les services commandés pour cette réservation ou chambre
+    const linkedServices = serviceOrders.filter((ord) => {
+      if (targetRes && ord.reservationId === targetRes.id) return true;
+      if (targetRoomNumber && ord.chambreNumero === targetRoomNumber) return true;
+      return false;
+    });
+
+    const flatServiceLines = linkedServices.flatMap((ord) =>
+      ord.items.map((it) => ({
+        id: `${ord.id}-${it.serviceId}`,
+        date: ord.date,
+        nom: it.serviceNom,
+        quantite: it.quantite,
+        prixUnitaire: it.prixUnitaire,
+        totalLigne: it.totalLigne
+      }))
+    );
+
+    // 3. Récupérer les consommations POS (nourriture, boissons, services)
+    const linkedPosSales = posSales.filter((sale) => {
+      if (targetRes && sale.reservationId === targetRes.id) return true;
+      if (targetRoomNumber && sale.chambreNumero === targetRoomNumber) return true;
+      return false;
+    });
+
+    const flatPosLines = linkedPosSales.flatMap((sale) =>
+      sale.items.map((it) => ({
+        id: `${sale.id}-${it.productId}`,
+        date: sale.date,
+        nom: it.nom,
+        categorie: it.categorie,
+        quantite: it.quantite,
+        prixUnitaire: it.prixUnitaire,
+        totalLigne: it.totalLigne
+      }))
+    );
+
+    // 4. Calculs des sous-totaux
+    const sousTotalHebergement = targetRes ? targetRes.montantTotal : 0;
+    const sousTotalServices = flatServiceLines.reduce((sum, item) => sum + item.totalLigne, 0);
+    const sousTotalPos = flatPosLines.reduce((sum, item) => sum + item.totalLigne, 0);
+    const totalBrut = sousTotalHebergement + sousTotalServices + sousTotalPos;
+
+    // Remises appliquées (somme des remises services et pos)
+    const totalRemisesServices = linkedServices.reduce((sum, s) => sum + (s.remise || 0), 0);
+    const totalRemisesPos = linkedPosSales.reduce((sum, s) => sum + (s.remise || 0), 0);
+    const remiseTotale = totalRemisesServices + totalRemisesPos;
+
+    const netApresRemise = Math.max(0, totalBrut - remiseTotale);
+    const tvaTaux = 0; // Taxe configurable
+    const tvaMontant = Math.round(netApresRemise * (tvaTaux / 100));
+    const taxeSejour = 0;
+    const totalTTC = netApresRemise + tvaMontant + taxeSejour;
+
+    // Acomptes & paiements déjà perçus
+    const acompteHebergement = targetRes
+      ? targetRes.statutPaiement === 'paye'
+        ? targetRes.montantTotal
+        : targetRes.acompteVerse || 0
+      : 0;
+
+    const acomptesServices = linkedServices.reduce((sum, s) => sum + (s.acompteVerse || 0), 0);
+    const acomptesPos = linkedPosSales.reduce((sum, s) => sum + (s.montantEncaisse || 0), 0);
+    const totalAcomptesVerses = acompteHebergement + acomptesServices + acomptesPos;
+    const resteAPayer = Math.max(0, totalTTC - totalAcomptesVerses);
+
+    // Historique des règlements
+    const historiqueReglements: FactureGlobaleData['historiqueReglements'] = [];
+    if (targetRes && acompteHebergement > 0) {
+      historiqueReglements.push({
+        date: targetRes.dateDebut,
+        mode: targetRes.modePaiement,
+        montant: acompteHebergement,
+        reference: `Hébergement (${targetRes.chambreNumero})`
+      });
+    }
+    linkedServices.forEach((s) => {
+      if (s.acompteVerse > 0) {
+        historiqueReglements.push({
+          date: s.date,
+          mode: s.modePaiement,
+          montant: s.acompteVerse,
+          reference: `Commande Service #${s.numeroCommande}`
+        });
+      }
+    });
+    linkedPosSales.forEach((p) => {
+      if (p.montantEncaisse > 0) {
+        historiqueReglements.push({
+          date: p.date,
+          mode: p.modePaiement,
+          montant: p.montantEncaisse,
+          reference: `Ticket POS #${p.numeroTicket}`
+        });
+      }
+    });
+
+    const invoiceNumber = `FAC-GLB-${new Date().getFullYear()}-${
+      targetRes ? targetRes.id.replace(/[^0-9]/g, '').slice(-4) || '101' : 'PASS'
+    }-${Math.floor(100 + Math.random() * 900)}`;
+
+    return {
+      numeroFacture: invoiceNumber,
+      dateEmission: new Date().toISOString().split('T')[0],
+      heureEmission: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      client: {
+        nom: clientName,
+        telephone: clientPhone,
+        email: clientEmail
+      },
+      reservation: targetRes
+        ? {
+            id: targetRes.id,
+            chambreNumero: targetRes.chambreNumero,
+            chambreType: targetRes.chambreType,
+            type: targetRes.typeReservation,
+            dateDebut: targetRes.dateDebut,
+            dateFin: targetRes.dateFin,
+            heureDebut: targetRes.heureDebut,
+            heureFin: targetRes.heureFin,
+            nbNuitsOuHeures:
+              targetRes.typeReservation === 'nuit'
+                ? targetRes.nbNuits || 1
+                : targetRes.dureeHeures || 3,
+            prixUnitaire:
+              targetRes.typeReservation === 'nuit'
+                ? Math.round(targetRes.montantTotal / (targetRes.nbNuits || 1))
+                : Math.round(targetRes.montantTotal / (targetRes.dureeHeures || 3)),
+            montantTotal: targetRes.montantTotal,
+            acompteVerse: acompteHebergement,
+            statutPaiement: targetRes.statutPaiement
+          }
+        : undefined,
+      services: flatServiceLines,
+      produitsPos: flatPosLines,
+      sousTotalHebergement,
+      sousTotalServices,
+      sousTotalPos,
+      totalBrut,
+      remise: remiseTotale,
+      tvaTaux,
+      tvaMontant,
+      taxeSejour,
+      totalTTC,
+      totalAcomptesVerses,
+      resteAPayer,
+      statutPaiement: resteAPayer === 0 ? 'solde' : totalAcomptesVerses > 0 ? 'acompte' : 'impaye',
+      modeReglementPrincipal: targetRes ? targetRes.modePaiement : 'Espèces / Caisse',
+      historiqueReglements,
+      notes: `Facture globale consolidée générée par ${currentUserProfile.nom}`
+    };
+  };
+
   return (
     <HotelDataContext.Provider
       value={{
@@ -619,7 +1330,48 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         deleteReservation,
         pendingReservationsCount,
         completedReservationsCount,
-        cancelledReservationsCount
+        cancelledReservationsCount,
+        // 8. Services payants
+        paidServices,
+        addPaidService,
+        updatePaidService,
+        deletePaidService,
+        togglePaidServiceStatus,
+        // 9. Commandes de services
+        serviceOrders,
+        addServiceOrder,
+        updateServiceOrder,
+        updateServiceOrderStatus,
+        deleteServiceOrder,
+        // 10. Point de Vente (POS)
+        posProducts,
+        addPosProduct,
+        updatePosProduct,
+        deletePosProduct,
+        posSales,
+        addPosSale,
+        deletePosSale,
+        // 11. Gestion de Stock
+        entrepots,
+        addEntrepot,
+        updateEntrepot,
+        deleteEntrepot,
+        fournisseurs,
+        addFournisseur,
+        updateFournisseur,
+        deleteFournisseur,
+        stockItems,
+        addStockItem,
+        updateStockItem,
+        deleteStockItem,
+        adjustStockQuantity,
+        mouvementsStock,
+        addMouvementStock,
+        bonsAchat,
+        addBonAchat,
+        receptionnerBonAchat,
+        // 12. Facture Globale
+        generateGlobalInvoice
       }}
     >
       {children}

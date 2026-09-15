@@ -1,6 +1,6 @@
 {
   "name": "PostgreSQL Hotel DB Architect",
-  "description": "Système complet de gestion hôtelière PMS Hotelia : gestion des rôles (Super Admin DG, Chef de Réception, compte Caisse exclusif réservations), sous-menus de réservations, édition et impression de factures avec logo sur imprimante thermique paramétrable (80mm/58mm) et format A4, architecture PostgreSQL anti-surbooking, notifications sonores et rapports financiers.",
+  "description": "Système complet de gestion hôtelière PMS Hotelia : gestion des rôles, réservations (nuitées/heures), catalogue de services payants et commandes avec acomptes, point de vente POS (nourriture, boissons, prestations), gestion de stock multi-entrepôts et achats fournisseurs, rapports d'inventaire journaliers/périodiques/annuels, facturation globale consolidée et impression de tickets/factures.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

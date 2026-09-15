@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useHotelSettings, CURRENCIES, CurrencyCode } from '../../context/SettingsContext.tsx';
+import { MobileMoneySettingsForm } from './MobileMoneySettingsForm.tsx';
 import {
   Settings,
   Image,
@@ -19,23 +20,45 @@ import {
   AlertCircle,
   Eye,
   Building,
-  HelpCircle
+  HelpCircle,
+  Smartphone,
+  CreditCard,
+  Zap
 } from 'lucide-react';
 
-export const HotelSettingsTab: React.FC = () => {
+interface HotelSettingsTabProps {
+  initialSubSection?:
+    | 'general'
+    | 'currency'
+    | 'mobile_money'
+    | 'cancellation'
+    | 'banner'
+    | 'seo'
+    | 'legal';
+}
+
+export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
+  initialSubSection = 'general'
+}) => {
   const { settings, updateSettings, resetSettings, formatPrice } = useHotelSettings();
 
   // État local du formulaire pour modification avant sauvegarde
   const [formData, setFormData] = useState(settings);
   const [saveNotification, setSaveNotification] = useState(false);
   const [activeSubSection, setActiveSubSection] = useState<
-    'general' | 'currency' | 'cancellation' | 'legal' | 'seo' | 'banner'
-  >('general');
+    'general' | 'currency' | 'mobile_money' | 'cancellation' | 'legal' | 'seo' | 'banner'
+  >(initialSubSection);
 
   // Synchroniser l'état local si les réglages globaux changent
   React.useEffect(() => {
     setFormData(settings);
   }, [settings]);
+
+  React.useEffect(() => {
+    if (initialSubSection) {
+      setActiveSubSection(initialSubSection);
+    }
+  }, [initialSubSection]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +88,7 @@ export const HotelSettingsTab: React.FC = () => {
               Paramètres de l'Application Hotelia
             </h1>
             <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
-              Gérez le logo, les devises (CFA / Dollar / Euro), les conditions d'annulation, le SEO et les bannières promo.
+              Gérez le logo, les devises, les APIs Mobile Money (Moov, Orange, MTN), les conditions d'annulation, le SEO et les bannières.
             </p>
           </div>
         </div>
@@ -124,6 +147,22 @@ export const HotelSettingsTab: React.FC = () => {
         >
           <DollarSign className="w-4 h-4 text-emerald-500" />
           <span>Devise (CFA / Dollar / Euro)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubSection('mobile_money')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+            activeSubSection === 'mobile_money'
+              ? 'bg-[#1C1B18] text-white shadow-sm ring-2 ring-[#C5A880]/60'
+              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <Smartphone className="w-4 h-4 text-emerald-500" />
+          <span>APIs Mobile Money (Moov, Orange, MTN)</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
+            3 Opérateurs
+          </span>
         </button>
 
         <button
@@ -865,6 +904,16 @@ export const HotelSettingsTab: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 2.bis SECTION PASSERELLES MOBILE MONEY (ORANGE, MTN, MOOV)                */}
+        {/* ========================================================================= */}
+        {activeSubSection === 'mobile_money' && (
+          <MobileMoneySettingsForm
+            value={formData.mobileMoney}
+            onChange={(newMm) => setFormData({ ...formData, mobileMoney: newMm })}
+          />
         )}
 
         {/* Bouton de sauvegarde inférieur */}

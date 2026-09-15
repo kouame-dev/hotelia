@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HoteliaHeroSlider } from './HoteliaHeroSlider.tsx';
 import { ReservationForm, ReservationMode } from '../ReservationForm.tsx';
 import { useHotelSettings, CURRENCIES } from '../../context/SettingsContext.tsx';
@@ -121,6 +121,25 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend 
 
   // Modals pour CGV / Politique d'annulation / Confidentialité
   const [activeLegalModal, setActiveLegalModal] = useState<'cancellation' | 'tos' | 'privacy' | null>(null);
+
+  // Notification Toast lors d'une réservation confirmée
+  const [bookingToast, setBookingToast] = useState<{
+    show: boolean;
+    message: string;
+    reference?: string;
+  } | null>(null);
+
+  // Fermeture des modales avec la touche Échap
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setModalOpen(false);
+        setActiveLegalModal(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleOpenBooking = (mode: ReservationMode, room?: RoomItem) => {
     setActiveReservationMode(mode);
@@ -484,24 +503,65 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend 
 
       {/* 5. Modal de Réservation Instantanée */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative w-full max-w-xl my-8">
-            <button
-              type="button"
-              onClick={() => setModalOpen(false)}
-              className="absolute -top-3 -right-3 z-50 p-2 rounded-full bg-[#1C1B18] text-white border border-stone-700 hover:bg-stone-800 shadow-xl"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={(e) => {
+            // Fermeture en cliquant sur l'arrière-plan
+            if (e.target === e.currentTarget) {
+              setModalOpen(false);
+            }
+          }}
+        >
+          <div className="relative w-full max-w-xl my-auto animate-in fade-in zoom-in-95 duration-200">
             <ReservationForm
               prixNuitDefaut={selectedRoom ? selectedRoom.prixNuit : 140}
               prixHeureDefaut={selectedRoom ? selectedRoom.prixHeure : 35}
+              initialMode={activeReservationMode}
+              roomNom={selectedRoom ? selectedRoom.nom : undefined}
+              onClose={() => setModalOpen(false)}
               onSubmit={(data) => {
                 console.log('Réservation soumise :', data);
+                const ref = `HTL-${Date.now().toString().slice(-6)}`;
+                setBookingToast({
+                  show: true,
+                  message: `Votre demande pour ${selectedRoom?.nom || 'la chambre'} a été enregistrée avec succès !`,
+                  reference: ref
+                });
               }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification Flottante lors d'une réservation */}
+      {bookingToast?.show && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-[#1C1B18] text-white p-4 rounded-2xl border border-[#C5A880]/60 shadow-2xl flex items-start gap-3 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div className="space-y-1 text-xs">
+            <div className="font-bold text-white flex items-center gap-2">
+              <span>Réservation Enregistrée</span>
+              {bookingToast.reference && (
+                <span className="px-2 py-0.5 rounded bg-[#C5A880]/20 text-[#C5A880] font-mono text-[10px] font-bold">
+                  {bookingToast.reference}
+                </span>
+              )}
+            </div>
+            <p className="text-stone-300 leading-relaxed">
+              {bookingToast.message} Notre réception traite votre séjour en priorité.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBookingToast(null)}
+            className="p-1.5 rounded-lg hover:bg-stone-800 text-stone-400 hover:text-white cursor-pointer ml-auto shrink-0 transition-colors"
+            title="Fermer la notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
