@@ -21,11 +21,13 @@ import {
   Building,
   ShieldCheck,
   QrCode,
-  Tag
+  Tag,
+  Wallet
 } from 'lucide-react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { FactureGlobaleData, ReservationItem } from '../../types.ts';
+import { ClientPartialPaymentsModal } from './ClientPartialPaymentsModal.tsx';
 
 export const GlobalInvoiceView: React.FC = () => {
   const {
@@ -44,6 +46,8 @@ export const GlobalInvoiceView: React.FC = () => {
   const [activeFormat, setActiveFormat] = useState<'a4' | 'thermal'>('a4');
   const [copiedNotification, setCopiedNotification] = useState(false);
   const [printSuccessAlert, setPrintSuccessAlert] = useState(false);
+  const [showPartialPaymentsModal, setShowPartialPaymentsModal] = useState(false);
+  const [partialPaymentClientResId, setPartialPaymentClientResId] = useState<string | undefined>(undefined);
 
   // Auto-generate for initial selected reservation
   useEffect(() => {
@@ -64,7 +68,8 @@ export const GlobalInvoiceView: React.FC = () => {
   };
 
   // Safe isolated printing mechanism ensuring clean white output without blank page
-  const handlePrint = () => {
+  const handlePrintWithFormat = (format: 'a4' | 'thermal') => {
+    setActiveFormat(format);
     const styleId = 'hotelia-global-print-style';
     const oldStyle = document.getElementById(styleId);
     if (oldStyle) {
@@ -74,8 +79,8 @@ export const GlobalInvoiceView: React.FC = () => {
     const printStyle = document.createElement('style');
     printStyle.id = styleId;
 
-    if (activeFormat === 'thermal') {
-      const rollWidth = thermalPrinterConfig.width === '58mm' ? '58mm' : '80mm';
+    if (format === 'thermal') {
+      const rollWidth = thermalPrinterConfig.largeurPapier === '58mm' || thermalPrinterConfig.width === '58mm' ? '58mm' : '80mm';
       printStyle.innerHTML = `
         @media print {
           body * {
@@ -137,7 +142,19 @@ export const GlobalInvoiceView: React.FC = () => {
       window.print();
       setPrintSuccessAlert(true);
       setTimeout(() => setPrintSuccessAlert(false), 4000);
-    }, 100);
+    }, 120);
+  };
+
+  const handlePrint = () => {
+    handlePrintWithFormat(activeFormat);
+  };
+
+  const handlePrintThermalDirect = () => {
+    handlePrintWithFormat('thermal');
+  };
+
+  const handlePrintA4Direct = () => {
+    handlePrintWithFormat('a4');
   };
 
   // Copy brief summary to clipboard
@@ -191,7 +208,21 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Bouton Paiements Partiels par Client */}
+          <button
+            type="button"
+            onClick={() => {
+              setPartialPaymentClientResId(selectedResId);
+              setShowPartialPaymentsModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer"
+            title="Afficher et gérer la liste des paiements partiels par client"
+          >
+            <Wallet className="w-4 h-4" />
+            <span>Paiements Partiels</span>
+          </button>
+
           {/* Format Toggle A4 / Ticket */}
           <div className="flex items-center bg-stone-950 p-1 rounded-xl border border-stone-800">
             <button
@@ -225,7 +256,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
               <button
                 type="button"
                 onClick={handleCopySummary}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium border border-stone-700 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium border border-stone-700 transition-all cursor-pointer"
                 title="Copier le résumé de la facture"
               >
                 {copiedNotification ? (
@@ -241,13 +272,26 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
                 )}
               </button>
 
+              {/* BOUTON DÉDIÉ : GÉNÉRER LA FACTURE GLOBALE PAR IMPRESSION THERMIQUE */}
               <button
                 type="button"
-                onClick={handlePrint}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-stone-950 font-bold text-xs shadow-xl shadow-amber-950/30 transition-all cursor-pointer"
+                onClick={handlePrintThermalDirect}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-bold text-xs shadow-lg shadow-amber-950/40 transition-all cursor-pointer ring-1 ring-amber-300/50"
+                title="Générer la facture globale par impression thermique (80mm / 58mm)"
               >
-                <Printer className="w-4 h-4" />
-                <span>Imprimer la Facture Globale</span>
+                <Receipt className="w-4 h-4" />
+                <span>Facture Globale Thermique</span>
+              </button>
+
+              {/* Bouton Impression A4 */}
+              <button
+                type="button"
+                onClick={handlePrintA4Direct}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 font-bold text-xs shadow-sm transition-all cursor-pointer"
+                title="Imprimer la Facture Globale au Format A4"
+              >
+                <Printer className="w-4 h-4 text-[#C5A880]" />
+                <span>Imprimer A4</span>
               </button>
             </>
           )}

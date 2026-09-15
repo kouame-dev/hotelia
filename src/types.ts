@@ -29,9 +29,23 @@ export interface ReservationItem {
   montantTotal: number;
   acompteVerse?: number;
   resteAPayer?: number;
+  paiementsPartiels?: PaiementPartiel[];
   notes?: string;
   motifAnnulation?: string;
   dateCreation: string;
+}
+
+// Enregistrement d'un versement ou acompte partiel par un client
+export interface PaiementPartiel {
+  id: string;
+  date: string; // YYYY-MM-DD
+  heure?: string; // HH:mm
+  montant: number;
+  modePaiement: PaymentMethod;
+  reference?: string; // ex: N° transaction Mobile Money, Référence chèque
+  recuPar?: string; // Nom de l'agent caissier
+  motif?: string; // ex: Acompte initial, 2ème versement, Note bar...
+  note?: string;
 }
 
 // Types pour les types de chambre configurables

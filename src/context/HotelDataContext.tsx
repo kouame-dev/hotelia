@@ -10,6 +10,7 @@ import {
   PaymentMethod,
   ReservationItem,
   ReservationStatus,
+  PaiementPartiel,
   UserRole,
   ThermalPrinterConfig,
   PaidService,
@@ -101,6 +102,8 @@ interface HotelDataContextType {
   updateReservation: (id: string, updated: Partial<ReservationItem>) => void;
   updateReservationStatus: (id: string, newStatus: ReservationStatus, cancelReason?: string) => void;
   deleteReservation: (id: string) => void;
+  addPaiementPartiel: (reservationId: string, paiement: Omit<PaiementPartiel, 'id'>) => PaiementPartiel;
+  deletePaiementPartiel: (reservationId: string, paiementId: string) => void;
   pendingReservationsCount: number;
   completedReservationsCount: number;
   cancelledReservationsCount: number;
@@ -525,13 +528,41 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setRevenues((prev) => [{ ...newRevenue, id }, ...prev]);
   };
 
+  // Helper pour s'assurer que chaque acompte a un historique de paiements partiels
+  const ensureReservationPartialPayments = (list: ReservationItem[]): ReservationItem[] => {
+    return list.map((res) => {
+      if (!res.paiementsPartiels || res.paiementsPartiels.length === 0) {
+        if (res.acompteVerse && res.acompteVerse > 0) {
+          return {
+            ...res,
+            paiementsPartiels: [
+              {
+                id: `pay-init-${res.id}`,
+                date: res.dateDebut,
+                heure: '10:30',
+                montant: res.acompteVerse,
+                modePaiement: res.modePaiement,
+                reference: `TXN-${res.modePaiement.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}-${res.id.replace('res-', '')}`,
+                recuPar: 'Réception Hôtel',
+                motif: 'Acompte initial de réservation',
+                note: 'Règlement d’acompte validé'
+              }
+            ]
+          };
+        }
+      }
+      return res;
+    });
+  };
+
   // --- G. Réservations de Chambres ---
   const [reservations, setReservations] = useState<ReservationItem[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_reservations');
-      return saved ? JSON.parse(saved) : INITIAL_RESERVATIONS;
+      const base = saved ? JSON.parse(saved) : INITIAL_RESERVATIONS;
+      return ensureReservationPartialPayments(base);
     } catch {
-      return INITIAL_RESERVATIONS;
+      return ensureReservationPartialPayments(INITIAL_RESERVATIONS);
     }
   });
 
@@ -545,11 +576,30 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const acompte = newRes.acompteVerse || 0;
     const reste = Math.max(0, newRes.montantTotal - acompte);
 
+    const initialPaiements: PaiementPartiel[] = newRes.paiementsPartiels && newRes.paiementsPartiels.length > 0
+      ? newRes.paiementsPartiels
+      : acompte > 0
+      ? [
+          {
+            id: `pay-${Date.now()}`,
+            date: newRes.dateDebut,
+            heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            montant: acompte,
+            modePaiement: newRes.modePaiement,
+            reference: `TXN-${newRes.modePaiement.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+            recuPar: 'Réception Hôtel',
+            motif: 'Acompte réservation hébergement',
+            note: 'Versement initial à la réservation'
+          }
+        ]
+      : [];
+
     const fullReservation: ReservationItem = {
       ...newRes,
       id,
       acompteVerse: acompte,
       resteAPayer: reste,
+      paiementsPartiels: initialPaiements,
       dateCreation
     };
 
@@ -642,6 +692,68 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const deleteReservation = (id: string) => {
     setReservations((prev) => prev.filter((res) => res.id !== id));
+  };
+
+  const addPaiementPartiel = (
+    reservationId: string,
+    paiement: Omit<PaiementPartiel, 'id'>
+  ): PaiementPartiel => {
+    const id = `pay-${Date.now()}`;
+    const newPaiement: PaiementPartiel = {
+      ...paiement,
+      id
+    };
+
+    setReservations((prev) =>
+      prev.map((res) => {
+        if (res.id !== reservationId) return res;
+        const currentList = res.paiementsPartiels || [];
+        const updatedList = [...currentList, newPaiement];
+        const totalAcomptes = updatedList.reduce((sum, p) => sum + p.montant, 0);
+        const reste = Math.max(0, res.montantTotal - totalAcomptes);
+        return {
+          ...res,
+          paiementsPartiels: updatedList,
+          acompteVerse: totalAcomptes,
+          resteAPayer: reste,
+          statutPaiement: reste === 0 ? 'paye' : 'en_attente'
+        };
+      })
+    );
+
+    const targetRes = reservations.find((r) => r.id === reservationId);
+    if (targetRes) {
+      addRevenue({
+        date: newPaiement.date,
+        clientNom: targetRes.clientNom,
+        chambreNumero: targetRes.chambreNumero,
+        typeReservation: targetRes.typeReservation,
+        modePaiement: newPaiement.modePaiement,
+        montant: newPaiement.montant,
+        statut: 'paye'
+      });
+    }
+
+    return newPaiement;
+  };
+
+  const deletePaiementPartiel = (reservationId: string, paiementId: string) => {
+    setReservations((prev) =>
+      prev.map((res) => {
+        if (res.id !== reservationId) return res;
+        const currentList = res.paiementsPartiels || [];
+        const updatedList = currentList.filter((p) => p.id !== paiementId);
+        const totalAcomptes = updatedList.reduce((sum, p) => sum + p.montant, 0);
+        const reste = Math.max(0, res.montantTotal - totalAcomptes);
+        return {
+          ...res,
+          paiementsPartiels: updatedList,
+          acompteVerse: totalAcomptes,
+          resteAPayer: reste,
+          statutPaiement: reste === 0 ? 'paye' : totalAcomptes > 0 ? 'en_attente' : 'en_attente'
+        };
+      })
+    );
   };
 
   const pendingReservationsCount = reservations.filter(
@@ -1203,12 +1315,21 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // Historique des règlements
     const historiqueReglements: FactureGlobaleData['historiqueReglements'] = [];
-    if (targetRes && acompteHebergement > 0) {
+    if (targetRes?.paiementsPartiels && targetRes.paiementsPartiels.length > 0) {
+      targetRes.paiementsPartiels.forEach((p, idx) => {
+        historiqueReglements.push({
+          date: p.date,
+          mode: p.modePaiement,
+          montant: p.montant,
+          reference: p.reference || p.motif || `Acompte Hébergement #${idx + 1}`
+        });
+      });
+    } else if (targetRes && acompteHebergement > 0) {
       historiqueReglements.push({
         date: targetRes.dateDebut,
         mode: targetRes.modePaiement,
         montant: acompteHebergement,
-        reference: `Hébergement (${targetRes.chambreNumero})`
+        reference: `Acompte Hébergement (${targetRes.chambreNumero})`
       });
     }
     linkedServices.forEach((s) => {
@@ -1328,6 +1449,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateReservation,
         updateReservationStatus,
         deleteReservation,
+        addPaiementPartiel,
+        deletePaiementPartiel,
         pendingReservationsCount,
         completedReservationsCount,
         cancelledReservationsCount,

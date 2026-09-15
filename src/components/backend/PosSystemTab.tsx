@@ -24,6 +24,7 @@ import {
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { PosCategory, PosProduct, PosCartItem, PaymentMethod, PosSale } from '../../types.ts';
+import { PosInvoiceModal } from './PosInvoiceModal.tsx';
 
 export const PosSystemTab: React.FC = () => {
   const {
@@ -719,97 +720,12 @@ export const PosSystemTab: React.FC = () => {
         </div>
       </div>
 
-      {/* RECEIPT / TICKET THERMIQUE MODAL */}
+      {/* RECEIPT / TICKET THERMIQUE & FACTURE A4 & PDF MODAL */}
       {activeReceiptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="bg-white text-stone-950 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl p-6 font-mono text-xs space-y-3 print:p-0">
-            {/* Header Ticket */}
-            <div className="text-center border-b border-stone-300 pb-3">
-              <div className="font-bold text-sm uppercase tracking-wider">{thermalPrinterConfig.enteteHaut || 'HOTELIA RESORT & SPA'}</div>
-              <div className="text-[10px] text-stone-600">{thermalPrinterConfig.adresseHotel || 'Abidjan, Côte d’Ivoire'}</div>
-              <div className="text-[10px] text-stone-600">Tél: {thermalPrinterConfig.telephoneHotel || '+225 07 00 00 00'}</div>
-              <div className="mt-2 text-[11px] font-bold">TICKET DE CAISSE #{activeReceiptModal.numeroTicket}</div>
-              <div className="text-[10px] text-stone-500">
-                Date: {activeReceiptModal.date} {activeReceiptModal.heure}
-              </div>
-              <div className="text-[10px] text-stone-500">
-                Serveur/Caisse: {activeReceiptModal.serveurNom}
-              </div>
-              <div className="text-[10px] text-stone-700 font-bold mt-1">
-                Client: {activeReceiptModal.clientNom}
-                {activeReceiptModal.chambreNumero && ` (Chambre ${activeReceiptModal.chambreNumero})`}
-              </div>
-            </div>
-
-            {/* Line Items */}
-            <div className="space-y-1 py-1 border-b border-stone-300">
-              {activeReceiptModal.items.map((it, idx) => (
-                <div key={idx} className="flex justify-between items-start text-[11px]">
-                  <div className="truncate pr-2">
-                    {it.quantite}x {it.nom}
-                  </div>
-                  <div className="font-bold whitespace-nowrap">{formatPrice(it.totalLigne)}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Totals */}
-            <div className="space-y-1 text-xs border-b border-stone-300 pb-2">
-              <div className="flex justify-between text-stone-600">
-                <span>Total Partiel :</span>
-                <span>{formatPrice(activeReceiptModal.totalPartiel)}</span>
-              </div>
-              {activeReceiptModal.remise > 0 && (
-                <div className="flex justify-between text-stone-600">
-                  <span>Remise :</span>
-                  <span>-{formatPrice(activeReceiptModal.remise)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-bold text-sm pt-1 border-t border-dashed border-stone-300">
-                <span>TOTAL NET :</span>
-                <span>{formatPrice(activeReceiptModal.totalGlobal)}</span>
-              </div>
-              <div className="flex justify-between text-[11px]">
-                <span>Mode Règlement :</span>
-                <span className="font-bold">{activeReceiptModal.modePaiement}</span>
-              </div>
-              <div className="flex justify-between text-[11px]">
-                <span>Encaissé :</span>
-                <span>{formatPrice(activeReceiptModal.montantEncaisse)}</span>
-              </div>
-              {activeReceiptModal.resteAPayer > 0 && (
-                <div className="flex justify-between text-[11px] font-bold text-rose-700">
-                  <span>Solde Chambre :</span>
-                  <span>{formatPrice(activeReceiptModal.resteAPayer)}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="text-center text-[10px] text-stone-500 pt-1">
-              <p>{thermalPrinterConfig.messageBas || 'Merci pour votre visite et à très bientôt !'}</p>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 print:hidden">
-              <button
-                type="button"
-                onClick={handlePrintReceipt}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-stone-900 text-white text-xs font-bold hover:bg-stone-800 cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Imprimer Ticket</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveReceiptModal(null)}
-                className="px-4 py-2 rounded-xl bg-stone-200 text-stone-800 text-xs font-bold hover:bg-stone-300 cursor-pointer"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
+        <PosInvoiceModal
+          sale={activeReceiptModal}
+          onClose={() => setActiveReceiptModal(null)}
+        />
       )}
 
       {/* HISTORIQUE MODAL DES VENTES DU JOUR */}
@@ -875,10 +791,11 @@ export const PosSystemTab: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setActiveReceiptModal(sale)}
-                          className="p-1 rounded hover:bg-stone-700 text-[#C5A880] cursor-pointer"
-                          title="Réimprimer le ticket"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-[11px] font-sans font-bold cursor-pointer transition-all"
+                          title="Générer la facture POS (Impression Thermique 80mm, Format A4 ou Export PDF)"
                         >
                           <Printer className="w-3.5 h-3.5" />
+                          <span>Facture / Reçu</span>
                         </button>
                       </td>
                     </tr>
