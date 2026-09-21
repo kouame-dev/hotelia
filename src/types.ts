@@ -18,9 +18,10 @@ export interface ReservationItem {
   typeReservation: ReservationType;
   dateDebut: string; // YYYY-MM-DD
   dateFin: string;   // YYYY-MM-DD
-  heureDebut?: string; // HH:mm (pour type heure)
-  heureFin?: string;   // HH:mm (pour type heure)
+  heureDebut?: string; // HH:mm (pour nuitée et heure)
+  heureFin?: string;   // HH:mm (pour nuitée et heure)
   dureeHeures?: number;
+  dureeMinutes?: number;
   nbNuits?: number;
   nbPersonnes?: number;
   statutReservation: ReservationStatus;
@@ -79,7 +80,14 @@ export interface ChambreConfig {
 }
 
 // Profil utilisateur et rôles du système
-export type UserRole = 'Directeur Général' | 'Chef de Réception' | 'Caisse' | 'Gérant' | 'Réceptionniste';
+export type UserRole =
+  | 'Directeur Général'
+  | 'Chef de Réception'
+  | 'Caisse'
+  | 'Gérant'
+  | 'Réceptionniste'
+  | 'Directeur Restaurant'
+  | 'Caisse Restaurant';
 
 export interface UserProfile {
   id: string;
@@ -371,6 +379,7 @@ export interface StockItem {
   fournisseurId?: string;
   fournisseurNom?: string;
   dernierReassort?: string;
+  imageUrl?: string;
 }
 
 export type MouvementType =
@@ -484,6 +493,120 @@ export interface FactureGlobaleData {
     montant: number;
     reference?: string;
   }[];
+  notes?: string;
+}
+
+// =========================================================================
+// 6. MODULE RESTAURANT DÉDIÉ (PLAN DE TABLES, CARTE, COMMANDES, POS & RÉSERVATIONS)
+// =========================================================================
+export type RestaurantZone = 'Salle Climatisée' | 'Terrasse' | 'Salon VIP' | 'Bar Lounge';
+
+export type RestaurantTableStatus = 'libre' | 'occupee' | 'reservee' | 'addition';
+
+export interface RestaurantTable {
+  id: string;
+  numero: string; // ex: "Table 01", "Terrasse 02", "VIP Dekouassi 01"
+  capacite: number; // 2, 4, 6, 8, 12 personnes
+  zone: RestaurantZone;
+  statut: RestaurantTableStatus;
+  serveurAssigne?: string;
+  clientNom?: string;
+  chambreNumero?: string;
+  activeOrderId?: string;
+  heureArrivee?: string;
+  note?: string;
+}
+
+export type RestaurantCategory =
+  | 'Entrées'
+  | 'Plats Principaux'
+  | 'Spécialités Africaines'
+  | 'Grillades & Poissons'
+  | 'Desserts'
+  | 'Boissons & Cocktails'
+  | 'Vins & Champagnes';
+
+export interface RestaurantMenuItem {
+  id: string;
+  nom: string;
+  categorie: RestaurantCategory | string;
+  prix: number;
+  description: string;
+  imageUrl?: string;
+  disponible: boolean;
+  tempsPreparationMin?: number;
+  coupDeCoeur?: boolean;
+  vegetarien?: boolean;
+  coutRevient?: number;
+  allergenes?: string[];
+}
+
+export type RestaurantServiceType = 'Déjeuner (12h - 15h)' | 'Dîner (19h - 23h30)' | 'Brunch & Tea Time' | 'dejeuner' | 'diner' | 'brunch' | 'evenement' | string;
+
+export interface RestaurantReservation {
+  id: string;
+  reference: string; // ex: "RES-REST-3921"
+  clientNom: string;
+  clientTelephone?: string;
+  telephone?: string;
+  clientEmail?: string;
+  email?: string;
+  date: string; // YYYY-MM-DD
+  heure: string; // HH:mm
+  service: RestaurantServiceType;
+  nbCouverts: number;
+  zonePreferee: RestaurantZone | string;
+  tableNumero?: string;
+  statut: 'en_attente' | 'confirmee' | 'installee' | 'terminee' | 'annulee';
+  demandesSpeciales?: string;
+  notes?: string;
+  dateCreation: string;
+  acompteVerse?: number;
+  statutPaiement?: 'en_attente' | 'acompte' | 'solde';
+  modePaiementAcompte?: PaymentMethod | string;
+  referenceAcompte?: string;
+  dateAcompte?: string;
+}
+
+export interface RestaurantOrderItem {
+  id: string;
+  menuItemId: string;
+  nom: string;
+  categorie: RestaurantCategory | string;
+  prixUnitaire: number;
+  quantite: number;
+  totalLigne: number;
+  cuissonOuNote?: string; // ex: "Bien cuit, sans piment", "Sauce à part"
+  notesCuisson?: string;
+}
+
+export interface RestaurantOrder {
+  id: string;
+  numeroCommande: string; // ex: "CMD-REST-102"
+  tableNumero: string;
+  serveurNom: string;
+  clientNom: string;
+  chambreNumero?: string; // Si rattaché à une chambre d'hôtel
+  date: string; // YYYY-MM-DD
+  heure: string; // HH:mm
+  dateCommande?: string;
+  heureCommande?: string;
+  items: RestaurantOrderItem[];
+  articles?: RestaurantOrderItem[];
+  sousTotal?: number;
+  totalBrut: number;
+  tva?: number;
+  remise: number;
+  acompteDeduit?: number;
+  totalNet: number;
+  montantVerse?: number;
+  monnaieRendue?: number;
+  modePaiement?: PaymentMethod | 'Note sur Chambre' | string;
+  statutPaiement: PaymentStatus | string;
+  statutCuisine: 'en_attente' | 'en_preparation' | 'pret' | 'servi';
+  statutAddition: 'en_cours' | 'addition_imprimee' | 'payee' | 'annulee';
+  statut?: 'en_attente' | 'en_preparation' | 'pret' | 'servi' | 'annule';
+  typeService?: 'sur_place' | 'a_emporter' | 'room_service';
   notes?: string;
 }
 

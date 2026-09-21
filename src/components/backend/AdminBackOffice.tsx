@@ -14,6 +14,7 @@ import { PaidServicesTab } from './PaidServicesTab.tsx';
 import { PosSystemTab } from './PosSystemTab.tsx';
 import { StockManagementTab } from './StockManagementTab.tsx';
 import { GlobalInvoiceView } from './GlobalInvoiceView.tsx';
+import { RestaurantManagementTab } from './RestaurantManagementTab.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
@@ -56,12 +57,14 @@ import {
   Utensils,
   Boxes,
   FileSpreadsheet,
-  ShoppingBag
+  ShoppingBag,
+  ChefHat
 } from 'lucide-react';
 
 export type BackOfficeTab =
   | 'gantt'
   | 'reservations'
+  | 'restaurant'
   | 'pos'
   | 'services'
   | 'facture_globale'
@@ -95,14 +98,26 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     completedReservationsCount,
     cancelledReservationsCount,
     reservations,
+    restaurantReservations,
+    restaurantOrders,
     usersList,
     switchUserRole
   } = useHotelData();
 
-  const [activeTab, setActiveTab] = useState<BackOfficeTab>('gantt');
+  const [activeTab, setActiveTab] = useState<BackOfficeTab>(() => {
+    if (currentUserProfile.role === 'Caisse Restaurant' || currentUserProfile.role === 'Directeur Restaurant') {
+      return 'restaurant';
+    }
+    if (currentUserProfile.role === 'Caisse') {
+      return 'reservations';
+    }
+    return 'gantt';
+  });
   const [reservationSubTab, setReservationSubTab] = useState<ReservationSubTab>('toutes');
+  const [restaurantSubTab, setRestaurantSubTab] = useState<'pos' | 'tables' | 'commandes' | 'reservations' | 'menu' | 'caisse'>('pos');
   const [settingsSubSection, setSettingsSubSection] = useState<'general' | 'mobile_money'>('general');
   const [isReservationMenuOpen, setIsReservationMenuOpen] = useState(false);
+  const [isRestaurantMenuOpen, setIsRestaurantMenuOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [restrictedModalMessage, setRestrictedModalMessage] = useState<string | null>(null);
@@ -111,18 +126,36 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const isCaisse = currentUserProfile.role === 'Caisse';
   const isChefReception = currentUserProfile.role === 'Chef de Réception';
   const isDG = currentUserProfile.role === 'Directeur Général';
+  const isDirecteurRestaurant = currentUserProfile.role === 'Directeur Restaurant';
+  const isCaisseRestaurant = currentUserProfile.role === 'Caisse Restaurant';
 
-  // Guard: If Caisse is active, force activeTab to reservations if attempting unauthorized access
+  // Guard: If role-restricted user switches, force valid activeTab
   useEffect(() => {
-    if (isCaisse && activeTab !== 'reservations' && activeTab !== 'profile') {
+    if (isCaisseRestaurant && activeTab !== 'restaurant' && activeTab !== 'profile') {
+      setActiveTab('restaurant');
+    } else if (isDirecteurRestaurant && activeTab !== 'restaurant' && activeTab !== 'stock' && activeTab !== 'services' && activeTab !== 'profile') {
+      setActiveTab('restaurant');
+    } else if (isCaisse && activeTab !== 'reservations' && activeTab !== 'profile') {
       setActiveTab('reservations');
     }
-  }, [isCaisse, activeTab]);
+  }, [isCaisseRestaurant, isDirecteurRestaurant, isCaisse, activeTab]);
 
   const handleTabClick = (tab: BackOfficeTab) => {
+    if (isCaisseRestaurant && tab !== 'restaurant' && tab !== 'profile') {
+      setRestrictedModalMessage(
+        "Accès Réservé : Votre compte Caisse Restaurant est dédié au Point de Vente (POS Restaurant), aux additions des tables et aux encaissements du restaurant."
+      );
+      return;
+    }
+    if (isDirecteurRestaurant && tab !== 'restaurant' && tab !== 'stock' && tab !== 'services' && tab !== 'profile') {
+      setRestrictedModalMessage(
+        "Accès Administrateur Restreint : Votre compte Directeur Restaurant est dédié à la gestion du Restaurant, des Tables, du Menu Gastronomique et des Stocks."
+      );
+      return;
+    }
     if (isCaisse && tab !== 'reservations' && tab !== 'profile') {
       setRestrictedModalMessage(
-        "Accès Réservé : Votre compte Caisse a été configuré par le Super Admin pour gérer exclusivement les Réservations, les Encaissements et la Facturation client."
+        "Accès Réservé : Votre compte Caisse Hôtel a été configuré pour gérer exclusivement les Réservations de chambres, les Règlements et la Facturation client."
       );
       return;
     }
@@ -551,6 +584,249 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               )}
             </div>
 
+            {/* Menu Principal : Restaurant Dédié avec Sous-Menus (Plan de Salle, Cuisine, POS, Réservations, etc.) */}
+            <div className="relative inline-block text-left">
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleTabClick('restaurant');
+                    setIsRestaurantMenuOpen((prev) => !prev);
+                  }}
+                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-l-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                    activeTab === 'restaurant'
+                      ? 'bg-emerald-600 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
+                      : 'bg-emerald-950/45 text-emerald-300 border border-emerald-800/80 hover:bg-emerald-900/60 hover:text-white'
+                  }`}
+                >
+                  <Utensils className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Restaurant &amp; Tables</span>
+                  {restaurantReservations && restaurantReservations.filter((r) => r.statut === 'en_attente').length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono bg-rose-500 text-white animate-pulse">
+                      {restaurantReservations.filter((r) => r.statut === 'en_attente').length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsRestaurantMenuOpen((prev) => !prev);
+                  }}
+                  className={`p-2 rounded-r-xl border-l transition-all cursor-pointer ${
+                    activeTab === 'restaurant'
+                      ? 'bg-emerald-700 text-white border-2 border-l-0 border-emerald-400'
+                      : 'bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60 border border-l-0 border-emerald-800/80'
+                  }`}
+                  title="Ouvrir les sous-menus restaurant"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isRestaurantMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Menu Déroulant des Sous-Menus Restaurant */}
+              {isRestaurantMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsRestaurantMenuOpen(false)}
+                  />
+                  <div className="absolute left-0 mt-2 w-72 rounded-2xl bg-stone-900/95 backdrop-blur-md border border-stone-700 shadow-2xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                    {/* Sous-page 1 : Plan de Salle */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('restaurant');
+                        setRestaurantSubTab('tables');
+                        setIsRestaurantMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold ${
+                        activeTab === 'restaurant' && restaurantSubTab === 'tables'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                          <Building className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-xs">Plan de Salle</span>
+                          <span className="text-[10px] text-stone-400 font-normal">Disposition 2D, tables &amp; zones</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Sous-page 2 : Cuisine et Suivi (KDS) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('restaurant');
+                        setRestaurantSubTab('commandes');
+                        setIsRestaurantMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold ${
+                        activeTab === 'restaurant' && restaurantSubTab === 'commandes'
+                          ? 'bg-amber-500/20 text-amber-300'
+                          : 'text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                          <Clock className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-xs">Cuisine et Suivi (KDS)</span>
+                          <span className="text-[10px] text-stone-400 font-normal">Bons de préparation &amp; service</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Sous-page 3 : Point de Vente (POS) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('restaurant');
+                        setRestaurantSubTab('pos');
+                        setIsRestaurantMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold ${
+                        activeTab === 'restaurant' && restaurantSubTab === 'pos'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                          <Utensils className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-xs">Point de Vente (POS)</span>
+                          <span className="text-[10px] text-stone-400 font-normal">Prise de commandes &amp; encaissement</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Sous-page 4 : Réservations de Tables */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('restaurant');
+                        setRestaurantSubTab('reservations');
+                        setIsRestaurantMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold ${
+                        activeTab === 'restaurant' && restaurantSubTab === 'reservations'
+                          ? 'bg-blue-500/20 text-blue-300'
+                          : 'text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
+                          <Calendar className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-xs">Réservations de Tables</span>
+                          <span className="text-[10px] text-stone-400 font-normal">Couverts, dates &amp; validation acomptes</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Sous-page 5 : Carte & Menus */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('restaurant');
+                        setRestaurantSubTab('menu');
+                        setIsRestaurantMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold ${
+                        activeTab === 'restaurant' && restaurantSubTab === 'menu'
+                          ? 'bg-purple-500/20 text-purple-300'
+                          : 'text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400">
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-xs">Carte &amp; Menus</span>
+                          <span className="text-[10px] text-stone-400 font-normal">Recettes, prix &amp; téléversement photos</span>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Sous-page 6 : Journal Caisse & Recettes */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('restaurant');
+                        setRestaurantSubTab('caisse');
+                        setIsRestaurantMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold ${
+                        activeTab === 'restaurant' && restaurantSubTab === 'caisse'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'text-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                          <CreditCard className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-xs">Journal Caisse &amp; Recettes</span>
+                          <span className="text-[10px] text-stone-400 font-normal">Additions encaissées &amp; réimpression</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Accès DIRECT : Plan de Salle (1 clic) */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('restaurant');
+                setRestaurantSubTab('tables');
+              }}
+              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                activeTab === 'restaurant' && restaurantSubTab === 'tables'
+                  ? 'bg-emerald-600 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
+                  : 'bg-emerald-950/30 text-emerald-300 border border-emerald-800/70 hover:bg-emerald-900/50 hover:text-white'
+              }`}
+              title="Accès direct au plan de salle 2D et statut des tables"
+            >
+              <Building className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Plan de Salle</span>
+            </button>
+
+            {/* Accès DIRECT : Cuisine & Suivi KDS (1 clic) */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('restaurant');
+                setRestaurantSubTab('commandes');
+              }}
+              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                activeTab === 'restaurant' && restaurantSubTab === 'commandes'
+                  ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
+                  : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
+              }`}
+              title="Accès direct à la cuisine et au suivi des commandes en direct"
+            >
+              <ChefHat className="w-3.5 h-3.5 text-amber-300" />
+              <span>Cuisine &amp; Suivi</span>
+              {restaurantOrders && restaurantOrders.filter((o) => o.statutAddition === 'en_cours').length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono bg-amber-400 text-stone-950 ml-0.5">
+                  {restaurantOrders.filter((o) => o.statutAddition === 'en_cours').length}
+                </span>
+              )}
+            </button>
+
             {/* Tab POS : Point de Vente (Nourriture, Boissons, Services) -> AMBRE / OR CHAUD */}
             <button
               type="button"
@@ -561,7 +837,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
               }`}
             >
-              <Utensils className="w-3.5 h-3.5 text-amber-400" />
+              <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
               <span>Point de Vente (POS)</span>
             </button>
 
@@ -779,10 +1055,10 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               </div>
               <div>
                 <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block">
-                  SESSION CAISSE ACTIVE • PÉRIMÈTRE RÉSERVATIONS EXCLUSIF
+                  SESSION CAISSE HÔTEL ACTIVE • PÉRIMÈTRE RÉSERVATIONS EXCLUSIF
                 </span>
                 <p className="text-xs text-stone-700">
-                  Votre profil de <strong>Caisse</strong> est configuré pour gérer uniquement les réservations, les règlements et la génération de factures (A4 et thermique paramétrable).
+                  Votre profil de <strong>Caisse Hôtel</strong> est configuré pour gérer uniquement les réservations, les règlements et la génération de factures (A4 et thermique paramétrable).
                 </p>
               </div>
             </div>
@@ -800,12 +1076,63 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </div>
         )}
 
+        {/* Bannière de Session Caisse Restaurant : POS & Additions */}
+        {isCaisseRestaurant && (
+          <div className="bg-emerald-50 border-2 border-emerald-500 text-stone-900 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
+                <Utensils className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider block">
+                  SESSION CAISSE RESTAURANT ACTIVE • POINT DE VENTE &amp; ADDITIONS TABLES
+                </span>
+                <p className="text-xs text-stone-700">
+                  Votre profil de <strong>Caisse Restaurant</strong> est configuré pour gérer le Point de Vente, les commandes des tables, les encaissements en espèces/Mobile Money et les tickets de caisse.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('restaurant')}
+              className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
+            >
+              <Utensils className="w-4 h-4 stroke-[2.5]" />
+              <span>Ouvrir le POS Restaurant</span>
+            </button>
+          </div>
+        )}
+
+        {/* Bannière de Session Directeur Restaurant */}
+        {isDirecteurRestaurant && (
+          <div className="bg-emerald-950/10 border-2 border-emerald-700 text-stone-900 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-900 text-[#C5A880] flex items-center justify-center font-bold shrink-0 shadow-sm">
+                <Utensils className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider block">
+                  DIRECTION RESTAURANT &amp; LOUNGE • GESTION COMPLÈTE DU SERVICE
+                </span>
+                <p className="text-xs text-stone-700">
+                  Votre profil de <strong>Directeur Restaurant</strong> supervise le plan de salle, le menu gastronomique, les réservations de tables et le suivi des commandes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tab 1 : Planning Gantt */}
-        {activeTab === 'gantt' && !isCaisse && <AdminGanttDashboard />}
+        {activeTab === 'gantt' && !isCaisse && !isCaisseRestaurant && <AdminGanttDashboard />}
 
         {/* Tab Réservations de Chambres avec Sous-Menus */}
-        {activeTab === 'reservations' && (
+        {activeTab === 'reservations' && !isCaisseRestaurant && (
           <ReservationManagementTab key={reservationSubTab} initialSubTab={reservationSubTab} />
+        )}
+
+        {/* Tab Dédié Restaurant (Plan de Tables, POS Restaurant, Réservations Tables, KDS, Menu) */}
+        {activeTab === 'restaurant' && !isCaisse && (
+          <RestaurantManagementTab key={restaurantSubTab} initialSubTab={restaurantSubTab} />
         )}
 
         {/* Tab Point de Vente (POS) */}

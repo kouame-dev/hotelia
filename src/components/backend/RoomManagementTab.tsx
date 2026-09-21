@@ -18,8 +18,10 @@ import {
   Users,
   ShieldCheck,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ImageIcon
 } from 'lucide-react';
+import { ImageUploadField } from '../common/ImageUploadField.tsx';
 
 export const RoomManagementTab: React.FC = () => {
   const {
@@ -51,7 +53,8 @@ export const RoomManagementTab: React.FC = () => {
     statut: 'Disponible',
     disponibleHeure: true,
     disponibleNuit: true,
-    descriptionSpecifique: ''
+    descriptionSpecifique: '',
+    imageUrl: ''
   });
 
   // Modal Ajout / Édition Type de Chambre
@@ -92,7 +95,8 @@ export const RoomManagementTab: React.FC = () => {
       statut: 'Disponible',
       disponibleHeure: true,
       disponibleNuit: true,
-      descriptionSpecifique: ''
+      descriptionSpecifique: '',
+      imageUrl: ''
     } as Omit<ChambreConfig, 'id'>);
     setIsRoomModalOpen(true);
   };
@@ -109,7 +113,8 @@ export const RoomManagementTab: React.FC = () => {
       statut: chambre.statut,
       disponibleHeure: chambre.disponibleHeure,
       disponibleNuit: chambre.disponibleNuit,
-      descriptionSpecifique: chambre.descriptionSpecifique || ''
+      descriptionSpecifique: chambre.descriptionSpecifique || '',
+      imageUrl: chambre.imageUrl || ''
     });
     setIsRoomModalOpen(true);
   };
@@ -354,13 +359,28 @@ export const RoomManagementTab: React.FC = () => {
                     return (
                       <tr key={c.id} className="hover:bg-stone-50/70 transition-colors">
                         <td className="py-3.5 px-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-8 h-8 rounded-lg bg-stone-900 text-[#C5A880] font-mono font-bold flex items-center justify-center text-xs">
-                              {c.numero}
+                          <div className="flex items-center space-x-2.5">
+                            {c.imageUrl ? (
+                              <img
+                                src={c.imageUrl}
+                                alt={`Chambre ${c.numero}`}
+                                className="w-9 h-9 rounded-lg object-cover border border-stone-200 shadow-2xs"
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-lg bg-stone-900 text-[#C5A880] font-mono font-bold flex items-center justify-center text-xs shadow-2xs">
+                                {c.numero}
+                              </div>
+                            )}
+                            <div>
+                              <span className="font-serif font-bold text-stone-900 text-sm block">
+                                Chambre {c.numero}
+                              </span>
+                              {c.imageUrl && (
+                                <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5">
+                                  <ImageIcon className="w-2.5 h-2.5" /> Photo
+                                </span>
+                              )}
                             </div>
-                            <span className="font-serif font-bold text-stone-900 text-sm">
-                              Chambre {c.numero}
-                            </span>
                           </div>
                         </td>
                         <td className="py-3.5 px-4">
@@ -537,9 +557,10 @@ export const RoomManagementTab: React.FC = () => {
       {/* MODAL : AJOUT / MODIFICATION DE CHAMBRE                                   */}
       {/* ========================================================================= */}
       {isRoomModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header fixe */}
+            <div className="p-4 sm:p-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/80 shrink-0">
               <div className="flex items-center space-x-2">
                 <Bed className="w-5 h-5 text-[#C5A880]" />
                 <h3 className="font-serif font-bold text-lg text-stone-900">
@@ -549,176 +570,188 @@ export const RoomManagementTab: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsRoomModalOpen(false)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700"
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 cursor-pointer"
+                title="Fermer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveRoom} className="space-y-4 pt-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSaveRoom} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
+                      Numéro de Chambre *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: 104, 203..."
+                      value={roomFormData.numero}
+                      onChange={(e) => setRoomFormData({ ...roomFormData, numero: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-sm focus:border-[#C5A880] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
+                      Étage *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      max={10}
+                      value={roomFormData.etage}
+                      onChange={(e) => setRoomFormData({ ...roomFormData, etage: parseInt(e.target.value) || 1 })}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-sm focus:border-[#C5A880] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                    Numéro de Chambre *
+                    Catégorie / Type de Chambre *
+                  </label>
+                  <select
+                    value={roomFormData.typeId}
+                    onChange={(e) => {
+                      const selId = e.target.value;
+                      const matched = roomTypes.find((t) => t.id === selId);
+                      setRoomFormData({
+                        ...roomFormData,
+                        typeId: selId,
+                        typeNom: matched ? matched.nom : '',
+                        prixNuit: matched ? matched.prixNuitDefaut : roomFormData.prixNuit,
+                        prixHeure: matched ? matched.prixHeureDefaut : roomFormData.prixHeure
+                      });
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-300 font-medium focus:border-[#C5A880] focus:outline-none cursor-pointer"
+                  >
+                    {roomTypes.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nom} ({t.surface} - {t.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Champ Téléversement / Modification Photo Chambre */}
+                <ImageUploadField
+                  label="Photo de la chambre (Téléverser ou modifier le visuel)"
+                  value={roomFormData.imageUrl || ''}
+                  onChange={(url) => setRoomFormData({ ...roomFormData, imageUrl: url })}
+                  placeholderText="Téléversez une photo de la chambre ou de sa vue (JPG, PNG, WebP)"
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
+                      Prix par Nuit (€ base) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={roomFormData.prixNuit}
+                      onChange={(e) => setRoomFormData({ ...roomFormData, prixNuit: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
+                    />
+                    <span className="text-[10px] text-stone-400 font-mono">
+                      Affiché : {formatPrice(roomFormData.prixNuit)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
+                      Prix par Heure (€ base) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={roomFormData.prixHeure}
+                      onChange={(e) => setRoomFormData({ ...roomFormData, prixHeure: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
+                    />
+                    <span className="text-[10px] text-stone-400 font-mono">
+                      Affiché : {formatPrice(roomFormData.prixHeure)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
+                    Statut Opérationnel Initial
+                  </label>
+                  <select
+                    value={roomFormData.statut}
+                    onChange={(e) =>
+                      setRoomFormData({
+                        ...roomFormData,
+                        statut: e.target.value as ChambreConfig['statut']
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 font-medium focus:border-[#C5A880] focus:outline-none cursor-pointer"
+                  >
+                    <option value="Disponible">Disponible (Prête)</option>
+                    <option value="Ménage en cours">Ménage en cours</option>
+                    <option value="Occupée (Heure)">Occupée (Heure)</option>
+                    <option value="Occupée (Journée)">Occupée (Journée)</option>
+                    <option value="Maintenance">Maintenance technique</option>
+                    <option value="Arrivée ce soir">Arrivée ce soir</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-6 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={roomFormData.disponibleNuit}
+                      onChange={(e) => setRoomFormData({ ...roomFormData, disponibleNuit: e.target.checked })}
+                      className="rounded text-[#C5A880] focus:ring-[#C5A880] cursor-pointer"
+                    />
+                    <span className="font-medium text-stone-700">Disponible pour la nuitée</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={roomFormData.disponibleHeure}
+                      onChange={(e) => setRoomFormData({ ...roomFormData, disponibleHeure: e.target.checked })}
+                      className="rounded text-[#C5A880] focus:ring-[#C5A880] cursor-pointer"
+                    />
+                    <span className="font-medium text-stone-700">Disponible en Day-Use (heure)</span>
+                  </label>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
+                    Remarques ou Caractéristiques Spécifiques
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="Ex: 104, 203..."
-                    value={roomFormData.numero}
-                    onChange={(e) => setRoomFormData({ ...roomFormData, numero: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-sm focus:border-[#C5A880] focus:outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                    Étage *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    max={10}
-                    value={roomFormData.etage}
-                    onChange={(e) => setRoomFormData({ ...roomFormData, etage: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-sm focus:border-[#C5A880] focus:outline-none"
+                    placeholder="Ex: Balcon privatif avec vue sur le parc..."
+                    value={roomFormData.descriptionSpecifique}
+                    onChange={(e) => setRoomFormData({ ...roomFormData, descriptionSpecifique: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:border-[#C5A880] focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                  Catégorie / Type de Chambre *
-                </label>
-                <select
-                  value={roomFormData.typeId}
-                  onChange={(e) => {
-                    const selId = e.target.value;
-                    const matched = roomTypes.find((t) => t.id === selId);
-                    setRoomFormData({
-                      ...roomFormData,
-                      typeId: selId,
-                      typeNom: matched ? matched.nom : '',
-                      prixNuit: matched ? matched.prixNuitDefaut : roomFormData.prixNuit,
-                      prixHeure: matched ? matched.prixHeureDefaut : roomFormData.prixHeure
-                    });
-                  }}
-                  className="w-full px-3 py-2.5 rounded-xl border border-stone-300 font-medium focus:border-[#C5A880] focus:outline-none"
-                >
-                  {roomTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nom} ({t.surface} - {t.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                    Prix par Nuit (€ base) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={roomFormData.prixNuit}
-                    onChange={(e) => setRoomFormData({ ...roomFormData, prixNuit: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
-                  />
-                  <span className="text-[10px] text-stone-400 font-mono">
-                    Affiché : {formatPrice(roomFormData.prixNuit)}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                    Prix par Heure (€ base) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={roomFormData.prixHeure}
-                    onChange={(e) => setRoomFormData({ ...roomFormData, prixHeure: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
-                  />
-                  <span className="text-[10px] text-stone-400 font-mono">
-                    Affiché : {formatPrice(roomFormData.prixHeure)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                  Statut Opérationnel Initial
-                </label>
-                <select
-                  value={roomFormData.statut}
-                  onChange={(e) =>
-                    setRoomFormData({
-                      ...roomFormData,
-                      statut: e.target.value as ChambreConfig['statut']
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 font-medium focus:border-[#C5A880] focus:outline-none"
-                >
-                  <option value="Disponible">Disponible (Prête)</option>
-                  <option value="Ménage en cours">Ménage en cours</option>
-                  <option value="Occupée (Heure)">Occupée (Heure)</option>
-                  <option value="Occupée (Journée)">Occupée (Journée)</option>
-                  <option value="Maintenance">Maintenance technique</option>
-                  <option value="Arrivée ce soir">Arrivée ce soir</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-6 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={roomFormData.disponibleNuit}
-                    onChange={(e) => setRoomFormData({ ...roomFormData, disponibleNuit: e.target.checked })}
-                    className="rounded text-[#C5A880] focus:ring-[#C5A880]"
-                  />
-                  <span className="font-medium text-stone-700">Disponible pour la nuitée</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={roomFormData.disponibleHeure}
-                    onChange={(e) => setRoomFormData({ ...roomFormData, disponibleHeure: e.target.checked })}
-                    className="rounded text-[#C5A880] focus:ring-[#C5A880]"
-                  />
-                  <span className="font-medium text-stone-700">Disponible en Day-Use (heure)</span>
-                </label>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                  Remarques ou Caractéristiques Spécifiques
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Balcon privatif avec vue sur le parc..."
-                  value={roomFormData.descriptionSpecifique}
-                  onChange={(e) => setRoomFormData({ ...roomFormData, descriptionSpecifique: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs focus:border-[#C5A880] focus:outline-none"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-3 border-t border-stone-100">
+              {/* Footer d'action fixe */}
+              <div className="p-4 bg-stone-50 border-t border-stone-200 flex gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsRoomModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 font-semibold text-stone-700"
+                  className="flex-1 py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 font-semibold text-stone-700 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] font-bold text-slate-950 uppercase tracking-wider"
+                  className="flex-1 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] font-bold text-slate-950 uppercase tracking-wider shadow-md cursor-pointer"
                 >
                   {editingRoom ? 'Enregistrer les Modifications' : 'Créer la Chambre'}
                 </button>

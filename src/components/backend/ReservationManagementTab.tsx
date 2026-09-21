@@ -91,9 +91,15 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     tomorrow.setDate(tomorrow.getDate() + 1);
     return tomorrow.toISOString().split('T')[0];
   });
+  // Heures d'arrivée et départ pour nuitée (en heure et minute)
+  const [formHeureDebutNuit, setFormHeureDebutNuit] = useState('14:00');
+  const [formHeureFinNuit, setFormHeureFinNuit] = useState('11:00');
+
+  // Pour réservations à l'heure
   const [formHeureDebut, setFormHeureDebut] = useState('14:00');
   const [formHeureFin, setFormHeureFin] = useState('17:00');
   const [formDureeHeures, setFormDureeHeures] = useState<number>(3);
+  const [formDureeMinutes, setFormDureeMinutes] = useState<number>(0);
   const [formNbPersonnes, setFormNbPersonnes] = useState<number>(1);
   const [formModePaiement, setFormModePaiement] = useState<PaymentMethod>('Orange Money');
   const [formStatutRes, setFormStatutRes] = useState<ReservationStatus>('en_attente');
@@ -101,6 +107,13 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
   const [formAcompte, setFormAcompte] = useState<number>(0);
   const [formNotes, setFormNotes] = useState('');
   const [formSuccessMessage, setFormSuccessMessage] = useState<string | null>(null);
+
+  // Horloge temps réel pour mise à jour fluide des minutes et jours restants
+  const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
+  React.useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Chambre sélectionnée dans le formulaire
   const selectedChambreObj = useMemo(() => {
@@ -123,9 +136,20 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     if (formMode === 'nuit') {
       return (selectedChambreObj.prixNuit || 140) * calculatedNights;
     } else {
-      return (selectedChambreObj.prixHeure || 35) * formDureeHeures;
+      const baseHourPrice = selectedChambreObj.prixHeure || 35;
+      const totalHours = formDureeHeures + (formDureeMinutes || 0) / 60;
+      return Math.round(baseHourPrice * totalHours);
     }
-  }, [selectedChambreObj, formMode, calculatedNights, formDureeHeures]);
+  }, [selectedChambreObj, formMode, calculatedNights, formDureeHeures, formDureeMinutes]);
+
+  // Calcul automatique de l'heure de fin pour les créneaux courts
+  const updateHourlyEndTime = (startHStr: string, durH: number, durM: number) => {
+    const [h, m] = startHStr.split(':').map(Number);
+    const totalMinutes = (h || 0) * 60 + (m || 0) + durH * 60 + durM;
+    const endHour = Math.floor(totalMinutes / 60) % 24;
+    const endMin = totalMinutes % 60;
+    setFormHeureFin(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+  };
 
   // Vérification de conflit potentiel pour le formulaire
   const hasConflict = useMemo(() => {
@@ -173,9 +197,10 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
       typeReservation: formMode,
       dateDebut: formDateDebut,
       dateFin: formMode === 'nuit' ? formDateFin : formDateDebut,
-      heureDebut: formMode === 'heure' ? formHeureDebut : undefined,
-      heureFin: formMode === 'heure' ? formHeureFin : undefined,
+      heureDebut: formMode === 'nuit' ? formHeureDebutNuit : formHeureDebut,
+      heureFin: formMode === 'nuit' ? formHeureFinNuit : formHeureFin,
       dureeHeures: formMode === 'heure' ? formDureeHeures : undefined,
+      dureeMinutes: formMode === 'heure' ? formDureeMinutes : undefined,
       nbNuits: formMode === 'nuit' ? calculatedNights : undefined,
       nbPersonnes: formNbPersonnes,
       statutReservation: formStatutRes,
@@ -205,6 +230,138 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
         setActiveSubTab('toutes');
       }
     }, 1200);
+  };
+
+  // Calcul dynamique des minutes restantes pour les nuitées et jours restants pour les séjours
+  const getRemainingTimeInfo = (res: ReservationItem) => {
+    const isNuit = res.typeReservation === 'nuit';
+    const nbNuits = res.nbNuits || 1;
+    const isMultiDay = isNuit && nbNuits > 1;
+
+    if (res.statutReservation === 'terminee') {
+      return {
+        type: isMultiDay ? 'sejour' : (isNuit ? 'nuitee' : 'heure'),
+        isOngoing: false,
+        isCompleted: true,
+        label: 'Séjour terminé',
+        sublabel: 'Check-out effectué',
+        badgeColor: 'bg-stone-100 text-stone-600 border-stone-200'
+      };
+    }
+    if (res.statutReservation === 'annulee') {
+      return {
+        type: isMultiDay ? 'sejour' : (isNuit ? 'nuitee' : 'heure'),
+        isOngoing: false,
+        isCompleted: true,
+        label: 'Réservation annulée',
+        sublabel: res.motifAnnulation || 'Annulée',
+        badgeColor: 'bg-rose-50 text-rose-600 border-rose-200'
+      };
+    }
+
+    const startHour = res.heureDebut || (isNuit ? '14:00' : '10:00');
+    const endHour = res.heureFin || (isNuit ? '11:00' : '17:00');
+
+    const [startH, startM] = startHour.split(':').map(Number);
+    const [endH, endM] = endHour.split(':').map(Number);
+
+    const startDt = new Date(`${res.dateDebut}T${String(startH || 0).padStart(2, '0')}:${String(startM || 0).padStart(2, '0')}:00`);
+    const endDt = new Date(`${res.dateFin}T${String(endH || 0).padStart(2, '0')}:${String(endM || 0).padStart(2, '0')}:00`);
+
+    const nowMs = currentTime.getTime();
+    const diffStartMs = startDt.getTime() - nowMs;
+    const diffEndMs = endDt.getTime() - nowMs;
+    const remainingMins = Math.floor(diffEndMs / (1000 * 60));
+
+    // Pas encore commencé
+    if (diffStartMs > 0) {
+      const minsToStart = Math.floor(diffStartMs / (1000 * 60));
+      const hoursToStart = Math.floor(minsToStart / 60);
+      const daysToStart = Math.floor(diffStartMs / (1000 * 60 * 60 * 24));
+
+      let arrivalText = '';
+      if (daysToStart > 0) {
+        arrivalText = `Arrivée dans ${daysToStart} j (à ${startHour})`;
+      } else if (hoursToStart > 0) {
+        arrivalText = `Arrivée dans ${hoursToStart}h ${minsToStart % 60}m`;
+      } else {
+        arrivalText = `Arrivée imminente (${minsToStart} min)`;
+      }
+
+      return {
+        type: isMultiDay ? 'sejour' : (isNuit ? 'nuitee' : 'heure'),
+        isOngoing: false,
+        isUpcoming: true,
+        label: arrivalText,
+        sublabel: `Prévu le ${res.dateDebut} à ${startHour}`,
+        badgeColor: 'bg-blue-50 text-blue-800 border-blue-200 font-medium'
+      };
+    }
+
+    // Heure de départ dépassée
+    if (remainingMins < 0) {
+      const overMins = Math.abs(remainingMins);
+      const overHours = Math.floor(overMins / 60);
+      const overMinsRem = overMins % 60;
+      const overStr = overHours > 0 ? `${overHours}h ${overMinsRem}m` : `${overMins} min`;
+
+      return {
+        type: isMultiDay ? 'sejour' : (isNuit ? 'nuitee' : 'heure'),
+        isOngoing: true,
+        isOverdue: true,
+        label: `🔴 Check-out dépassé de ${overStr}`,
+        sublabel: `Départ prévu à ${endHour}`,
+        badgeColor: 'bg-rose-100 text-rose-900 border-rose-300 font-bold animate-pulse'
+      };
+    }
+
+    // SÉJOUR ACTIF (> 1 nuit) : Affichage prioritaire des JOURS RESTANTS
+    if (isMultiDay) {
+      const daysLeft = Math.floor(diffEndMs / (1000 * 60 * 60 * 24));
+
+      if (daysLeft >= 1) {
+        return {
+          type: 'sejour',
+          isOngoing: true,
+          label: `📅 ${daysLeft} jour${daysLeft > 1 ? 's' : ''} restant${daysLeft > 1 ? 's' : ''}`,
+          sublabel: `Fin de séjour le ${res.dateFin} à ${endHour}`,
+          badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
+        };
+      } else {
+        // Dernier jour du séjour
+        const h = Math.floor(remainingMins / 60);
+        const m = remainingMins % 60;
+        return {
+          type: 'sejour',
+          isOngoing: true,
+          label: `⏳ Dernier jour : ${h}h ${m}m (${remainingMins} min restantes)`,
+          sublabel: `Check-out prévu aujourd'hui à ${endHour}`,
+          badgeColor: 'bg-amber-100 text-amber-900 border-amber-400 font-bold'
+        };
+      }
+    }
+
+    // NUITÉE SIMPLE (1 nuit) ou CRÉNEAU EN HEURES : Affichage prioritaire des MINUTES RESTANTES
+    const hours = Math.floor(remainingMins / 60);
+    const mins = remainingMins % 60;
+
+    if (remainingMins <= 60) {
+      return {
+        type: isNuit ? 'nuitee' : 'heure',
+        isOngoing: true,
+        label: `⚠️ ${remainingMins} minute${remainingMins > 1 ? 's' : ''} restante${remainingMins > 1 ? 's' : ''}`,
+        sublabel: `Check-out à ${endHour}`,
+        badgeColor: 'bg-amber-100 text-amber-950 border-amber-400 font-bold animate-pulse'
+      };
+    } else {
+      return {
+        type: isNuit ? 'nuitee' : 'heure',
+        isOngoing: true,
+        label: `⏱️ ${hours}h ${mins}m restantes (${remainingMins} min)`,
+        sublabel: `Départ prévu le ${res.dateFin} à ${endHour}`,
+        badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-semibold'
+      };
+    }
   };
 
   // Filtrage des réservations selon le sous-menu actif et la recherche
@@ -563,91 +720,231 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
             {/* B. Période & Horaires */}
             <div className="bg-[#FAF9F5] p-5 rounded-2xl border border-stone-200 space-y-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
-                2. Dates &amp; Créneau horaire
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
+                  2. Dates &amp; Créneau horaire (Heures &amp; Minutes)
+                </span>
+                <span className="text-[11px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                  {formMode === 'nuit' ? '🌙 Nuitée hôtelière / Séjour' : '⏱️ Courte durée à l\'heure'}
+                </span>
+              </div>
 
               {formMode === 'nuit' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1">Date d'Arrivée *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formDateDebut}
-                      onChange={(e) => setFormDateDebut(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1">Date de Départ *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formDateFin}
-                      min={formDateDebut}
-                      onChange={(e) => setFormDateFin(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1">Durée calculée</label>
-                    <div className="p-2.5 bg-stone-100 rounded-xl border border-stone-200 text-sm font-semibold text-stone-800">
-                      {calculatedNights} nuit(s)
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Date Arrivée */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">Date d'Arrivée *</label>
+                      <input
+                        type="date"
+                        required
+                        value={formDateDebut}
+                        onChange={(e) => setFormDateDebut(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                      />
                     </div>
+
+                    {/* Heure Arrivée */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-stone-600">Heure d'Arrivée *</label>
+                        <span className="text-[10px] text-stone-400 font-mono">HH:MM</span>
+                      </div>
+                      <input
+                        type="time"
+                        required
+                        value={formHeureDebutNuit}
+                        onChange={(e) => setFormHeureDebutNuit(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                      />
+                      <div className="flex items-center gap-1 mt-1 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setFormHeureDebutNuit('14:00')}
+                          className="px-1.5 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                        >
+                          14:00
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormHeureDebutNuit('15:00')}
+                          className="px-1.5 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                        >
+                          15:00
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const d = new Date();
+                            setFormHeureDebutNuit(
+                              `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+                            );
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold cursor-pointer"
+                        >
+                          Maintenant
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Date Départ */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">Date de Départ *</label>
+                      <input
+                        type="date"
+                        required
+                        value={formDateFin}
+                        min={formDateDebut}
+                        onChange={(e) => setFormDateFin(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                      />
+                    </div>
+
+                    {/* Heure Départ */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-stone-600">Heure de Départ *</label>
+                        <span className="text-[10px] text-stone-400 font-mono">HH:MM</span>
+                      </div>
+                      <input
+                        type="time"
+                        required
+                        value={formHeureFinNuit}
+                        onChange={(e) => setFormHeureFinNuit(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                      />
+                      <div className="flex items-center gap-1 mt-1 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setFormHeureFinNuit('11:00')}
+                          className="px-1.5 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                        >
+                          11:00 Standard
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormHeureFinNuit('12:00')}
+                          className="px-1.5 py-0.5 rounded bg-stone-100 hover:bg-stone-200 text-stone-600 cursor-pointer"
+                        >
+                          12:00
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormHeureFinNuit('14:00')}
+                          className="px-1.5 py-0.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold cursor-pointer"
+                        >
+                          14:00 Late Check-out
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Récapitulatif Durée & Horaires Nuitée */}
+                  <div className="p-3 bg-white rounded-xl border border-stone-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-md bg-stone-900 text-[#C5A880] font-mono font-bold text-xs">
+                        {calculatedNights} {calculatedNights > 1 ? 'nuits (Séjour)' : 'nuitée'}
+                      </span>
+                      <span className="text-stone-600">
+                        Check-in à <strong>{formHeureDebutNuit}</strong> → Check-out à <strong>{formHeureFinNuit}</strong>
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-stone-500 font-mono">
+                      {calculatedNights > 1
+                        ? `Suivi en jours restants activé pour ce séjour`
+                        : `Suivi en minutes restantes activé pour cette nuitée`}
+                    </span>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1">Date du créneau *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formDateDebut}
-                      onChange={(e) => setFormDateDebut(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
-                    />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {/* Date du créneau */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">Date du créneau *</label>
+                      <input
+                        type="date"
+                        required
+                        value={formDateDebut}
+                        onChange={(e) => setFormDateDebut(e.target.value)}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                      />
+                    </div>
+
+                    {/* Heure de début */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">Heure de début *</label>
+                      <input
+                        type="time"
+                        required
+                        value={formHeureDebut}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormHeureDebut(val);
+                          updateHourlyEndTime(val, formDureeHeures, formDureeMinutes);
+                        }}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                      />
+                    </div>
+
+                    {/* Durée en Heures */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">Durée (heures) *</label>
+                      <select
+                        value={formDureeHeures}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setFormDureeHeures(val);
+                          updateHourlyEndTime(formHeureDebut, val, formDureeMinutes);
+                        }}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none font-semibold"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12].map((nb) => (
+                          <option key={nb} value={nb}>
+                            {nb} heure{nb > 1 ? 's' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Durée en Minutes */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">Minutes supp. *</label>
+                      <select
+                        value={formDureeMinutes}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setFormDureeMinutes(val);
+                          updateHourlyEndTime(formHeureDebut, formDureeHeures, val);
+                        }}
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none font-semibold"
+                      >
+                        <option value={0}>00 min</option>
+                        <option value={15}>15 min</option>
+                        <option value={30}>30 min (Demi-heure)</option>
+                        <option value={45}>45 min</option>
+                      </select>
+                    </div>
+
+                    {/* Heure de fin calculée à la minute */}
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">Fin calculée</label>
+                      <input
+                        type="time"
+                        value={formHeureFin}
+                        onChange={(e) => setFormHeureFin(e.target.value)}
+                        className="w-full p-2.5 bg-stone-100 border border-stone-300 rounded-xl text-sm font-mono font-bold text-amber-700 focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1">Heure de début *</label>
-                    <input
-                      type="time"
-                      required
-                      value={formHeureDebut}
-                      onChange={(e) => setFormHeureDebut(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1">Durée (heures) *</label>
-                    <select
-                      value={formDureeHeures}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value, 10);
-                        setFormDureeHeures(val);
-                        // Calcul heure de fin approximative
-                        const [h, m] = formHeureDebut.split(':').map(Number);
-                        const endH = (h + val) % 24;
-                        setFormHeureFin(`${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
-                      }}
-                      className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((nb) => (
-                        <option key={nb} value={nb}>
-                          {nb} heure{nb > 1 ? 's' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-600 mb-1">Heure de fin estimée</label>
-                    <input
-                      type="time"
-                      value={formHeureFin}
-                      onChange={(e) => setFormHeureFin(e.target.value)}
-                      className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
-                    />
+
+                  <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
+                    <span>
+                      Durée totale : <strong>{formDureeHeures}h {formDureeMinutes > 0 ? `${formDureeMinutes}min` : ''}</strong> • De <strong>{formHeureDebut}</strong> à <strong>{formHeureFin}</strong>
+                    </span>
+                    <span className="font-mono text-amber-800 font-bold">
+                      Calcul en temps réel des minutes restantes activé
+                    </span>
                   </div>
                 </div>
               )}
@@ -922,8 +1219,70 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
               {activeSubTab === 'confirmees' && <strong className="text-blue-900 font-bold">Réservations confirmées &amp; en cours</strong>}
               {activeSubTab === 'toutes' && <strong className="text-stone-900 font-bold">Toutes les réservations enregistrées</strong>}
             </div>
-            <span className="font-mono font-bold">{filteredReservations.length} résultat(s)</span>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-mono text-stone-500 bg-white/70 px-2 py-0.5 rounded border border-stone-200">
+                Horloge : {currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+              <span className="font-mono font-bold">{filteredReservations.length} résultat(s)</span>
+            </div>
           </div>
+
+          {/* Widget Décompte en direct des Chambres Actuellement Occupées */}
+          {(() => {
+            const activeStays = reservations.filter(
+              (r) => r.statutReservation === 'confirmee' || r.statutReservation === 'en_cours'
+            );
+            if (activeStays.length === 0) return null;
+            return (
+              <div className="p-3.5 bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 text-stone-200 border-b border-stone-800">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
+                      Chronomètre des Chambres Actives ({activeStays.length})
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-stone-400">
+                    Décompte automatique en minutes (nuitées) et jours (séjours)
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {activeStays.map((st) => {
+                    const tInfo = getRemainingTimeInfo(st);
+                    return (
+                      <div
+                        key={st.id}
+                        className="bg-stone-950/80 border border-stone-800 hover:border-amber-500/50 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs transition-all shadow-sm"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-amber-400 text-xs">
+                              Ch. {st.chambreNumero}
+                            </span>
+                            <span className="text-stone-300 truncate text-[11px] font-medium" title={st.clientNom}>
+                              {st.clientNom}
+                            </span>
+                          </div>
+                          <div className={`mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border ${tInfo.badgeColor}`}>
+                            <Clock className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">{tInfo.label}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => updateReservationStatus(st.id, 'terminee')}
+                          className="shrink-0 p-1.5 rounded-lg bg-stone-800 hover:bg-emerald-700 text-stone-300 hover:text-white transition-all cursor-pointer"
+                          title="Effectuer le check-out de cette chambre"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Tableau des réservations */}
           {filteredReservations.length === 0 ? (
@@ -1002,25 +1361,48 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                         </span>
                       </td>
 
-                      {/* Créneau / Dates */}
+                      {/* Créneau / Dates & Décompte (Minutes pour nuitées, Jours pour séjours) */}
                       <td className="py-3.5 px-4">
-                        {res.typeReservation === 'nuit' ? (
-                          <div>
-                            <div className="font-medium text-stone-900 text-xs">
-                              {res.dateDebut} → {res.dateFin}
+                        {(() => {
+                          const remainingInfo = getRemainingTimeInfo(res);
+                          return (
+                            <div>
+                              {res.typeReservation === 'nuit' ? (
+                                <div>
+                                  <div className="font-medium text-stone-900 text-xs flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-stone-400" />
+                                    <span>{res.dateDebut} → {res.dateFin}</span>
+                                  </div>
+                                  <div className="text-[11px] text-stone-500 font-mono flex items-center gap-1 mt-0.5">
+                                    <span>{res.nbNuits || 1} nuit(s)</span>
+                                    <span>•</span>
+                                    <span>{res.heureDebut || '14:00'} → {res.heureFin || '11:00'}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="font-medium text-stone-900 text-xs flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-stone-400" />
+                                    <span>{res.dateDebut}</span>
+                                  </div>
+                                  <div className="text-[11px] text-stone-500 font-mono flex items-center gap-1 mt-0.5">
+                                    <span>{res.heureDebut || '14:00'} - {res.heureFin || '17:00'}</span>
+                                    <span>({res.dureeHeures || 1}h{res.dureeMinutes ? ` ${res.dureeMinutes}m` : ''})</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Badge Décompte Dynamique Temps Réel */}
+                              <div
+                                className={`mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] border ${remainingInfo.badgeColor}`}
+                                title={remainingInfo.sublabel}
+                              >
+                                <Clock className="w-3 h-3 shrink-0" />
+                                <span>{remainingInfo.label}</span>
+                              </div>
                             </div>
-                            <span className="text-[11px] text-stone-500 font-mono">
-                              {res.nbNuits || 1} nuit(s)
-                            </span>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="font-medium text-stone-900 text-xs">{res.dateDebut}</div>
-                            <span className="text-[11px] text-stone-500 font-mono">
-                              {res.heureDebut || '14:00'} - {res.heureFin || '17:00'} ({res.dureeHeures || 3}h)
-                            </span>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </td>
 
                       {/* Paiement */}

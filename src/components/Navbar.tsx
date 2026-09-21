@@ -39,12 +39,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-base tracking-tight text-white">Hôtel DB &amp; UX Architect</span>
+                <span className="font-bold text-base tracking-tight text-white">Gestion d'Hôtel - Maison Meublées et services</span>
                 <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                   Anti-Surbooking
                 </span>
               </div>
-              <p className="text-xs text-slate-400">PostgreSQL GiST • Expérience Client Nuitée &amp; Heure</p>
+              <p className="text-xs text-slate-400">PMS Hotelia • Réservations Nuitées &amp; Heures, Point de Vente POS &amp; Facturation</p>
             </div>
           </div>
 

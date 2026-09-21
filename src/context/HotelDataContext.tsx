@@ -10,6 +10,7 @@ import {
   PaymentMethod,
   ReservationItem,
   ReservationStatus,
+  PaymentStatus,
   PaiementPartiel,
   UserRole,
   ThermalPrinterConfig,
@@ -24,7 +25,12 @@ import {
   MouvementStock,
   BonAchat,
   FactureGlobaleData,
-  OrderStatus
+  OrderStatus,
+  RestaurantTable,
+  RestaurantMenuItem,
+  RestaurantReservation,
+  RestaurantOrder,
+  RestaurantOrderItem
 } from '../types.ts';
 import {
   INITIAL_ROOM_TYPES,
@@ -47,6 +53,12 @@ import {
   INITIAL_SERVICE_ORDERS,
   INITIAL_POS_SALES
 } from '../data/mockServicesAndStockData.ts';
+import {
+  INITIAL_RESTAURANT_TABLES,
+  INITIAL_RESTAURANT_MENU,
+  INITIAL_RESTAURANT_RESERVATIONS,
+  INITIAL_RESTAURANT_ORDERS
+} from '../data/mockRestaurantData.ts';
 import { playLuxuryBellSound, playAlertChime } from '../utils/soundNotification.ts';
 
 interface HotelDataContextType {
@@ -163,6 +175,41 @@ interface HotelDataContextType {
 
   // 12. Facture Globale Consolidée
   generateGlobalInvoice: (reservationId?: string, chambreNumero?: string) => FactureGlobaleData | null;
+
+  // 13. Module Restaurant & POS Restaurant
+  restaurantTables: RestaurantTable[];
+  addRestaurantTable: (table: Omit<RestaurantTable, 'id'>) => void;
+  updateRestaurantTable: (id: string, updated: Partial<RestaurantTable>) => void;
+  deleteRestaurantTable: (id: string) => void;
+
+  restaurantMenuItems: RestaurantMenuItem[];
+  addRestaurantMenuItem: (item: Omit<RestaurantMenuItem, 'id'>) => void;
+  updateRestaurantMenuItem: (id: string, updated: Partial<RestaurantMenuItem>) => void;
+  deleteRestaurantMenuItem: (id: string) => void;
+
+  restaurantReservations: RestaurantReservation[];
+  addRestaurantReservation: (res: Omit<RestaurantReservation, 'id' | 'reference' | 'dateCreation'>) => RestaurantReservation;
+  updateRestaurantReservationStatus: (id: string, status: RestaurantReservation['statut'], tableNumero?: string) => void;
+  validerAcompteRestaurantReservation: (
+    id: string,
+    montant: number,
+    modePaiement: PaymentMethod | string,
+    reference?: string,
+    note?: string
+  ) => void;
+  deleteRestaurantReservation: (id: string) => void;
+
+  restaurantOrders: RestaurantOrder[];
+  addRestaurantOrder: (order: Omit<RestaurantOrder, 'id' | 'numeroCommande'>) => RestaurantOrder;
+  updateRestaurantOrder: (id: string, updated: Partial<RestaurantOrder>) => void;
+  closeRestaurantOrder: (
+    id: string,
+    modePaiement: PaymentMethod | 'Note sur Chambre',
+    chambreNumero?: string,
+    montantVerse?: number,
+    monnaieRendue?: number
+  ) => void;
+  deleteRestaurantOrder: (id: string) => void;
 }
 
 const HotelDataContext = createContext<HotelDataContextType | undefined>(undefined);
@@ -234,9 +281,15 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const saved = localStorage.getItem('hotelia_user_profiles');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure default caisse exists if missing in saved cache
+        // Ensure default caisse and restaurant users exist if missing in saved cache
         if (!parsed.caisse) {
           parsed.caisse = INITIAL_USER_PROFILES.caisse;
+        }
+        if (!parsed.admin_restaurant) {
+          parsed.admin_restaurant = INITIAL_USER_PROFILES.admin_restaurant;
+        }
+        if (!parsed.caisse_restaurant) {
+          parsed.caisse_restaurant = INITIAL_USER_PROFILES.caisse_restaurant;
         }
         return parsed;
       }
@@ -388,6 +441,12 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } else if (keyOrRole === 'Caisse' || keyOrRole === 'Caissier') {
       const caisseUser = profilesList.find(([, u]) => u.role === 'Caisse');
       setActiveProfileKey(caisseUser ? caisseUser[0] : 'caisse');
+    } else if (keyOrRole === 'Directeur Restaurant' || keyOrRole === 'Admin Restaurant') {
+      const restAdmin = profilesList.find(([, u]) => u.role === 'Directeur Restaurant');
+      setActiveProfileKey(restAdmin ? restAdmin[0] : 'admin_restaurant');
+    } else if (keyOrRole === 'Caisse Restaurant') {
+      const restCaisse = profilesList.find(([, u]) => u.role === 'Caisse Restaurant');
+      setActiveProfileKey(restCaisse ? restCaisse[0] : 'caisse_restaurant');
     }
   };
 
@@ -1409,6 +1468,325 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   };
 
+  // --- 13. Module Restaurant & POS Restaurant ---
+  const [restaurantTables, setRestaurantTables] = useState<RestaurantTable[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_restaurant_tables');
+      return saved ? JSON.parse(saved) : INITIAL_RESTAURANT_TABLES;
+    } catch {
+      return INITIAL_RESTAURANT_TABLES;
+    }
+  });
+
+  const [restaurantMenuItems, setRestaurantMenuItems] = useState<RestaurantMenuItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_restaurant_menu');
+      if (saved) {
+        const parsed: RestaurantMenuItem[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // S'assurer que chaque item possède une image valide
+          return parsed.map((item) => {
+            const initial = INITIAL_RESTAURANT_MENU.find((init) => init.id === item.id || init.nom.toLowerCase() === item.nom.toLowerCase());
+            return {
+              ...item,
+              imageUrl: item.imageUrl || initial?.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80',
+              tempsPreparationMin: item.tempsPreparationMin || initial?.tempsPreparationMin || 20,
+              disponible: item.disponible !== undefined ? item.disponible : true
+            };
+          });
+        }
+      }
+      return INITIAL_RESTAURANT_MENU;
+    } catch {
+      return INITIAL_RESTAURANT_MENU;
+    }
+  });
+
+  const [restaurantReservations, setRestaurantReservations] = useState<RestaurantReservation[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_restaurant_reservations');
+      return saved ? JSON.parse(saved) : INITIAL_RESTAURANT_RESERVATIONS;
+    } catch {
+      return INITIAL_RESTAURANT_RESERVATIONS;
+    }
+  });
+
+  const [restaurantOrders, setRestaurantOrders] = useState<RestaurantOrder[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_restaurant_orders');
+      return saved ? JSON.parse(saved) : INITIAL_RESTAURANT_ORDERS;
+    } catch {
+      return INITIAL_RESTAURANT_ORDERS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_restaurant_tables', JSON.stringify(restaurantTables));
+  }, [restaurantTables]);
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_restaurant_menu', JSON.stringify(restaurantMenuItems));
+  }, [restaurantMenuItems]);
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_restaurant_reservations', JSON.stringify(restaurantReservations));
+  }, [restaurantReservations]);
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_restaurant_orders', JSON.stringify(restaurantOrders));
+  }, [restaurantOrders]);
+
+  const addRestaurantTable = (newTable: Omit<RestaurantTable, 'id'>) => {
+    const tableId = `tbl-${Date.now()}`;
+    setRestaurantTables((prev) => [...prev, { ...newTable, id: tableId }]);
+  };
+
+  const updateRestaurantTable = (id: string, updated: Partial<RestaurantTable>) => {
+    setRestaurantTables((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
+    );
+  };
+
+  const deleteRestaurantTable = (id: string) => {
+    setRestaurantTables((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const addRestaurantMenuItem = (newItem: Omit<RestaurantMenuItem, 'id'>) => {
+    const itemId = `menu-${Date.now()}`;
+    setRestaurantMenuItems((prev) => [...prev, { ...newItem, id: itemId }]);
+  };
+
+  const updateRestaurantMenuItem = (id: string, updated: Partial<RestaurantMenuItem>) => {
+    setRestaurantMenuItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updated } : item))
+    );
+  };
+
+  const deleteRestaurantMenuItem = (id: string) => {
+    setRestaurantMenuItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const addRestaurantReservation = (
+    res: Omit<RestaurantReservation, 'id' | 'reference' | 'dateCreation'>
+  ): RestaurantReservation => {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const reference = `REST-${new Date().getFullYear()}-${randomSuffix}`;
+    const now = new Date();
+    const dateCreation = `${now.toISOString().split('T')[0]} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newReservation: RestaurantReservation = {
+      ...res,
+      id: `res-rest-${Date.now()}`,
+      reference,
+      dateCreation
+    };
+
+    setRestaurantReservations((prev) => [newReservation, ...prev]);
+
+    // Son de notification & ajout au centre de notification
+    if (soundEnabled) {
+      playLuxuryBellSound();
+    }
+    const notif = {
+      id: `notif-rest-${Date.now()}`,
+      titre: '🍽️ Nouvelle Réservation Restaurant !',
+      message: `${newReservation.clientNom} a réservé pour ${newReservation.nbCouverts} couvert(s) (${newReservation.service}) le ${newReservation.date} à ${newReservation.heure}. Réf: ${newReservation.reference}`,
+      type: 'reservation' as const,
+      timestamp: dateCreation,
+      lu: false,
+      reservationId: newReservation.id
+    };
+    setNotifications((prev) => [notif, ...prev]);
+
+    return newReservation;
+  };
+
+  const updateRestaurantReservationStatus = (
+    id: string,
+    status: RestaurantReservation['statut'],
+    tableNumero?: string
+  ) => {
+    setRestaurantReservations((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          return {
+            ...r,
+            statut: status,
+            tableNumero: tableNumero !== undefined ? tableNumero : r.tableNumero
+          };
+        }
+        return r;
+      })
+    );
+
+    // Si installée sur une table, mettre la table en statut occupée
+    if (status === 'installee' && tableNumero) {
+      const foundRes = restaurantReservations.find((r) => r.id === id);
+      setRestaurantTables((prev) =>
+        prev.map((t) =>
+          t.numero === tableNumero
+            ? { ...t, statut: 'occupee', clientNom: foundRes?.clientNom || t.clientNom }
+            : t
+        )
+      );
+    }
+  };
+
+  const deleteRestaurantReservation = (id: string) => {
+    setRestaurantReservations((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const validerAcompteRestaurantReservation = (
+    id: string,
+    montant: number,
+    modePaiement: PaymentMethod | string,
+    reference?: string,
+    note?: string
+  ) => {
+    const res = restaurantReservations.find((r) => r.id === id);
+    if (!res) return;
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const heureStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newAcompte = (res.acompteVerse || 0) + montant;
+    const refAcompte = reference?.trim() || `ACPT-REST-${Date.now().toString().slice(-6)}`;
+
+    setRestaurantReservations((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              acompteVerse: newAcompte,
+              statutPaiement: 'acompte',
+              modePaiementAcompte: modePaiement,
+              referenceAcompte: refAcompte,
+              dateAcompte: `${dateStr} ${heureStr}`,
+              notes: note ? (r.notes ? `${r.notes} • Acompte validé (${montant} CFA via ${modePaiement} - ${note})` : `Acompte validé (${montant} CFA via ${modePaiement} - ${note})`) : r.notes
+            }
+          : r
+      )
+    );
+
+    // Enregistrer le revenu financier correspondant
+    addRevenue({
+      date: dateStr,
+      clientNom: res.clientNom,
+      chambreNumero: `Table ${res.tableNumero || 'Réservée'} (${res.reference})`,
+      typeReservation: 'heure',
+      modePaiement: (modePaiement as PaymentMethod) || 'Espèces / Caisse',
+      montant,
+      statut: 'paye'
+    });
+
+    if (soundEnabled) {
+      playLuxuryBellSound();
+    }
+  };
+
+  const addRestaurantOrder = (
+    order: Omit<RestaurantOrder, 'id' | 'numeroCommande'>
+  ): RestaurantOrder => {
+    const randomNum = Math.floor(100 + Math.random() * 900);
+    const numeroCommande = `CMD-REST-${randomNum}`;
+    const created: RestaurantOrder = {
+      ...order,
+      id: `cmd-rest-${Date.now()}`,
+      numeroCommande
+    };
+
+    setRestaurantOrders((prev) => [created, ...prev]);
+
+    // Mettre à jour la table associée
+    if (created.tableNumero) {
+      setRestaurantTables((prev) =>
+        prev.map((t) =>
+          t.numero === created.tableNumero
+            ? {
+                ...t,
+                statut: 'occupee',
+                activeOrderId: created.id,
+                clientNom: created.clientNom,
+                chambreNumero: created.chambreNumero
+              }
+            : t
+        )
+      );
+    }
+
+    // Alerte sonore pour la cuisine
+    if (soundEnabled) {
+      playAlertChime();
+    }
+
+    return created;
+  };
+
+  const updateRestaurantOrder = (id: string, updated: Partial<RestaurantOrder>) => {
+    setRestaurantOrders((prev) =>
+      prev.map((ord) => (ord.id === id ? { ...ord, ...updated } : ord))
+    );
+  };
+
+  const closeRestaurantOrder = (
+    id: string,
+    modePaiement: PaymentMethod | 'Note sur Chambre',
+    chambreNumero?: string,
+    montantVerse?: number,
+    monnaieRendue?: number
+  ) => {
+    const order = restaurantOrders.find((o) => o.id === id);
+    if (!order) return;
+
+    setRestaurantOrders((prev) =>
+      prev.map((o) =>
+        o.id === id
+          ? {
+              ...o,
+              statutPaiement: 'paye' as PaymentStatus,
+              statutAddition: 'payee' as const,
+              modePaiement,
+              chambreNumero: chambreNumero || o.chambreNumero,
+              montantVerse: montantVerse !== undefined ? montantVerse : o.montantVerse,
+              monnaieRendue: monnaieRendue !== undefined ? monnaieRendue : o.monnaieRendue
+            }
+          : o
+      )
+    );
+
+    // Libérer la table
+    if (order.tableNumero) {
+      setRestaurantTables((prev) =>
+        prev.map((t) =>
+          t.numero === order.tableNumero
+            ? {
+                ...t,
+                statut: 'libre',
+                activeOrderId: undefined,
+                clientNom: undefined,
+                chambreNumero: undefined,
+                heureArrivee: undefined
+              }
+            : t
+        )
+      );
+    }
+
+    // Ajouter aux revenus
+    const newRev = {
+      id: `rev-rest-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      source: 'restaurant' as const,
+      categorie: 'Restaurant & Bar',
+      montant: order.totalNet,
+      description: `Règlement commande ${order.numeroCommande} (${order.tableNumero}) - ${modePaiement}`
+    };
+    setRevenues((prev) => [newRev, ...prev]);
+  };
+
+  const deleteRestaurantOrder = (id: string) => {
+    setRestaurantOrders((prev) => prev.filter((o) => o.id !== id));
+  };
+
   return (
     <HotelDataContext.Provider
       value={{
@@ -1494,7 +1872,26 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addBonAchat,
         receptionnerBonAchat,
         // 12. Facture Globale
-        generateGlobalInvoice
+        generateGlobalInvoice,
+        // 13. Module Restaurant & POS Restaurant
+        restaurantTables,
+        addRestaurantTable,
+        updateRestaurantTable,
+        deleteRestaurantTable,
+        restaurantMenuItems,
+        addRestaurantMenuItem,
+        updateRestaurantMenuItem,
+        deleteRestaurantMenuItem,
+        restaurantReservations,
+        addRestaurantReservation,
+        updateRestaurantReservationStatus,
+        validerAcompteRestaurantReservation,
+        deleteRestaurantReservation,
+        restaurantOrders,
+        addRestaurantOrder,
+        updateRestaurantOrder,
+        closeRestaurantOrder,
+        deleteRestaurantOrder
       }}
     >
       {children}

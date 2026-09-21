@@ -180,6 +180,32 @@ export const INITIAL_USER_PROFILES: Record<string, UserProfile> = {
     status: 'actif',
     dateCreation: '2026-09-01',
     permissions: ['reservations', 'encaissements', 'facturation']
+  },
+  admin_restaurant: {
+    id: 'usr-restaurant-admin',
+    nom: 'Chef Jean-Luc Gnahoua',
+    username: 'admin_restaurant',
+    role: 'Directeur Restaurant',
+    email: 'restaurant.admin@hotelia.dekouassiholding.com',
+    telephone: '+225 07 55 44 33 22',
+    photoUrl: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=400&q=80',
+    password: '••••••••',
+    status: 'actif',
+    dateCreation: '2026-09-05',
+    permissions: ['restaurant', 'pos_restaurant', 'tables', 'carte_menu', 'reservations_restaurant', 'encaissements_restaurant']
+  },
+  caisse_restaurant: {
+    id: 'usr-restaurant-caisse',
+    nom: 'Aïcha Traoré',
+    username: 'caisse_restaurant',
+    role: 'Caisse Restaurant',
+    email: 'caisse.restaurant@hotelia.dekouassiholding.com',
+    telephone: '+225 05 66 77 88 99',
+    photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    password: '••••••••',
+    status: 'actif',
+    dateCreation: '2026-09-10',
+    permissions: ['pos_restaurant', 'tables', 'reservations_restaurant', 'encaissements_restaurant']
   }
 };
 

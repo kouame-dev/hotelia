@@ -26,6 +26,7 @@ import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { PaidService, ServiceCategory, ServiceOrder, PaymentMethod } from '../../types.ts';
 import { ServiceOrderModal } from './ServiceOrderModal.tsx';
+import { ImageUploadField } from '../common/ImageUploadField.tsx';
 
 export const PaidServicesTab: React.FC = () => {
   const {
@@ -633,9 +634,10 @@ export const PaidServicesTab: React.FC = () => {
 
       {/* MODAL : AJOUT / MODIFICATION DE SERVICE PAYANT */}
       {isServiceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="bg-[#1C1B18] border border-stone-700 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-5 border-b border-stone-800 flex items-center justify-between bg-stone-900/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs">
+          <div className="bg-[#1C1B18] border border-stone-700 rounded-3xl w-full max-w-lg max-h-[88vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            {/* En-tête fixe toujours visible */}
+            <div className="p-4 sm:p-5 border-b border-stone-800 flex items-center justify-between bg-stone-900/90 shrink-0">
               <div className="flex items-center gap-2.5">
                 <span className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880]">
                   <Sparkles className="w-4 h-4" />
@@ -648,138 +650,127 @@ export const PaidServicesTab: React.FC = () => {
                 type="button"
                 onClick={() => setIsServiceModalOpen(false)}
                 className="p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition-colors cursor-pointer"
+                title="Fermer la fenêtre"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveService} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-300 mb-1">
-                  Nom du Service Payant *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Petit Déjeuner Continental VIP, Blanchisserie, Navette..."
-                  value={formNom}
-                  onChange={(e) => setFormNom(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-[#C5A880]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSaveService} className="flex flex-col flex-1 overflow-hidden">
+              {/* Corps du formulaire scrollable */}
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
                 <div>
                   <label className="block text-xs font-semibold text-stone-300 mb-1">
-                    Prix (en {settings.currency}) *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="0.5"
-                    required
-                    value={formPrix}
-                    onChange={(e) => setFormPrix(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm font-mono text-amber-400 focus:outline-none focus:border-[#C5A880]"
-                  />
-                  <span className="text-[10px] text-stone-500 mt-1 block">
-                    Équivalent : ~{formatPrice(formPrix)}
-                  </span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-300 mb-1">
-                    Unité de Facturation
+                    Nom du Service Payant *
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: par personne, par heure, par pièce..."
-                    value={formUnite}
-                    onChange={(e) => setFormUnite(e.target.value)}
+                    required
+                    placeholder="Ex: Petit Déjeuner Continental VIP, Blanchisserie, Navette..."
+                    value={formNom}
+                    onChange={(e) => setFormNom(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-[#C5A880]"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-300 mb-1">
-                  Catégorie de Prestation *
-                </label>
-                <select
-                  value={formCategorie}
-                  onChange={(e) => setFormCategorie(e.target.value as ServiceCategory)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-[#C5A880] cursor-pointer"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">
+                      Prix (en {settings.currency}) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      required
+                      value={formPrix}
+                      onChange={(e) => setFormPrix(Number(e.target.value))}
+                      className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm font-mono text-amber-400 focus:outline-none focus:border-[#C5A880]"
+                    />
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      Équivalent : ~{formatPrice(formPrix)}
+                    </span>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-300 mb-1">
-                  URL de l'image d'illustration
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={formImageUrl}
-                  onChange={(e) => setFormImageUrl(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-[#C5A880]"
-                />
-                {formImageUrl && (
-                  <div className="mt-2 relative w-full h-28 rounded-xl overflow-hidden bg-stone-950 border border-stone-800">
-                    <img
-                      src={formImageUrl}
-                      alt="Aperçu du service"
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-300 mb-1">
+                      Unité de Facturation
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: par personne, par heure, par pièce..."
+                      value={formUnite}
+                      onChange={(e) => setFormUnite(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-[#C5A880]"
                     />
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-300 mb-1">
-                  Description détaillée
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Détails de la prestation, horaires, ce qui est inclus..."
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-[#C5A880]"
+                <div>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1">
+                    Catégorie de Prestation *
+                  </label>
+                  <select
+                    value={formCategorie}
+                    onChange={(e) => setFormCategorie(e.target.value as ServiceCategory)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white focus:outline-none focus:border-[#C5A880] cursor-pointer"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <ImageUploadField
+                  label="Image d'illustration du Service (Téléverser ou modifier)"
+                  value={formImageUrl}
+                  onChange={setFormImageUrl}
+                  placeholderText="Téléversez un visuel pour la carte du service (PNG, JPG, WebP)"
                 />
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-300 mb-1">
+                    Description détaillée
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Détails de la prestation, horaires, ce qui est inclus..."
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-stone-900 border border-stone-700 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-[#C5A880]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <input
+                    type="checkbox"
+                    id="serviceActif"
+                    checked={formActif}
+                    onChange={(e) => setFormActif(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#C5A880] focus:ring-0 cursor-pointer"
+                  />
+                  <label htmlFor="serviceActif" className="text-xs text-stone-300 font-medium cursor-pointer">
+                    Service disponible et actif immédiatement à la commande
+                  </label>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
-                <input
-                  type="checkbox"
-                  id="serviceActif"
-                  checked={formActif}
-                  onChange={(e) => setFormActif(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#C5A880] focus:ring-0 cursor-pointer"
-                />
-                <label htmlFor="serviceActif" className="text-xs text-stone-300 font-medium cursor-pointer">
-                  Service disponible et actif immédiatement à la commande
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-800">
+              {/* Barre d'action fixe toujours visible en bas */}
+              <div className="p-4 bg-stone-900/95 border-t border-stone-800 flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsServiceModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#C5A880] hover:bg-[#b0936b] text-stone-950 text-xs font-bold shadow-lg shadow-[#C5A880]/20 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b0936b] text-stone-950 text-xs font-bold shadow-lg shadow-[#C5A880]/20 cursor-pointer"
                 >
-                  {editingService ? 'Mettre à jour' : 'Enregistrer le Service'}
+                  {editingService ? 'Mettre à jour le Service' : 'Enregistrer le Service'}
                 </button>
               </div>
             </form>

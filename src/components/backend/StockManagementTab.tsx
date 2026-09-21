@@ -33,6 +33,7 @@ import {
   BonAchat,
   PaymentMethod
 } from '../../types.ts';
+import { ImageUploadField } from '../common/ImageUploadField.tsx';
 
 type StockSubTab = 'articles' | 'entrepots' | 'fournisseurs' | 'achats' | 'rapports';
 
@@ -118,6 +119,7 @@ export const StockManagementTab: React.FC = () => {
   const [artPrixVente, setArtPrixVente] = useState<number>(10);
   const [artUnite, setArtUnite] = useState('bouteille');
   const [artFournisseurId, setArtFournisseurId] = useState('');
+  const [artImageUrl, setArtImageUrl] = useState('');
 
   // Filtered stock items
   const filteredStock = stockItems.filter((item) => {
@@ -150,6 +152,7 @@ export const StockManagementTab: React.FC = () => {
     setArtPrixVente(12);
     setArtUnite('unité');
     setArtFournisseurId(fournisseurs[0]?.id || '');
+    setArtImageUrl('');
     setIsArticleModalOpen(true);
   };
 
@@ -165,6 +168,7 @@ export const StockManagementTab: React.FC = () => {
     setArtPrixVente(item.prixVenteUnitaire || item.prixAchatUnitaire * 1.5);
     setArtUnite(item.unite);
     setArtFournisseurId(item.fournisseurId || '');
+    setArtImageUrl(item.imageUrl || '');
     setIsArticleModalOpen(true);
   };
 
@@ -186,7 +190,8 @@ export const StockManagementTab: React.FC = () => {
         prixVenteUnitaire: Number(artPrixVente),
         unite: artUnite.trim(),
         fournisseurId: artFournisseurId,
-        fournisseurNom: fourn?.nom || ''
+        fournisseurNom: fourn?.nom || '',
+        imageUrl: artImageUrl.trim() || undefined
       });
     } else {
       addStockItem({
@@ -202,6 +207,7 @@ export const StockManagementTab: React.FC = () => {
         unite: artUnite.trim(),
         fournisseurId: artFournisseurId,
         fournisseurNom: fourn?.nom || '',
+        imageUrl: artImageUrl.trim() || undefined,
         dernierReassort: new Date().toISOString().split('T')[0]
       });
     }
@@ -548,9 +554,25 @@ export const StockManagementTab: React.FC = () => {
                   return (
                     <tr key={stk.id} className="hover:bg-stone-800/40 transition-colors">
                       <td className="p-3">
-                        <div className="font-mono font-bold text-[#C5A880] text-[11px]">{stk.code}</div>
-                        <div className="font-semibold text-white mt-0.5">{stk.designation}</div>
-                        <div className="text-[10px] text-stone-500 font-mono">Unité: {stk.unite}</div>
+                        <div className="flex items-center gap-3">
+                          {stk.imageUrl ? (
+                            <img
+                              src={stk.imageUrl}
+                              alt={stk.designation}
+                              className="w-10 h-10 rounded-xl object-cover shrink-0 border border-stone-700/80 shadow-xs"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-stone-800/80 border border-stone-700/50 flex items-center justify-center shrink-0 text-stone-500">
+                              <Boxes className="w-4 h-4 text-stone-400" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-mono font-bold text-[#C5A880] text-[11px]">{stk.code}</div>
+                            <div className="font-semibold text-white mt-0.5 truncate">{stk.designation}</div>
+                            <div className="text-[10px] text-stone-500 font-mono">Unité: {stk.unite}</div>
+                          </div>
+                        </div>
                       </td>
                       <td className="p-3">
                         <span className="px-2 py-0.5 rounded-lg bg-stone-800 border border-stone-700/60 text-[10px]">
@@ -1240,6 +1262,14 @@ export const StockManagementTab: React.FC = () => {
                   ))}
                 </select>
               </div>
+
+              {/* Champ Upload & Modification Image */}
+              <ImageUploadField
+                value={artImageUrl}
+                onChange={setArtImageUrl}
+                label="Image / Photo de l'article"
+                placeholder="https://... ou téléverser depuis votre appareil"
+              />
 
               <div className="flex justify-end gap-2 pt-3 border-t border-stone-800">
                 <button

@@ -26,7 +26,8 @@ import {
   DollarSign,
   Info,
   ShieldAlert,
-  FileText
+  FileText,
+  Utensils
 } from 'lucide-react';
 
 export interface RoomItem {
@@ -110,9 +111,10 @@ export const HOTELIA_ROOMS: RoomItem[] = [
 
 interface HoteliaFrontEndProps {
   onGoToBackend: () => void;
+  onGoToRestaurant?: () => void;
 }
 
-export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend }) => {
+export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend, onGoToRestaurant }) => {
   const { settings, formatPrice, updateSettings } = useHotelSettings();
   const [filterMode, setFilterMode] = useState<'all' | 'nuitee' | 'heures'>('all');
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -211,10 +213,20 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend 
           </div>
 
           {/* Navigation Links Desktop */}
-          <nav className="hidden md:flex items-center space-x-8 text-xs font-medium text-stone-300 uppercase tracking-wider">
+          <nav className="hidden md:flex items-center space-x-7 text-xs font-medium text-stone-300 uppercase tracking-wider">
             <a href="#chambres" className="hover:text-[#C5A880] transition-colors">
               Chambres &amp; Suites
             </a>
+            {onGoToRestaurant && (
+              <button
+                type="button"
+                onClick={onGoToRestaurant}
+                className="text-[#C5A880] hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 font-bold uppercase tracking-wider bg-[#C5A880]/15 px-3 py-1.5 rounded-lg border border-[#C5A880]/30"
+              >
+                <Utensils className="w-3.5 h-3.5" />
+                <span>Restaurant Le Dekouassi</span>
+              </button>
+            )}
             <a href="#services" className="hover:text-[#C5A880] transition-colors">
               Services &amp; Spa
             </a>
@@ -472,10 +484,20 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend 
               <div className="w-10 h-10 rounded-xl bg-[#C5A880]/20 flex items-center justify-center text-[#C5A880]">
                 <Coffee className="w-5 h-5" />
               </div>
-              <h3 className="font-serif font-bold text-base text-white">Room Service &amp; Carte</h3>
+              <h3 className="font-serif font-bold text-base text-white">Restaurant &amp; Bar Lounge</h3>
               <p className="text-xs text-stone-400 leading-relaxed">
-                Plats raffinés, champagne et boissons fraîches servis directement en chambre 24h/24.
+                Plats raffinés, spécialités ivoiriennes et internationales servies en salle, en terrasse ou en chambre.
               </p>
+              {onGoToRestaurant && (
+                <button
+                  type="button"
+                  onClick={onGoToRestaurant}
+                  className="mt-2 text-xs font-bold text-[#C5A880] hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <span>Réserver une table</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="p-6 rounded-2xl bg-[#2A2925] border border-[#3D3C37] space-y-3">

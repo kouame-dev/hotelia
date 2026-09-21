@@ -13,7 +13,8 @@ import {
   UserCheck,
   CreditCard,
   HelpCircle,
-  ChevronLeft
+  ChevronLeft,
+  Utensils
 } from 'lucide-react';
 
 interface AdminLoginPageProps {
@@ -70,22 +71,36 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      if (roleName.includes('Caisse')) {
-        switchUserRole('Caisse');
+      if (roleName.includes('Caisse Restaurant')) {
+        switchUserRole('caisse_restaurant');
+        onLoginSuccess({
+          nom: 'Aïcha Traoré (Caisse Restaurant)',
+          role: 'Caisse Restaurant',
+          email: userEmail
+        });
+      } else if (roleName.includes('Directeur Restaurant') || roleName.includes('Admin Restaurant')) {
+        switchUserRole('admin_restaurant');
+        onLoginSuccess({
+          nom: 'Chef Jean-Luc Gnahoua (Directeur Restaurant)',
+          role: 'Directeur Restaurant',
+          email: userEmail
+        });
+      } else if (roleName.includes('Caisse')) {
+        switchUserRole('caisse');
         onLoginSuccess({
           nom: 'Mariam Diarra (Caisse)',
           role: 'Caisse',
           email: userEmail
         });
       } else if (roleName.includes('Chef')) {
-        switchUserRole('Chef de Réception');
+        switchUserRole('reception');
         onLoginSuccess({
           nom: 'Aminata Koné (Chef Réception)',
           role: 'Chef de Réception',
           email: userEmail
         });
       } else {
-        switchUserRole('Directeur Général');
+        switchUserRole('directeur');
         onLoginSuccess({
           nom: 'Koua Dibi (Directeur Général)',
           role: 'Directeur Général',
@@ -248,6 +263,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
               Accès Démo Instantané aux Rôles (1 Clic) :
             </span>
 
+            {/* Section Hôtel */}
+            <div className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider flex items-center gap-1.5 pt-1">
+              <Building className="w-3 h-3 text-[#C5A880]" />
+              <span>Hôtellerie &amp; Direction</span>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {/* 1. Directeur Général */}
               <button
@@ -285,7 +305,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                 <div className="text-[10px] text-stone-400 font-mono mt-0.5">Gantt &amp; Chambres</div>
               </button>
 
-              {/* 3. Caisse */}
+              {/* 3. Caisse Hôtel */}
               <button
                 type="button"
                 onClick={() =>
@@ -298,9 +318,52 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
               >
                 <div className="flex items-center gap-1.5 text-[#FF9900] font-bold text-[11px]">
                   <CreditCard className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">Caisse</span>
+                  <span className="truncate">Caisse Hôtel</span>
                 </div>
-                <div className="text-[10px] text-amber-200/80 font-mono mt-0.5">Réservations Seules</div>
+                <div className="text-[10px] text-amber-200/80 font-mono mt-0.5">Encaissements Chambres</div>
+              </button>
+            </div>
+
+            {/* Section Restaurant Dédiée */}
+            <div className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 pt-2">
+              <Utensils className="w-3 h-3 text-emerald-400" />
+              <span>Module Restaurant Dédié</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* 4. Admin Restaurant */}
+              <button
+                type="button"
+                onClick={() =>
+                  handleQuickLogin(
+                    'Chef Jean-Luc Gnahoua (Directeur Restaurant)',
+                    'restaurant.admin@hotelia.dekouassiholding.com'
+                  )
+                }
+                className="p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#34332F] border border-emerald-500/40 text-left transition-all group cursor-pointer hover:border-emerald-500"
+              >
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold text-[11px]">
+                  <Utensils className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  <span className="truncate">Admin Restaurant</span>
+                </div>
+                <div className="text-[10px] text-stone-300 font-mono mt-0.5">Directeur Restaurant / Carte</div>
+              </button>
+
+              {/* 5. Caisse Restaurant */}
+              <button
+                type="button"
+                onClick={() =>
+                  handleQuickLogin(
+                    'Aïcha Traoré (Caisse Restaurant)',
+                    'caisse.restaurant@hotelia.dekouassiholding.com'
+                  )
+                }
+                className="p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#34332F] border border-emerald-500/40 text-left transition-all group cursor-pointer hover:border-emerald-500"
+              >
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold text-[11px]">
+                  <CreditCard className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  <span className="truncate">Caisse Restaurant</span>
+                </div>
+                <div className="text-[10px] text-stone-300 font-mono mt-0.5">Point de Vente &amp; Tables</div>
               </button>
             </div>
           </div>

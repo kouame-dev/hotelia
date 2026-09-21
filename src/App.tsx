@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { HoteliaFrontEnd } from './components/frontend/HoteliaFrontEnd.tsx';
+import { RestaurantReservationPage } from './components/frontend/RestaurantReservationPage.tsx';
 import { AdminLoginPage } from './components/backend/AdminLoginPage.tsx';
 import { AdminBackOffice } from './components/backend/AdminBackOffice.tsx';
 import { Navbar, AppTab } from './components/Navbar.tsx';
@@ -19,10 +20,11 @@ import {
   ExternalLink,
   ChevronRight,
   ShieldCheck,
-  Building
+  Building,
+  Utensils
 } from 'lucide-react';
 
-export type MainAppView = 'frontend' | 'login' | 'backend' | 'dev_tools';
+export type MainAppView = 'frontend' | 'restaurant_booking' | 'login' | 'backend' | 'dev_tools';
 
 export default function App() {
   // Vue active principale : par défaut 'frontend' avec le slider Hotelia
@@ -82,10 +84,24 @@ export default function App() {
               }`}
             >
               <Compass className="w-3.5 h-3.5" />
-              <span>Front-End (Slider)</span>
+              <span>Front-End Hôtel</span>
             </button>
 
-            {/* 2. Mode Connexion Back-End */}
+            {/* 2. Mode Réservation Restaurant (Public Client) */}
+            <button
+              type="button"
+              onClick={() => setAppView('restaurant_booking')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                appView === 'restaurant_booking'
+                  ? 'bg-[#C5A880] text-slate-950 font-bold shadow-sm'
+                  : 'text-stone-300 hover:text-white'
+              }`}
+            >
+              <Utensils className="w-3.5 h-3.5" />
+              <span>Réserver au Restaurant</span>
+            </button>
+
+            {/* 3. Mode Connexion Back-End */}
             <button
               type="button"
               onClick={() => setAppView('login')}
@@ -96,10 +112,10 @@ export default function App() {
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>Page Connexion</span>
+              <span>Connexion Gérant</span>
             </button>
 
-            {/* 3. Mode Back-End Gérant (Gantt & Gestion) */}
+            {/* 4. Mode Back-End Gérant (Gantt, Restaurant & Gestion) */}
             <button
               type="button"
               onClick={() => {
@@ -116,10 +132,10 @@ export default function App() {
               }`}
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Back-End (Gantt)</span>
+              <span>Back-End Admin</span>
             </button>
 
-            {/* 4. Outils SQL & Architecture */}
+            {/* 5. Outils SQL & Architecture */}
             <button
               type="button"
               onClick={() => setAppView('dev_tools')}
@@ -138,7 +154,17 @@ export default function App() {
 
       {/* Rendu dynamique selon le mode actif */}
       {appView === 'frontend' && (
-        <HoteliaFrontEnd onGoToBackend={() => setAppView('login')} />
+        <HoteliaFrontEnd
+          onGoToBackend={() => setAppView('login')}
+          onGoToRestaurant={() => setAppView('restaurant_booking')}
+        />
+      )}
+
+      {appView === 'restaurant_booking' && (
+        <RestaurantReservationPage
+          onBackToHome={() => setAppView('frontend')}
+          onGoToBackend={() => setAppView('login')}
+        />
       )}
 
       {appView === 'login' && (
