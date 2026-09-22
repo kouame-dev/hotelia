@@ -30,7 +30,15 @@ import {
   RestaurantMenuItem,
   RestaurantReservation,
   RestaurantOrder,
-  RestaurantOrderItem
+  RestaurantOrderItem,
+  ClientAccount,
+  ClientPushNotification,
+  ClientSmsMessage,
+  LoyaltyProgramConfig,
+  PromoCoupon,
+  NotificationCampaign,
+  LoyaltyTransaction,
+  LoyaltyTier
 } from '../types.ts';
 import {
   INITIAL_ROOM_TYPES,
@@ -59,6 +67,12 @@ import {
   INITIAL_RESTAURANT_RESERVATIONS,
   INITIAL_RESTAURANT_ORDERS
 } from '../data/mockRestaurantData.ts';
+import {
+  DEFAULT_LOYALTY_CONFIG,
+  INITIAL_CLIENT_ACCOUNTS,
+  INITIAL_PROMO_COUPONS,
+  INITIAL_CAMPAIGNS
+} from '../data/mockClientLoyaltyData.ts';
 import { playLuxuryBellSound, playAlertChime } from '../utils/soundNotification.ts';
 
 interface HotelDataContextType {
@@ -210,6 +224,46 @@ interface HotelDataContextType {
     monnaieRendue?: number
   ) => void;
   deleteRestaurantOrder: (id: string) => void;
+
+  // 14. Espace Client, Fidélité, Codes Promos, Notifications Push & SMS
+  clientAccounts: ClientAccount[];
+  activeClientAccount: ClientAccount | null;
+  setActiveClientAccount: (client: ClientAccount | null) => void;
+  registerClientAccount: (data: {
+    nom: string;
+    email: string;
+    telephone: string;
+    ville?: string;
+    pays?: string;
+    codePin?: string;
+  }) => ClientAccount;
+  loginClientAccount: (identifier: string, pin?: string) => ClientAccount | null;
+  logoutClientAccount: () => void;
+  updateClientAccount: (id: string, updated: Partial<ClientAccount>) => void;
+  deleteClientAccount: (id: string) => void;
+
+  loyaltyConfig: LoyaltyProgramConfig;
+  updateLoyaltyConfig: (updated: Partial<LoyaltyProgramConfig>) => void;
+
+  promoCoupons: PromoCoupon[];
+  addPromoCoupon: (coupon: Omit<PromoCoupon, 'id' | 'nbUtilisationsActuelles'>) => PromoCoupon;
+  updatePromoCoupon: (id: string, updated: Partial<PromoCoupon>) => void;
+  deletePromoCoupon: (id: string) => void;
+  togglePromoCoupon: (id: string) => void;
+
+  campaigns: NotificationCampaign[];
+  sendCampaign: (
+    campaign: Omit<NotificationCampaign, 'id' | 'dateEnvoi' | 'heureEnvoi' | 'nbDestinataires'>
+  ) => NotificationCampaign;
+  markClientNotificationAsRead: (clientId: string, notifId: string) => void;
+  creditLoyaltyPoints: (
+    clientId: string,
+    points: number,
+    motif: string,
+    type?: LoyaltyTransaction['type'],
+    montantFacture?: number
+  ) => void;
+  debitLoyaltyPoints: (clientId: string, points: number, motif: string) => boolean;
 }
 
 const HotelDataContext = createContext<HotelDataContextType | undefined>(undefined);
@@ -1263,15 +1317,18 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     });
 
-    // 2. Enregistrer l'encaissement si paiement immédiat
-    if (fullSale.montantEncaisse > 0) {
+    // Calcul précis du montant net réellement conservé en caisse (excluant la monnaie rendue)
+    const reelEncaisse = Math.min(fullSale.montantEncaisse, fullSale.totalGlobal);
+
+    // 2. Enregistrer l'encaissement net dans le journal des revenus si paiement immédiat
+    if (reelEncaisse > 0) {
       addRevenue({
         date: fullSale.date,
         clientNom: fullSale.clientNom,
         chambreNumero: fullSale.chambreNumero || 'Caisse Directe',
         typeReservation: 'heure',
         modePaiement: fullSale.modePaiement,
-        montant: fullSale.montantEncaisse,
+        montant: reelEncaisse,
         statut: 'paye'
       });
     }
@@ -1787,6 +1844,534 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setRestaurantOrders((prev) => prev.filter((o) => o.id !== id));
   };
 
+  // --- 14. Espace Client, Programme Fidélité, Coupons Promos, Push & SMS ---
+  const [clientAccounts, setClientAccounts] = useState<ClientAccount[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_client_accounts');
+      return saved ? JSON.parse(saved) : INITIAL_CLIENT_ACCOUNTS;
+    } catch {
+      return INITIAL_CLIENT_ACCOUNTS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_client_accounts', JSON.stringify(clientAccounts));
+  }, [clientAccounts]);
+
+  const [activeClientAccount, setActiveClientAccount] = useState<ClientAccount | null>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_active_client_id');
+      if (saved) {
+        const found = clientAccounts.find((c) => c.id === saved);
+        return found || clientAccounts[0] || null;
+      }
+      return clientAccounts[0] || null;
+    } catch {
+      return clientAccounts[0] || null;
+    }
+  });
+
+  useEffect(() => {
+    if (activeClientAccount) {
+      localStorage.setItem('hotelia_active_client_id', activeClientAccount.id);
+    } else {
+      localStorage.removeItem('hotelia_active_client_id');
+    }
+  }, [activeClientAccount]);
+
+  const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyProgramConfig>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_loyalty_config');
+      return saved ? JSON.parse(saved) : DEFAULT_LOYALTY_CONFIG;
+    } catch {
+      return DEFAULT_LOYALTY_CONFIG;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_loyalty_config', JSON.stringify(loyaltyConfig));
+  }, [loyaltyConfig]);
+
+  const [promoCoupons, setPromoCoupons] = useState<PromoCoupon[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_promo_coupons');
+      return saved ? JSON.parse(saved) : INITIAL_PROMO_COUPONS;
+    } catch {
+      return INITIAL_PROMO_COUPONS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_promo_coupons', JSON.stringify(promoCoupons));
+  }, [promoCoupons]);
+
+  const [campaigns, setCampaigns] = useState<NotificationCampaign[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_campaigns');
+      return saved ? JSON.parse(saved) : INITIAL_CAMPAIGNS;
+    } catch {
+      return INITIAL_CAMPAIGNS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_campaigns', JSON.stringify(campaigns));
+  }, [campaigns]);
+
+  // Helper pour calculer le tier de fidélité selon les points
+  const calculateTier = (points: number): LoyaltyTier => {
+    if (points >= loyaltyConfig.pointsSeuilPlatine) return 'Platine';
+    if (points >= loyaltyConfig.pointsSeuilOr) return 'Or';
+    if (points >= loyaltyConfig.pointsSeuilArgent) return 'Argent';
+    return 'Bronze';
+  };
+
+  const registerClientAccount = (data: {
+    nom: string;
+    email: string;
+    telephone: string;
+    ville?: string;
+    pays?: string;
+    codePin?: string;
+  }): ClientAccount => {
+    const id = `client-acc-${Date.now()}`;
+    const today = new Date().toISOString().split('T')[0];
+    const expiry = new Date();
+    expiry.setMonth(expiry.getMonth() + loyaltyConfig.dureeValiditeMois);
+    const dateExpiration = expiry.toISOString().split('T')[0];
+
+    const randomNum = Math.floor(10000 + Math.random() * 90000);
+    const numeroCarte = `HTL-FID-${randomNum}`;
+    const initialPoints = loyaltyConfig.bonusBienvenue;
+    const initialTier = calculateTier(initialPoints);
+
+    const newClient: ClientAccount = {
+      id,
+      nom: data.nom,
+      email: data.email,
+      telephone: data.telephone,
+      ville: data.ville || 'Abidjan',
+      pays: data.pays || 'Côte d’Ivoire',
+      dateInscription: today,
+      codePin: data.codePin || '1234',
+      carteFidelite: {
+        numeroCarte,
+        tier: initialTier,
+        points: initialPoints,
+        pointsHistoriqueTotal: initialPoints,
+        dateEmission: today,
+        dateExpiration,
+        statut: 'active',
+        codeQr: `${numeroCarte}-${data.nom.replace(/\s+/g, '-').toUpperCase()}-${initialPoints}PTS`,
+        transactions: [
+          {
+            id: `tx-${Date.now()}`,
+            date: today,
+            heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            type: 'bonus_bienvenue',
+            points: initialPoints,
+            description: 'Bonus de bienvenue ouverture carte Hotelia Privilège'
+          }
+        ]
+      },
+      notifications: [
+        {
+          id: `notif-${Date.now()}`,
+          titre: 'Bienvenue au Club Privilège Hotelia !',
+          message: `Votre carte ${numeroCarte} est active avec ${initialPoints} points de bienvenue offerts.`,
+          date: today,
+          heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          lue: false,
+          type: 'fidelite'
+        }
+      ],
+      smsMessages: [
+        {
+          id: `sms-${Date.now()}`,
+          destinataireTelephone: data.telephone,
+          destinataireNom: data.nom,
+          expediteur: 'HOTELIA',
+          message: `HOTELIA: Bienvenue ${data.nom} ! Votre carte Privilège ${numeroCarte} est activée avec ${initialPoints} pts offerts.`,
+          date: today,
+          heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          statut: 'delivre'
+        }
+      ]
+    };
+
+    setClientAccounts((prev) => [newClient, ...prev]);
+    setActiveClientAccount(newClient);
+    return newClient;
+  };
+
+  const loginClientAccount = (identifier: string, pin?: string): ClientAccount | null => {
+    const cleanId = identifier.trim().toLowerCase();
+    const found = clientAccounts.find(
+      (c) =>
+        c.email.toLowerCase() === cleanId ||
+        c.telephone.replace(/\s+/g, '') === cleanId.replace(/\s+/g, '') ||
+        c.carteFidelite.numeroCarte.toLowerCase() === cleanId
+    );
+
+    if (found) {
+      if (pin && found.codePin && found.codePin !== pin) {
+        return null;
+      }
+      setActiveClientAccount(found);
+      return found;
+    }
+    return null;
+  };
+
+  const logoutClientAccount = () => {
+    setActiveClientAccount(null);
+  };
+
+  const updateClientAccount = (id: string, updated: Partial<ClientAccount>) => {
+    setClientAccounts((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
+    );
+    if (activeClientAccount && activeClientAccount.id === id) {
+      setActiveClientAccount((prev) => (prev ? { ...prev, ...updated } : null));
+    }
+  };
+
+  const deleteClientAccount = (id: string) => {
+    setClientAccounts((prev) => prev.filter((c) => c.id !== id));
+    if (activeClientAccount && activeClientAccount.id === id) {
+      setActiveClientAccount(null);
+    }
+  };
+
+  const updateLoyaltyConfig = (updated: Partial<LoyaltyProgramConfig>) => {
+    setLoyaltyConfig((prev) => ({ ...prev, ...updated }));
+  };
+
+  const addPromoCoupon = (coupon: Omit<PromoCoupon, 'id' | 'nbUtilisationsActuelles'>): PromoCoupon => {
+    const newCoupon: PromoCoupon = {
+      ...coupon,
+      id: `coupon-${Date.now()}`,
+      code: coupon.code.trim().toUpperCase(),
+      nbUtilisationsActuelles: 0
+    };
+    setPromoCoupons((prev) => [newCoupon, ...prev]);
+    return newCoupon;
+  };
+
+  const updatePromoCoupon = (id: string, updated: Partial<PromoCoupon>) => {
+    setPromoCoupons((prev) =>
+      prev.map((cp) =>
+        cp.id === id
+          ? {
+              ...cp,
+              ...updated,
+              code: updated.code ? updated.code.trim().toUpperCase() : cp.code
+            }
+          : cp
+      )
+    );
+  };
+
+  const deletePromoCoupon = (id: string) => {
+    setPromoCoupons((prev) => prev.filter((cp) => cp.id !== id));
+  };
+
+  const togglePromoCoupon = (id: string) => {
+    setPromoCoupons((prev) =>
+      prev.map((cp) => (cp.id === id ? { ...cp, actif: !cp.actif } : cp))
+    );
+  };
+
+  const sendCampaign = (
+    campaignData: Omit<NotificationCampaign, 'id' | 'dateEnvoi' | 'heureEnvoi' | 'nbDestinataires'>
+  ): NotificationCampaign => {
+    const today = new Date().toISOString().split('T')[0];
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    // Filtrer les clients ciblés
+    const targetClients = clientAccounts.filter((client) => {
+      if (campaignData.cible === 'tous') return true;
+      if (campaignData.cible === 'bronze' && client.carteFidelite.tier === 'Bronze') return true;
+      if (campaignData.cible === 'argent' && client.carteFidelite.tier === 'Argent') return true;
+      if (campaignData.cible === 'or' && client.carteFidelite.tier === 'Or') return true;
+      if (campaignData.cible === 'platine' && client.carteFidelite.tier === 'Platine') return true;
+      return false;
+    });
+
+    const isPush = campaignData.canaux.includes('push');
+    const isSms = campaignData.canaux.includes('sms');
+
+    // Mettre à jour les comptes clients
+    setClientAccounts((prev) =>
+      prev.map((client) => {
+        const matchesTarget = targetClients.some((tc) => tc.id === client.id);
+        if (!matchesTarget) return client;
+
+        let updatedNotifications = [...client.notifications];
+        let updatedSms = [...client.smsMessages];
+
+        if (isPush) {
+          const newPush: ClientPushNotification = {
+            id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            titre: campaignData.titre,
+            message: campaignData.message,
+            date: today,
+            heure: nowTime,
+            lue: false,
+            type: campaignData.couponAssocie ? 'promo' : 'general',
+            couponCode: campaignData.couponAssocie
+          };
+          updatedNotifications = [newPush, ...updatedNotifications];
+        }
+
+        if (isSms) {
+          const newSms: ClientSmsMessage = {
+            id: `sms-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            destinataireTelephone: client.telephone,
+            destinataireNom: client.nom,
+            expediteur: 'HOTELIA',
+            message: `HOTELIA: ${campaignData.message}`,
+            date: today,
+            heure: nowTime,
+            statut: 'delivre',
+            couponCode: campaignData.couponAssocie
+          };
+          updatedSms = [newSms, ...updatedSms];
+        }
+
+        return {
+          ...client,
+          notifications: updatedNotifications,
+          smsMessages: updatedSms
+        };
+      })
+    );
+
+    // Mettre à jour activeClientAccount si concerné
+    if (activeClientAccount && targetClients.some((tc) => tc.id === activeClientAccount.id)) {
+      setActiveClientAccount((prev) => {
+        if (!prev) return null;
+        let nList = [...prev.notifications];
+        let sList = [...prev.smsMessages];
+        if (isPush) {
+          nList = [
+            {
+              id: `notif-cur-${Date.now()}`,
+              titre: campaignData.titre,
+              message: campaignData.message,
+              date: today,
+              heure: nowTime,
+              lue: false,
+              type: campaignData.couponAssocie ? 'promo' : 'general',
+              couponCode: campaignData.couponAssocie
+            },
+            ...nList
+          ];
+        }
+        if (isSms) {
+          sList = [
+            {
+              id: `sms-cur-${Date.now()}`,
+              destinataireTelephone: prev.telephone,
+              destinataireNom: prev.nom,
+              expediteur: 'HOTELIA',
+              message: `HOTELIA: ${campaignData.message}`,
+              date: today,
+              heure: nowTime,
+              statut: 'delivre',
+              couponCode: campaignData.couponAssocie
+            },
+            ...sList
+          ];
+        }
+        return {
+          ...prev,
+          notifications: nList,
+          smsMessages: sList
+        };
+      });
+    }
+
+    const newCampaign: NotificationCampaign = {
+      ...campaignData,
+      id: `camp-${Date.now()}`,
+      dateEnvoi: today,
+      heureEnvoi: nowTime,
+      nbDestinataires: targetClients.length
+    };
+
+    setCampaigns((prev) => [newCampaign, ...prev]);
+
+    // Bip sonore discret pour l'envoi
+    try {
+      playAlertChime();
+    } catch {
+      // Ignorer si audio non disponible
+    }
+
+    return newCampaign;
+  };
+
+  const markClientNotificationAsRead = (clientId: string, notifId: string) => {
+    setClientAccounts((prev) =>
+      prev.map((c) => {
+        if (c.id !== clientId) return c;
+        return {
+          ...c,
+          notifications: c.notifications.map((n) =>
+            n.id === notifId ? { ...n, lue: true } : n
+          )
+        };
+      })
+    );
+    if (activeClientAccount && activeClientAccount.id === clientId) {
+      setActiveClientAccount((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          notifications: prev.notifications.map((n) =>
+            n.id === notifId ? { ...n, lue: true } : n
+          )
+        };
+      });
+    }
+  };
+
+  const creditLoyaltyPoints = (
+    clientId: string,
+    points: number,
+    motif: string,
+    type: LoyaltyTransaction['type'] = 'gain_sejour',
+    montantFacture?: number
+  ) => {
+    const today = new Date().toISOString().split('T')[0];
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    setClientAccounts((prev) =>
+      prev.map((client) => {
+        if (client.id !== clientId) return client;
+
+        const newPoints = client.carteFidelite.points + points;
+        const newTotalHistorique = client.carteFidelite.pointsHistoriqueTotal + points;
+        const newTier = calculateTier(newTotalHistorique);
+
+        const newTx: LoyaltyTransaction = {
+          id: `tx-${Date.now()}`,
+          date: today,
+          heure: nowTime,
+          type,
+          points,
+          description: motif,
+          montantFacture
+        };
+
+        const updatedCard = {
+          ...client.carteFidelite,
+          points: newPoints,
+          pointsHistoriqueTotal: newTotalHistorique,
+          tier: newTier,
+          transactions: [newTx, ...client.carteFidelite.transactions]
+        };
+
+        return {
+          ...client,
+          carteFidelite: updatedCard
+        };
+      })
+    );
+
+    if (activeClientAccount && activeClientAccount.id === clientId) {
+      setActiveClientAccount((prev) => {
+        if (!prev) return null;
+        const newPoints = prev.carteFidelite.points + points;
+        const newTotalHistorique = prev.carteFidelite.pointsHistoriqueTotal + points;
+        const newTier = calculateTier(newTotalHistorique);
+        return {
+          ...prev,
+          carteFidelite: {
+            ...prev.carteFidelite,
+            points: newPoints,
+            pointsHistoriqueTotal: newTotalHistorique,
+            tier: newTier,
+            transactions: [
+              {
+                id: `tx-${Date.now()}`,
+                date: today,
+                heure: nowTime,
+                type,
+                points,
+                description: motif,
+                montantFacture
+              },
+              ...prev.carteFidelite.transactions
+            ]
+          }
+        };
+      });
+    }
+  };
+
+  const debitLoyaltyPoints = (clientId: string, points: number, motif: string): boolean => {
+    const client = clientAccounts.find((c) => c.id === clientId);
+    if (!client || client.carteFidelite.points < points) {
+      return false;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    setClientAccounts((prev) =>
+      prev.map((c) => {
+        if (c.id !== clientId) return c;
+
+        const newPoints = c.carteFidelite.points - points;
+        const newTx: LoyaltyTransaction = {
+          id: `tx-${Date.now()}`,
+          date: today,
+          heure: nowTime,
+          type: 'utilisation',
+          points: -points,
+          description: motif
+        };
+
+        return {
+          ...c,
+          carteFidelite: {
+            ...c.carteFidelite,
+            points: newPoints,
+            transactions: [newTx, ...c.carteFidelite.transactions]
+          }
+        };
+      })
+    );
+
+    if (activeClientAccount && activeClientAccount.id === clientId) {
+      setActiveClientAccount((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          carteFidelite: {
+            ...prev.carteFidelite,
+            points: prev.carteFidelite.points - points,
+            transactions: [
+              {
+                id: `tx-${Date.now()}`,
+                date: today,
+                heure: nowTime,
+                type: 'utilisation',
+                points: -points,
+                description: motif
+              },
+              ...prev.carteFidelite.transactions
+            ]
+          }
+        };
+      });
+    }
+
+    return true;
+  };
+
   return (
     <HotelDataContext.Provider
       value={{
@@ -1891,7 +2476,28 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addRestaurantOrder,
         updateRestaurantOrder,
         closeRestaurantOrder,
-        deleteRestaurantOrder
+        deleteRestaurantOrder,
+        // 14. Espace Client, Fidélité, Codes Promos, Notifications Push & SMS
+        clientAccounts,
+        activeClientAccount,
+        setActiveClientAccount,
+        registerClientAccount,
+        loginClientAccount,
+        logoutClientAccount,
+        updateClientAccount,
+        deleteClientAccount,
+        loyaltyConfig,
+        updateLoyaltyConfig,
+        promoCoupons,
+        addPromoCoupon,
+        updatePromoCoupon,
+        deletePromoCoupon,
+        togglePromoCoupon,
+        campaigns,
+        sendCampaign,
+        markClientNotificationAsRead,
+        creditLoyaltyPoints,
+        debitLoyaltyPoints
       }}
     >
       {children}

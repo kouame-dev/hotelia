@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { InvoicePrintModal } from './InvoicePrintModal.tsx';
+import { TableExportToolbar } from '../common/TableExportToolbar.tsx';
+import { ExportColumn } from '../../utils/exportUtils.ts';
 import {
   ReservationItem,
   ReservationStatus,
@@ -62,6 +64,42 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
   // Sous-menu actif
   const [activeSubTab, setActiveSubTab] = useState<ReservationSubTab>(initialSubTab);
+
+  // Colonnes pour l'export Excel & PDF
+  const reservationExportColumns: ExportColumn<ReservationItem>[] = [
+    { header: 'N° / Code', key: 'id' },
+    { header: 'Client', key: 'clientNom' },
+    { header: 'Téléphone', key: 'clientTelephone' },
+    { header: 'Chambre', key: 'chambreNumero' },
+    { header: 'Catégorie', key: 'chambreType' },
+    {
+      header: 'Type Séjour',
+      key: 'typeReservation',
+      format: (val) => (val === 'heure' ? 'Day-Use (Heures)' : 'Nuitée')
+    },
+    { header: 'Date Début', key: 'dateDebut' },
+    { header: 'Heure Début', key: 'heureDebut' },
+    { header: 'Date Fin', key: 'dateFin' },
+    { header: 'Heure Fin', key: 'heureFin' },
+    {
+      header: 'Montant Total',
+      key: 'montantTotal',
+      format: (val) => `${Number(val || 0).toLocaleString('fr-FR')} ${settings.currency}`
+    },
+    {
+      header: 'Acompte Versé',
+      key: 'acompteVerse',
+      format: (val) => `${Number(val || 0).toLocaleString('fr-FR')} ${settings.currency}`
+    },
+    {
+      header: 'Reste Dû',
+      key: 'resteAPayer',
+      format: (val) => `${Number(val || 0).toLocaleString('fr-FR')} ${settings.currency}`
+    },
+    { header: 'Mode Règlement', key: 'modePaiement' },
+    { header: 'Statut Paiement', key: 'statutPaiement' },
+    { header: 'Statut Réservation', key: 'statutReservation' }
+  ];
 
   // Filtres de recherche
   const [searchQuery, setSearchQuery] = useState('');
@@ -1196,6 +1234,15 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                 <option value="nuit">Nuitées</option>
                 <option value="heure">Heures (Day-Use)</option>
               </select>
+
+              {/* Barre d'export Excel et PDF */}
+              <TableExportToolbar
+                filename={`reservations-${activeSubTab}`}
+                title={`Liste des Réservations (${activeSubTab})`}
+                subtitle={`Hôtel Dekouassi Holding • Filtre: ${paymentFilter} • Total: ${filteredReservations.length}`}
+                columns={reservationExportColumns}
+                data={filteredReservations}
+              />
             </div>
           </div>
 

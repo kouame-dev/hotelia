@@ -15,6 +15,7 @@ import { PosSystemTab } from './PosSystemTab.tsx';
 import { StockManagementTab } from './StockManagementTab.tsx';
 import { GlobalInvoiceView } from './GlobalInvoiceView.tsx';
 import { RestaurantManagementTab } from './RestaurantManagementTab.tsx';
+import { LoyaltyAndMarketingTab } from './LoyaltyAndMarketingTab.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
@@ -58,7 +59,8 @@ import {
   Boxes,
   FileSpreadsheet,
   ShoppingBag,
-  ChefHat
+  ChefHat,
+  Award
 } from 'lucide-react';
 
 export type BackOfficeTab =
@@ -69,6 +71,7 @@ export type BackOfficeTab =
   | 'services'
   | 'facture_globale'
   | 'stock'
+  | 'loyalty'
   | 'chambres'
   | 'finance'
   | 'expenses'
@@ -886,6 +889,23 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               {isCaisse && <span className="text-[9px] font-mono text-stone-500">[DG / Réception]</span>}
             </button>
 
+            {/* Tab Fidélité & Marketing -> AMBRE / DORE */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('loyalty')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                isCaisse
+                  ? 'opacity-40 bg-stone-800/40 text-stone-400 border border-stone-800 cursor-not-allowed'
+                  : activeTab === 'loyalty'
+                  ? 'bg-amber-600 text-stone-950 border-2 border-amber-300 shadow-lg ring-2 ring-amber-500/40 font-black'
+                  : 'bg-amber-950/60 text-amber-300 border border-amber-800/80 hover:bg-amber-900 hover:text-white'
+              }`}
+            >
+              {isCaisse ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Award className="w-3.5 h-3.5 text-amber-400" />}
+              <span>Fidélité &amp; Marketing</span>
+              {isCaisse && <span className="text-[9px] font-mono text-stone-500">[DG / Réception]</span>}
+            </button>
+
             {/* Tab 2 : Chambres & Configuration des Types -> VERT FORÊT / ÉMERAUDE */}
             <button
               type="button"
@@ -1146,6 +1166,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
         {/* Tab Gestion de Stock & Approvisionnements */}
         {activeTab === 'stock' && !isCaisse && <StockManagementTab />}
+
+        {/* Tab Fidélité, Comptes Clients, Coupons Promo & Campagnes SMS / Push */}
+        {activeTab === 'loyalty' && !isCaisse && <LoyaltyAndMarketingTab />}
 
         {/* Tab 2 : Gestion Complète des Chambres & Types de Chambres */}
         {activeTab === 'chambres' && !isCaisse && <RoomManagementTab />}

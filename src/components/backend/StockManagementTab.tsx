@@ -34,6 +34,8 @@ import {
   PaymentMethod
 } from '../../types.ts';
 import { ImageUploadField } from '../common/ImageUploadField.tsx';
+import { TableExportToolbar } from '../common/TableExportToolbar.tsx';
+import { ExportColumn } from '../../utils/exportUtils.ts';
 
 type StockSubTab = 'articles' | 'entrepots' | 'fournisseurs' | 'achats' | 'rapports';
 
@@ -138,6 +140,28 @@ export const StockManagementTab: React.FC = () => {
     (sum, s) => sum + s.quantite * (s.prixVenteUnitaire || s.prixAchatUnitaire * 1.5),
     0
   );
+
+  // Colonnes pour l'export Excel et PDF
+  const stockExportColumns: ExportColumn<StockItem>[] = [
+    { header: 'Code', key: 'code' },
+    { header: 'Désignation', key: 'designation' },
+    { header: 'Catégorie', key: 'categorie' },
+    { header: 'Entrepôt', key: 'entrepotNom' },
+    { header: 'Quantité Actuelle', key: 'quantite' },
+    { header: 'Unité', key: 'unite' },
+    { header: "Seuil d'Alerte", key: 'seuilAlerte' },
+    {
+      header: 'Prix Achat Unitaire',
+      key: 'prixAchatUnitaire',
+      format: (val) => `${Number(val || 0).toLocaleString('fr-FR')} ${settings.currency}`
+    },
+    {
+      header: 'Valeur Totale Stock',
+      key: 'id',
+      format: (_, it) => `${(it.quantite * it.prixAchatUnitaire).toLocaleString('fr-FR')} ${settings.currency}`
+    },
+    { header: 'Fournisseur', key: 'fournisseurNom' }
+  ];
 
   // Open Article Modal
   const handleOpenAddArticle = () => {
@@ -520,14 +544,24 @@ export const StockManagementTab: React.FC = () => {
               </select>
             </div>
 
-            <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Rechercher code ou article..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#C5A880]"
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Rechercher code ou article..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-stone-900 border border-stone-700 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#C5A880]"
+                />
+              </div>
+
+              <TableExportToolbar
+                filename="inventaire-stock-hotelia"
+                title="Inventaire des Stocks & Entrepôts"
+                subtitle={`Hôtel Dekouassi Holding • ${filteredStock.length} article(s)`}
+                columns={stockExportColumns}
+                data={filteredStock}
               />
             </div>
           </div>

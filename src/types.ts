@@ -332,6 +332,8 @@ export interface PosSale {
   totalPartiel: number;
   remise: number;
   totalGlobal: number;
+  montantVerse?: number;
+  monnaieRendue?: number;
   montantEncaisse: number;
   resteAPayer: number;
   modePaiement: PaymentMethod;
@@ -608,5 +610,114 @@ export interface RestaurantOrder {
   statut?: 'en_attente' | 'en_preparation' | 'pret' | 'servi' | 'annule';
   typeService?: 'sur_place' | 'a_emporter' | 'room_service';
   notes?: string;
+}
+
+// ==========================================
+// PROGRAMME DE FIDÉLITÉ & COMPTE CLIENT
+// ==========================================
+
+export type LoyaltyTier = 'Bronze' | 'Argent' | 'Or' | 'Platine';
+
+export interface LoyaltyTransaction {
+  id: string;
+  date: string;
+  heure: string;
+  type: 'gain_sejour' | 'gain_restaurant' | 'utilisation' | 'bonus_bienvenue' | 'ajustement_admin';
+  points: number; // Positif pour gain, négatif pour utilisation
+  description: string;
+  montantFacture?: number;
+}
+
+export interface ClientLoyaltyCard {
+  numeroCarte: string; // ex: "HTL-FID-78492"
+  tier: LoyaltyTier;
+  points: number;
+  pointsHistoriqueTotal: number;
+  dateEmission: string;
+  dateExpiration: string;
+  statut: 'active' | 'suspendue' | 'expiree';
+  codeQr: string;
+  transactions: LoyaltyTransaction[];
+}
+
+export interface ClientPushNotification {
+  id: string;
+  titre: string;
+  message: string;
+  date: string;
+  heure: string;
+  lue: boolean;
+  type: 'promo' | 'fidelite' | 'reservation' | 'general';
+  couponCode?: string;
+}
+
+export interface ClientSmsMessage {
+  id: string;
+  destinataireTelephone: string;
+  destinataireNom: string;
+  expediteur: string; // "HOTELIA"
+  message: string;
+  date: string;
+  heure: string;
+  statut: 'envoye' | 'delivre' | 'en_attente';
+  couponCode?: string;
+}
+
+export interface ClientAccount {
+  id: string;
+  nom: string;
+  email: string;
+  telephone: string;
+  ville?: string;
+  pays?: string;
+  dateInscription: string;
+  carteFidelite: ClientLoyaltyCard;
+  notifications: ClientPushNotification[];
+  smsMessages: ClientSmsMessage[];
+  codePin?: string;
+}
+
+export interface LoyaltyProgramConfig {
+  programmeActif: boolean;
+  tauxGainFcfaParPoint: number; // ex: 1000 FCFA dépensé = 1 pt
+  valeurCashbackParPoint: number; // ex: 1 pt = 10 FCFA
+  bonusBienvenue: number; // ex: 100 pts offerts
+  pointsSeuilArgent: number; // ex: 500 pts
+  pointsSeuilOr: number; // ex: 1500 pts
+  pointsSeuilPlatine: number; // ex: 4000 pts
+  dureeValiditeMois: number; // ex: 24 mois
+  avantagesBronze: string[];
+  avantagesArgent: string[];
+  avantagesOr: string[];
+  avantagesPlatine: string[];
+  remisePermanenteOr: number; // ex: 5 %
+  remisePermanentePlatine: number; // ex: 10 %
+}
+
+export interface PromoCoupon {
+  id: string;
+  code: string; // ex: "HOTELIAVIP", "WEEKEND20"
+  description: string;
+  type: 'pourcentage' | 'montant_fixe';
+  valeur: number; // 15 (%) ou 10000 (FCFA)
+  montantMinimumAchat: number;
+  dateDebut: string;
+  dateFin: string;
+  actif: boolean;
+  nbUtilisationsMax: number;
+  nbUtilisationsActuelles: number;
+  applicableSur: 'tous' | 'chambres' | 'restaurant' | 'spa';
+}
+
+export interface NotificationCampaign {
+  id: string;
+  titre: string;
+  message: string;
+  dateEnvoi: string;
+  heureEnvoi: string;
+  canaux: ('push' | 'sms')[];
+  cible: 'tous' | 'bronze' | 'argent' | 'or' | 'platine' | 'clients_en_cours';
+  nbDestinataires: number;
+  couponAssocie?: string;
 }
 

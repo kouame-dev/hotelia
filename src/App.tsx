@@ -11,6 +11,7 @@ import { UxDesignSystem } from './components/UxDesignSystem.tsx';
 import { SqlViewer } from './components/SqlViewer.tsx';
 import { ErdDiagram } from './components/ErdDiagram.tsx';
 import { ReservationSimulator } from './components/ReservationSimulator.tsx';
+import { ClientSpaceModal } from './components/frontend/ClientSpaceModal.tsx';
 import {
   Sparkles,
   Lock,
@@ -21,7 +22,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Building,
-  Utensils
+  Utensils,
+  Award
 } from 'lucide-react';
 
 export type MainAppView = 'frontend' | 'restaurant_booking' | 'login' | 'backend' | 'dev_tools';
@@ -29,6 +31,7 @@ export type MainAppView = 'frontend' | 'restaurant_booking' | 'login' | 'backend
 export default function App() {
   // Vue active principale : par défaut 'frontend' avec le slider Hotelia
   const [appView, setAppView] = useState<MainAppView>('frontend');
+  const [isClientSpaceOpen, setIsClientSpaceOpen] = useState(false);
 
   // Utilisateur connecté au back-end
   const [currentUser, setCurrentUser] = useState<{
@@ -99,6 +102,16 @@ export default function App() {
             >
               <Utensils className="w-3.5 h-3.5" />
               <span>Réserver au Restaurant</span>
+            </button>
+
+            {/* Espace Client & Carte de Fidélité Direct */}
+            <button
+              type="button"
+              onClick={() => setIsClientSpaceOpen(true)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-bold transition-all bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-xs cursor-pointer"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>Espace Client &amp; Fidélité</span>
             </button>
 
             {/* 3. Mode Connexion Back-End */}
@@ -196,6 +209,12 @@ export default function App() {
           </main>
         </div>
       )}
+
+      {/* Modal Espace Client & Carte de Fidélité (Global) */}
+      <ClientSpaceModal
+        isOpen={isClientSpaceOpen}
+        onClose={() => setIsClientSpaceOpen(false)}
+      />
     </div>
   );
 }

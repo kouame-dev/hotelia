@@ -25,12 +25,14 @@ import { jsPDF } from 'jspdf';
 interface PosInvoiceModalProps {
   sale: PosSale;
   onClose: () => void;
+  onConfirmSale?: () => void;
   initialFormat?: 'thermal' | 'a4';
 }
 
 export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
   sale,
   onClose,
+  onConfirmSale,
   initialFormat = 'thermal'
 }) => {
   const { settings, thermalPrinterConfig } = useHotelData();
@@ -44,7 +46,14 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
     return `${amount.toLocaleString('fr-FR')} ${settings.currency}`;
   };
 
-  const monnaieRendue = Math.max(0, sale.montantEncaisse - sale.totalGlobal);
+  const isProvisional = sale.id === 'provisional-preview' || sale.numeroTicket.startsWith('PROV-');
+  const montantVerseEffectif = sale.montantVerse !== undefined
+    ? sale.montantVerse
+    : Math.max(sale.montantEncaisse, sale.totalGlobal > 0 && sale.resteAPayer === 0 ? sale.totalGlobal : sale.montantEncaisse);
+  const monnaieRendue = sale.monnaieRendue !== undefined
+    ? sale.monnaieRendue
+    : Math.max(0, montantVerseEffectif - sale.totalGlobal);
+  const netEncaisseCaisse = sale.montantEncaisse > 0 ? Math.min(sale.montantEncaisse, sale.totalGlobal) : Math.min(montantVerseEffectif, sale.totalGlobal);
 
   // 1. Impression par portail DOM direct sur document.body anti-page blanche
   const handlePrint = (formatToPrint: 'thermal' | 'a4' = activeFormat) => {
@@ -498,6 +507,48 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
             </div>
           </div>
 
+          {/* BANNIÈRE DE VALIDATION POUR APERÇU TICKET / VALIDER ACOMPTE */}
+          {isProvisional && onConfirmSale && (
+            <div className="px-4 sm:px-6 py-3 bg-amber-500/15 border-b border-amber-500/30 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                <div>
+                  <div className="text-xs font-bold text-amber-300">
+                    {sale.resteAPayer > 0 ? 'Aperçu Ticket & Validation Acompte' : 'Aperçu Ticket & Validation Encaissement'}
+                  </div>
+                  <div className="text-[11px] text-stone-400">
+                    Vérifiez le ticket ci-dessous avant d'enregistrer et d'imprimer
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-3.5 py-1.5 rounded-xl border border-stone-700 bg-stone-900 text-stone-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Modifier Panier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onConfirmSale();
+                    onClose();
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-bold text-xs shadow-lg shadow-amber-950/40 transition-all cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>
+                    {sale.resteAPayer > 0
+                      ? `Valider Acompte (${formatPrice(netEncaisseCaisse)}) • Reste: ${formatPrice(sale.resteAPayer)}`
+                      : `Valider l'Encaissement Total (${formatPrice(sale.totalGlobal)})`}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ALERTE DE SUCCÈS D'IMPRESSION OU EXPORT */}
           {printSuccessAlert && (
             <div className="px-5 py-2.5 bg-emerald-950/90 border-b border-emerald-800 text-emerald-300 text-xs flex items-center justify-between animate-in fade-in duration-150 shrink-0">
@@ -603,8 +654,8 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                         <span className="font-bold uppercase text-black">{sale.modePaiement}</span>
                       </div>
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-emerald-800 font-bold">Montant Perçu :</span>
-                        <span className="font-bold text-emerald-900">{formatPrice(sale.montantEncaisse)}</span>
+                        <span className="text-stone-700 font-medium">Espèces Reçues / Versé :</span>
+                        <span className="font-bold text-stone-900">{formatPrice(montantVerseEffectif)}</span>
                       </div>
 
                       {monnaieRendue > 0 && (
@@ -614,10 +665,15 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                         </div>
                       )}
 
+                      <div className="flex justify-between text-[10px] font-bold text-emerald-900 pt-0.5">
+                        <span>Net Encaissé :</span>
+                        <span>{formatPrice(netEncaisseCaisse)}</span>
+                      </div>
+
                       {sale.resteAPayer > 0 && (
                         <div className="flex justify-between text-[10px] font-bold text-rose-800 bg-rose-50 p-1 rounded">
                           <span>
-                            {sale.chambreNumero ? `Reste (Chambre ${sale.chambreNumero}) :` : 'Reste Dû :'}
+                            {sale.chambreNumero ? `Reste (Chambre ${sale.chambreNumero}) :` : 'Reste Dû (Acompte) :'}
                           </span>
                           <span>{formatPrice(sale.resteAPayer)}</span>
                         </div>
@@ -799,22 +855,27 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                           </span>
                         </div>
 
-                        <div className="flex justify-between items-center pt-1 text-emerald-800 font-bold">
-                          <span>Montant Perçu :</span>
-                          <span className="font-mono">{formatPrice(sale.montantEncaisse)}</span>
+                        <div className="flex justify-between items-center pt-1 text-stone-700">
+                          <span>Espèces Versées / Perçu :</span>
+                          <span className="font-mono font-bold text-stone-900">{formatPrice(montantVerseEffectif)}</span>
                         </div>
 
                         {monnaieRendue > 0 && (
                           <div className="flex justify-between items-center pt-1 text-emerald-800 font-bold bg-emerald-50 p-1.5 rounded">
-                            <span>Monnaie Rendue :</span>
+                            <span>Monnaie Rendue en Espèces :</span>
                             <span className="font-mono">{formatPrice(monnaieRendue)}</span>
                           </div>
                         )}
 
+                        <div className="flex justify-between items-center pt-1 text-emerald-800 font-bold border-t border-stone-200">
+                          <span>Net Encaissé en Caisse :</span>
+                          <span className="font-mono">{formatPrice(netEncaisseCaisse)}</span>
+                        </div>
+
                         {sale.resteAPayer > 0 && (
                           <div className="flex justify-between items-center pt-1 text-rose-700 font-bold bg-rose-50 p-1.5 rounded">
                             <span>
-                              {sale.chambreNumero ? `Reste (Chambre ${sale.chambreNumero}) :` : 'Reste Dû :'}
+                              {sale.chambreNumero ? `Reste (Chambre ${sale.chambreNumero}) :` : 'Reste Dû (Acompte) :'}
                             </span>
                             <span className="font-mono">{formatPrice(sale.resteAPayer)}</span>
                           </div>

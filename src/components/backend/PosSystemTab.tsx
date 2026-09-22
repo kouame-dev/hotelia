@@ -283,7 +283,9 @@ export const PosSystemTab: React.FC = () => {
       totalPartiel,
       remise: remiseNum,
       totalGlobal,
-      montantEncaisse: montantEncaisseNum,
+      montantVerse: montantEncaisseNum,
+      monnaieRendue: monnaieARendre,
+      montantEncaisse: Math.min(montantEncaisseNum, totalGlobal),
       resteAPayer,
       modePaiement,
       statutPaiement: resteAPayer === 0 ? 'paye' : 'en_attente',
@@ -324,7 +326,9 @@ export const PosSystemTab: React.FC = () => {
       totalPartiel,
       remise: remiseNum,
       totalGlobal,
-      montantEncaisse: montantEncaisseNum,
+      montantVerse: montantEncaisseNum,
+      monnaieRendue: monnaieARendre,
+      montantEncaisse: Math.min(montantEncaisseNum, totalGlobal),
       resteAPayer,
       modePaiement,
       statutPaiement: resteAPayer === 0 ? 'paye' : 'en_attente',
@@ -1012,6 +1016,9 @@ export const PosSystemTab: React.FC = () => {
         <PosInvoiceModal
           sale={activeReceiptModal}
           onClose={() => setActiveReceiptModal(null)}
+          onConfirmSale={
+            activeReceiptModal.id === 'provisional-preview' ? handleCheckout : undefined
+          }
         />
       )}
 

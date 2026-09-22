@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HoteliaHeroSlider } from './HoteliaHeroSlider.tsx';
 import { ReservationForm, ReservationMode } from '../ReservationForm.tsx';
+import { ClientSpaceModal } from './ClientSpaceModal.tsx';
 import { useHotelSettings, CURRENCIES } from '../../context/SettingsContext.tsx';
 import {
   Sparkles,
@@ -27,7 +28,8 @@ import {
   Info,
   ShieldAlert,
   FileText,
-  Utensils
+  Utensils,
+  Award
 } from 'lucide-react';
 
 export interface RoomItem {
@@ -123,6 +125,9 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
 
   // Modals pour CGV / Politique d'annulation / Confidentialité
   const [activeLegalModal, setActiveLegalModal] = useState<'cancellation' | 'tos' | 'privacy' | null>(null);
+
+  // Espace Client & Fidélité Modal
+  const [isClientSpaceOpen, setIsClientSpaceOpen] = useState<boolean>(false);
 
   // Notification Toast lors d'une réservation confirmée
   const [bookingToast, setBookingToast] = useState<{
@@ -291,6 +296,17 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
             >
               <Calendar className="w-3.5 h-3.5" />
               <span>Réserver</span>
+            </button>
+
+            {/* Bouton Espace Client & Carte de Fidélité */}
+            <button
+              type="button"
+              onClick={() => setIsClientSpaceOpen(true)}
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              title="Mon Compte Client & Carte de Fidélité"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden lg:inline">Espace Fidélité</span>
             </button>
 
             {/* Bouton vers l'espace Back-End / Admin avec icône cadenas */}
@@ -771,6 +787,12 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
           </div>
         </div>
       )}
+
+      {/* Modal Espace Client & Carte de Fidélité */}
+      <ClientSpaceModal
+        isOpen={isClientSpaceOpen}
+        onClose={() => setIsClientSpaceOpen(false)}
+      />
     </div>
   );
 };

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { ExpenseItem, ExpenseCategory } from '../../types.ts';
+import { TableExportToolbar } from '../common/TableExportToolbar.tsx';
+import { ExportColumn } from '../../utils/exportUtils.ts';
 import {
   Sparkles,
   Plus,
@@ -22,7 +24,7 @@ import {
 
 export const ExpensesTab: React.FC = () => {
   const { expenses, addExpense, deleteExpense, chambres } = useHotelData();
-  const { formatPrice } = useHotelSettings();
+  const { formatPrice, settings } = useHotelSettings();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('tous');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,6 +60,21 @@ export const ExpensesTab: React.FC = () => {
   const totalReparation = expenses
     .filter((e) => e.categorie === 'Réparation & Maintenance')
     .reduce((acc, curr) => acc + curr.montant, 0);
+
+  const expenseExportColumns: ExportColumn<ExpenseItem>[] = [
+    { header: 'Date', key: 'date' },
+    { header: 'Intitulé', key: 'titre' },
+    { header: 'Catégorie', key: 'categorie' },
+    { header: 'Chambre / Destination', key: 'chambreConcernee' },
+    { header: 'Payé Par', key: 'payePar' },
+    { header: 'Mode de Paiement', key: 'modePaiement' },
+    {
+      header: 'Montant',
+      key: 'montant',
+      format: (val) => `${Number(val || 0).toLocaleString('fr-FR')} ${settings.currency}`
+    },
+    { header: 'Notes', key: 'notes' }
+  ];
 
   const handleCreateExpense = (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,9 +209,18 @@ export const ExpensesTab: React.FC = () => {
             </div>
           </div>
 
-          <span className="text-[11px] font-mono text-stone-500">
-            {filteredExpenses.length} dépense(s) répertoriée(s)
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-mono text-stone-500">
+              {filteredExpenses.length} dépense(s) répertoriée(s)
+            </span>
+            <TableExportToolbar
+              filename="depenses-hotelia"
+              title="Journal des Dépenses & Frais Généraux"
+              subtitle={`Hôtel Dekouassi Holding • Catégorie: ${selectedCategory}`}
+              columns={expenseExportColumns}
+              data={filteredExpenses}
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
