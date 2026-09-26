@@ -646,36 +646,70 @@ export const RoomManagementTab: React.FC = () => {
                 />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                      Prix par Nuit (€ base) *
+                      Prix par Nuit (FCFA) *
                     </label>
                     <input
                       type="number"
                       required
-                      min={1}
+                      min={1000}
+                      step={500}
                       value={roomFormData.prixNuit}
                       onChange={(e) => setRoomFormData({ ...roomFormData, prixNuit: parseFloat(e.target.value) || 0 })}
                       className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
                     />
-                    <span className="text-[10px] text-stone-400 font-mono">
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {[10000, 15000, 20000, 25000, 35000].map((pr) => (
+                        <button
+                          key={pr}
+                          type="button"
+                          onClick={() => setRoomFormData({ ...roomFormData, prixNuit: pr })}
+                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                            roomFormData.prixNuit === pr
+                              ? 'bg-amber-600 text-white font-bold'
+                              : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                          }`}
+                        >
+                          {pr.toLocaleString()} F
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-stone-400 font-mono block">
                       Affiché : {formatPrice(roomFormData.prixNuit)}
                     </span>
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                      Prix par Heure (€ base) *
+                      Prix par Heure (FCFA) *
                     </label>
                     <input
                       type="number"
                       required
-                      min={1}
+                      min={500}
+                      step={500}
                       value={roomFormData.prixHeure}
                       onChange={(e) => setRoomFormData({ ...roomFormData, prixHeure: parseFloat(e.target.value) || 0 })}
                       className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
                     />
-                    <span className="text-[10px] text-stone-400 font-mono">
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {[5000, 6000, 8000, 10000, 15000].map((pr) => (
+                        <button
+                          key={pr}
+                          type="button"
+                          onClick={() => setRoomFormData({ ...roomFormData, prixHeure: pr })}
+                          className={`text-[9px] font-mono px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                            roomFormData.prixHeure === pr
+                              ? 'bg-amber-600 text-white font-bold'
+                              : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                          }`}
+                        >
+                          {pr.toLocaleString()} F
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-stone-400 font-mono block">
                       Affiché : {formatPrice(roomFormData.prixHeure)}
                     </span>
                   </div>

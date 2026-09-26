@@ -98,10 +98,14 @@ export type RestSubTab = 'pos' | 'tables' | 'commandes' | 'reservations' | 'menu
 
 interface RestaurantManagementTabProps {
   initialSubTab?: RestSubTab;
+  onSubTabChange?: (tab: RestSubTab) => void;
+  onGoToFactureGlobale?: () => void;
 }
 
 export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = ({
-  initialSubTab = 'pos'
+  initialSubTab = 'pos',
+  onSubTabChange,
+  onGoToFactureGlobale
 }) => {
   const {
     restaurantTables,
@@ -142,6 +146,13 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
       setActiveSubTab(initialSubTab);
     }
   }, [initialSubTab]);
+
+  const handleSubTabChange = (tab: RestSubTab) => {
+    setActiveSubTab(tab);
+    if (onSubTabChange) {
+      onSubTabChange(tab);
+    }
+  };
 
   // --- ÉTAT DU POS RESTAURANT ---
   const [selectedTableNumero, setSelectedTableNumero] = useState<string>(() => {
@@ -776,7 +787,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
-              onClick={() => setActiveSubTab('pos')}
+              onClick={() => handleSubTabChange('pos')}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'pos'
                   ? 'bg-emerald-600 text-white shadow-md'
@@ -789,7 +800,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
             <button
               type="button"
-              onClick={() => setActiveSubTab('tables')}
+              onClick={() => handleSubTabChange('tables')}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'tables'
                   ? 'bg-emerald-600 text-white shadow-md'
@@ -802,7 +813,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
             <button
               type="button"
-              onClick={() => setActiveSubTab('reservations')}
+              onClick={() => handleSubTabChange('reservations')}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'reservations'
                   ? 'bg-emerald-600 text-white shadow-md'
@@ -820,7 +831,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
             <button
               type="button"
-              onClick={() => setActiveSubTab('menu')}
+              onClick={() => handleSubTabChange('menu')}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'menu'
                   ? 'bg-emerald-600 text-white shadow-md'
@@ -833,7 +844,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
             <button
               type="button"
-              onClick={() => setActiveSubTab('commandes')}
+              onClick={() => handleSubTabChange('commandes')}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'commandes'
                   ? 'bg-emerald-600 text-white shadow-md'
@@ -846,7 +857,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
             <button
               type="button"
-              onClick={() => setActiveSubTab('caisse')}
+              onClick={() => handleSubTabChange('caisse')}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === 'caisse'
                   ? 'bg-emerald-600 text-white shadow-md'
@@ -856,6 +867,18 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
               <CreditCard className="w-3.5 h-3.5 text-emerald-300" />
               <span>Journal Caisse &amp; Recettes</span>
             </button>
+
+            {onGoToFactureGlobale && (
+              <button
+                type="button"
+                onClick={onGoToFactureGlobale}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-stone-950 ml-auto shadow-sm"
+                title="Accéder directement à la Facture Globale Consolidée et à la Certification FNE DGI"
+              >
+                <Receipt className="w-3.5 h-3.5 text-amber-400" />
+                <span>Facture Globale &amp; FNE DGI</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1003,16 +1026,20 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
                     <div className="p-2.5 flex-1 flex flex-col justify-between">
                       <div>
-                        <div className="flex items-start justify-between gap-1">
-                          <h4 className="font-bold text-xs text-stone-900 group-hover:text-emerald-900 leading-tight">
+                        {/* Ligne de Titre ou Nom du plat alignée horizontalement sous l'image pour toutes les catégories */}
+                        <div className="h-12 flex items-center justify-between gap-1 pb-1.5 mb-1.5 border-b border-stone-200/80">
+                          <h4
+                            className="font-bold text-xs text-stone-900 group-hover:text-emerald-900 leading-snug line-clamp-2"
+                            title={item.nom}
+                          >
                             {item.nom}
                           </h4>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-200 text-stone-700 uppercase shrink-0">
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-stone-200 text-stone-700 uppercase shrink-0 font-semibold">
                             {item.categorie}
                           </span>
                         </div>
                         {item.description && (
-                          <p className="text-[10px] text-stone-500 line-clamp-1 mt-1 leading-snug">
+                          <p className="text-[10px] text-stone-500 line-clamp-1 leading-snug">
                             {item.description}
                           </p>
                         )}
@@ -1723,7 +1750,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                           )}
                           {activeOrder && (
                             <span className="text-[10px] text-stone-500 font-mono block mt-0.5">
-                              Addition : {formatPrice(activeOrder.totalNet)} ({activeOrder.articles.length} art.)
+                              Addition : {formatPrice(activeOrder.totalNet)} ({(activeOrder.articles || activeOrder.items || []).length} art.)
                             </span>
                           )}
                         </div>
@@ -2365,10 +2392,21 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                       </div>
                     </div>
 
-                    {/* Contenu textuel */}
+                    {/* Contenu textuel avec titre aligné horizontalement sous l'image pour toutes les catégories */}
                     <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
                       <div>
-                        <h3 className="font-bold text-sm text-stone-900 leading-snug">{item.nom}</h3>
+                        {/* Ligne de Titre ou Nom du plat alignée horizontalement sous l'image pour toutes les catégories */}
+                        <div className="h-14 flex items-center justify-between gap-2 pb-2 mb-2 border-b border-stone-200">
+                          <h3
+                            className="font-bold text-sm text-stone-900 leading-snug line-clamp-2"
+                            title={item.nom}
+                          >
+                            {item.nom}
+                          </h3>
+                          <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
+                            {formatPrice(item.prix)}
+                          </span>
+                        </div>
                         {item.description && (
                           <p className="text-xs text-stone-500 mt-1 line-clamp-2">{item.description}</p>
                         )}
@@ -2550,7 +2588,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
                       {/* Articles à préparer avec notes de cuisson */}
                       <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs space-y-2">
-                        {order.articles.map((art, idx) => (
+                        {(order.articles || order.items || []).map((art, idx) => (
                           <div key={idx} className="flex justify-between items-start pb-1.5 border-b border-stone-200/70 last:border-0 last:pb-0">
                             <div>
                               <div className="flex items-center gap-1.5 font-medium">
@@ -2559,9 +2597,9 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                                 </span>
                                 <span className="text-stone-900 font-semibold">{art.nom}</span>
                               </div>
-                              {art.notesCuisson && (
+                              {(art.notesCuisson || (art as any).cuissonOuNote) && (
                                 <span className="block text-[10px] text-amber-800 font-medium italic mt-0.5 pl-5">
-                                  Note : {art.notesCuisson}
+                                  Note : {art.notesCuisson || (art as any).cuissonOuNote}
                                 </span>
                               )}
                             </div>
@@ -3043,7 +3081,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
               {/* Détail articles */}
               <div className="space-y-1 border-b border-stone-300 pb-2">
-                {orderToPrint.articles.map((art, i) => (
+                {(orderToPrint.articles || orderToPrint.items || []).map((art, i) => (
                   <div key={i} className="flex justify-between text-[11px]">
                     <span className="truncate pr-2">
                       {art.quantite}× {art.nom}

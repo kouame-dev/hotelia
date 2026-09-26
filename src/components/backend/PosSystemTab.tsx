@@ -592,12 +592,18 @@ export const PosSystemTab: React.FC = () => {
                     )}
 
                     <div className="p-3 pt-2">
-                      <h4 className="text-xs font-bold text-white group-hover:text-[#C5A880] transition-colors leading-snug line-clamp-2">
-                        {prod.nom}
-                      </h4>
+                      {/* Ligne de Titre alignée horizontalement sous l'image pour toutes les catégories */}
+                      <div className="min-h-[2.5rem] flex items-center justify-between gap-1 pb-1 mb-1 border-b border-stone-800/60">
+                        <h4
+                          className="text-xs font-bold text-white group-hover:text-[#C5A880] transition-colors leading-snug line-clamp-2"
+                          title={prod.nom}
+                        >
+                          {prod.nom}
+                        </h4>
+                      </div>
 
                       {prod.description && (
-                        <p className="text-[10px] text-stone-400 mt-1 line-clamp-2">
+                        <p className="text-[10px] text-stone-400 mt-0.5 line-clamp-1">
                           {prod.description}
                         </p>
                       )}

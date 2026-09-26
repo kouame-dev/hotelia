@@ -442,7 +442,39 @@ export const INITIAL_RESTAURANT_ORDERS: RestaurantOrder[] = [
         prixUnitaire: 26,
         quantite: 2,
         totalLigne: 52,
-        cuissonOuNote: 'Sauce moyennement épicée, attiéké à part'
+        cuissonOuNote: 'Sauce moyennement épicée, attiéké à part',
+        notesCuisson: 'Sauce moyennement épicée, attiéké à part'
+      },
+      {
+        id: 'li-3',
+        menuItemId: 'menu-16',
+        nom: 'Cocktail Signature "Hotelia Sunset Royale"',
+        categorie: 'Boissons & Cocktails',
+        prixUnitaire: 14,
+        quantite: 2,
+        totalLigne: 28
+      }
+    ],
+    articles: [
+      {
+        id: 'li-1',
+        menuItemId: 'menu-1',
+        nom: 'Salade de Poulpe Mariné aux Agrumes & Épices Douces',
+        categorie: 'Entrées',
+        prixUnitaire: 14,
+        quantite: 2,
+        totalLigne: 28
+      },
+      {
+        id: 'li-2',
+        menuItemId: 'menu-5',
+        nom: 'Kédjénou de Pintade Fermière en Canari de Terre Cuite',
+        categorie: 'Spécialités Africaines',
+        prixUnitaire: 26,
+        quantite: 2,
+        totalLigne: 52,
+        cuissonOuNote: 'Sauce moyennement épicée, attiéké à part',
+        notesCuisson: 'Sauce moyennement épicée, attiéké à part'
       },
       {
         id: 'li-3',
@@ -480,7 +512,30 @@ export const INITIAL_RESTAURANT_ORDERS: RestaurantOrder[] = [
         prixUnitaire: 28,
         quantite: 2,
         totalLigne: 56,
-        cuissonOuNote: 'Bien grillé avec double alloco'
+        cuissonOuNote: 'Bien grillé avec double alloco',
+        notesCuisson: 'Bien grillé avec double alloco'
+      },
+      {
+        id: 'li-5',
+        menuItemId: 'menu-18',
+        nom: 'Champagne Ruinart Blanc de Blancs (Coupe)',
+        categorie: 'Vins & Champagnes',
+        prixUnitaire: 22,
+        quantite: 2,
+        totalLigne: 44
+      }
+    ],
+    articles: [
+      {
+        id: 'li-4',
+        menuItemId: 'menu-7',
+        nom: 'Capitaine Braisé Entier aux Herbes & Alloco Doré',
+        categorie: 'Spécialités Africaines',
+        prixUnitaire: 28,
+        quantite: 2,
+        totalLigne: 56,
+        cuissonOuNote: 'Bien grillé avec double alloco',
+        notesCuisson: 'Bien grillé avec double alloco'
       },
       {
         id: 'li-5',
@@ -518,7 +573,39 @@ export const INITIAL_RESTAURANT_ORDERS: RestaurantOrder[] = [
         prixUnitaire: 34,
         quantite: 1,
         totalLigne: 34,
-        cuissonOuNote: 'Cuisson saignant'
+        cuissonOuNote: 'Cuisson saignant',
+        notesCuisson: 'Cuisson saignant'
+      },
+      {
+        id: 'li-7',
+        menuItemId: 'menu-13',
+        nom: 'Moelleux au Chocolat Pur Origine Côte d’Ivoire (72%)',
+        categorie: 'Desserts',
+        prixUnitaire: 12,
+        quantite: 1,
+        totalLigne: 12
+      },
+      {
+        id: 'li-8',
+        menuItemId: 'menu-17',
+        nom: 'Infusion Givrée de Bissap Rouge à la Menthe & Fleur d’Oranger',
+        categorie: 'Boissons & Cocktails',
+        prixUnitaire: 6,
+        quantite: 1,
+        totalLigne: 6
+      }
+    ],
+    articles: [
+      {
+        id: 'li-6',
+        menuItemId: 'menu-9',
+        nom: 'Filet de Bœuf Rossini & Purée Mousseline à la Truffe',
+        categorie: 'Plats Principaux',
+        prixUnitaire: 34,
+        quantite: 1,
+        totalLigne: 34,
+        cuissonOuNote: 'Cuisson saignant',
+        notesCuisson: 'Cuisson saignant'
       },
       {
         id: 'li-7',

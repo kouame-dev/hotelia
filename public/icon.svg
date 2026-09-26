@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8D5B5"/>
+      <stop offset="50%" stop-color="#C5A880"/>
+      <stop offset="100%" stop-color="#8E6F3E"/>
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1D1A"/>
+      <stop offset="100%" stop-color="#12110F"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect width="500" height="500" x="6" y="6" rx="106" fill="none" stroke="url(#goldGrad)" stroke-width="4" stroke-opacity="0.4"/>
+  
+  <!-- Hotelia Crown and Palace Symbol -->
+  <g transform="translate(256, 230) scale(1.15)">
+    <!-- Crown -->
+    <path d="M-80,-70 L-50,-20 L0,-75 L50,-20 L80,-70 L70,-5 L-70,-5 Z" fill="url(#goldGrad)"/>
+    <circle cx="-80" cy="-75" r="7" fill="#F4E6D0"/>
+    <circle cx="0" cy="-80" r="9" fill="#F4E6D0"/>
+    <circle cx="80" cy="-75" r="7" fill="#F4E6D0"/>
+    
+    <!-- Arch & Hotel building -->
+    <path d="M-75,10 L75,10 L75,95 L-75,95 Z" fill="none" stroke="url(#goldGrad)" stroke-width="7"/>
+    <path d="M-40,95 L-40,50 C-40,30 40,30 40,50 L40,95" fill="none" stroke="url(#goldGrad)" stroke-width="6"/>
+    
+    <!-- Windows -->
+    <rect x="-60" y="25" width="16" height="22" rx="3" fill="url(#goldGrad)"/>
+    <rect x="44" y="25" width="16" height="22" rx="3" fill="url(#goldGrad)"/>
+    <rect x="-60" y="58" width="16" height="22" rx="3" fill="url(#goldGrad)"/>
+    <rect x="44" y="58" width="16" height="22" rx="3" fill="url(#goldGrad)"/>
+    
+    <!-- Stars -->
+    <circle cx="-110" cy="20" r="4" fill="#C5A880"/>
+    <circle cx="110" cy="20" r="4" fill="#C5A880"/>
+  </g>
+  
+  <!-- Typography Hotelia -->
+  <text x="256" y="420" font-family="'Cinzel', 'Playfair Display', Georgia, serif" font-size="52" font-weight="bold" fill="url(#goldGrad)" text-anchor="middle" letter-spacing="8">HOTELIA</text>
+  <text x="256" y="455" font-family="sans-serif" font-size="16" font-weight="600" fill="#A89476" text-anchor="middle" letter-spacing="6">CÔTE D'IVOIRE • DGI FNE</text>
+</svg>

@@ -67,6 +67,7 @@ export type BackOfficeTab =
   | 'gantt'
   | 'reservations'
   | 'restaurant'
+  | 'cuisine'
   | 'pos'
   | 'services'
   | 'facture_globale'
@@ -85,12 +86,18 @@ interface AdminBackOfficeProps {
   user: { nom: string; role: string; email: string };
   onLogout: () => void;
   onGoToPublicSite: () => void;
+  initialTab?: BackOfficeTab;
+  initialTabTimestamp?: number;
+  initialRestaurantSubTab?: 'pos' | 'tables' | 'commandes' | 'reservations' | 'menu' | 'caisse';
 }
 
 export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   user,
   onLogout,
-  onGoToPublicSite
+  onGoToPublicSite,
+  initialTab,
+  initialTabTimestamp,
+  initialRestaurantSubTab
 }) => {
   const { settings, formatPrice } = useHotelSettings();
   const {
@@ -108,6 +115,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   } = useHotelData();
 
   const [activeTab, setActiveTab] = useState<BackOfficeTab>(() => {
+    if (initialTab) return initialTab;
     if (currentUserProfile.role === 'Caisse Restaurant' || currentUserProfile.role === 'Directeur Restaurant') {
       return 'restaurant';
     }
@@ -117,7 +125,21 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     return 'gantt';
   });
   const [reservationSubTab, setReservationSubTab] = useState<ReservationSubTab>('toutes');
-  const [restaurantSubTab, setRestaurantSubTab] = useState<'pos' | 'tables' | 'commandes' | 'reservations' | 'menu' | 'caisse'>('pos');
+  const [restaurantSubTab, setRestaurantSubTab] = useState<'pos' | 'tables' | 'commandes' | 'reservations' | 'menu' | 'caisse'>(
+    initialRestaurantSubTab || 'pos'
+  );
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, initialTabTimestamp]);
+
+  useEffect(() => {
+    if (initialRestaurantSubTab) {
+      setRestaurantSubTab(initialRestaurantSubTab);
+    }
+  }, [initialRestaurantSubTab]);
   const [settingsSubSection, setSettingsSubSection] = useState<'general' | 'mobile_money'>('general');
   const [isReservationMenuOpen, setIsReservationMenuOpen] = useState(false);
   const [isRestaurantMenuOpen, setIsRestaurantMenuOpen] = useState(false);
@@ -125,49 +147,145 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [restrictedModalMessage, setRestrictedModalMessage] = useState<string | null>(null);
 
-  // Role permissions checks
-  const isCaisse = currentUserProfile.role === 'Caisse';
-  const isChefReception = currentUserProfile.role === 'Chef de Réception';
-  const isDG = currentUserProfile.role === 'Directeur Général';
-  const isDirecteurRestaurant = currentUserProfile.role === 'Directeur Restaurant';
-  const isCaisseRestaurant = currentUserProfile.role === 'Caisse Restaurant';
-
-  // Guard: If role-restricted user switches, force valid activeTab
+  // Synchroniser le profil de contexte avec l'utilisateur authentifié (user)
   useEffect(() => {
-    if (isCaisseRestaurant && activeTab !== 'restaurant' && activeTab !== 'profile') {
+    if (user?.role && switchUserRole) {
+      switchUserRole(user.role);
+    }
+  }, [user?.role, switchUserRole]);
+
+  // Détermination ultra-robuste et infaillible du rôle utilisateur
+  const userRoleStr = (user?.role || currentUserProfile?.role || '').trim();
+  const lowerRole = userRoleStr.toLowerCase();
+
+  const isCaisseRestaurant =
+    lowerRole.includes('caisse restaurant') ||
+    lowerRole === 'caisserestaurant';
+
+  const isDirecteurRestaurant =
+    !isCaisseRestaurant && (
+      lowerRole.includes('directeur restaurant') ||
+      lowerRole.includes('admin restaurant') ||
+      lowerRole.includes('direction restaurant') ||
+      lowerRole.includes('gérant restaurant') ||
+      lowerRole.includes('gerant restaurant')
+    );
+
+  const isCaisse =
+    !isCaisseRestaurant && !isDirecteurRestaurant && (
+      lowerRole === 'caisse' ||
+      lowerRole === 'caissier' ||
+      lowerRole.includes('caisse hôtel') ||
+      lowerRole.includes('caisse hotel')
+    );
+
+  const isChefReception =
+    !isCaisse && !isCaisseRestaurant && !isDirecteurRestaurant && (
+      lowerRole.includes('chef de réception') ||
+      lowerRole.includes('chef de reception') ||
+      lowerRole.includes('réceptionniste') ||
+      lowerRole.includes('receptionniste') ||
+      lowerRole.includes('reception')
+    );
+
+  const isDG =
+    !isCaisse && !isCaisseRestaurant && !isDirecteurRestaurant && (
+      lowerRole.includes('directeur général') ||
+      lowerRole.includes('directeur general') ||
+      lowerRole.includes('administrateur') ||
+      lowerRole.includes('super admin') ||
+      lowerRole.includes('dg') ||
+      lowerRole === 'admin' ||
+      lowerRole.includes('admin')
+    );
+
+  // Guard de routage : Si un utilisateur restreint tente d'accéder à un onglet interdit,
+  // Facture Globale et Profil restent 100% ACCESSIBLES ET GARANTIS POUR TOUS LES RÔLES.
+  useEffect(() => {
+    if (activeTab === 'facture_globale' || activeTab === 'profile') {
+      return;
+    }
+    if (isCaisseRestaurant && activeTab !== 'restaurant' && activeTab !== 'cuisine' && activeTab !== 'pos') {
       setActiveTab('restaurant');
-    } else if (isDirecteurRestaurant && activeTab !== 'restaurant' && activeTab !== 'stock' && activeTab !== 'services' && activeTab !== 'profile') {
+    } else if (
+      isDirecteurRestaurant &&
+      activeTab !== 'restaurant' &&
+      activeTab !== 'cuisine' &&
+      activeTab !== 'pos' &&
+      activeTab !== 'stock' &&
+      activeTab !== 'services'
+    ) {
       setActiveTab('restaurant');
-    } else if (isCaisse && activeTab !== 'reservations' && activeTab !== 'profile') {
+    } else if (isCaisse && activeTab !== 'reservations' && activeTab !== 'cuisine') {
       setActiveTab('reservations');
     }
   }, [isCaisseRestaurant, isDirecteurRestaurant, isCaisse, activeTab]);
 
   const handleTabClick = (tab: BackOfficeTab) => {
-    if (isCaisseRestaurant && tab !== 'restaurant' && tab !== 'profile') {
+    // 1. Facture Globale & Certification FNE DGI et Profil sont TOUJOURS ACCESSIBLES À 100% SANS RESTRICTION
+    if (tab === 'facture_globale' || tab === 'profile') {
+      setActiveTab(tab);
+      return;
+    }
+
+    // 2. Gestion du Point de Vente (POS)
+    if (tab === 'pos') {
+      if (isCaisse) {
+        setRestrictedModalMessage(
+          "Accès Réservé : Votre compte Caisse Hôtel est configuré pour gérer les Réservations de chambres, les encaissements et la Facture Globale. Le Point de Vente du restaurant est géré par la Caisse Restaurant."
+        );
+        return;
+      }
+      setActiveTab('restaurant');
+      setRestaurantSubTab('pos');
+      return;
+    }
+
+    // 3. Rôle Caisse Restaurant : accès au restaurant, cuisine, POS, facture_globale, profil
+    if (isCaisseRestaurant) {
+      if (tab === 'restaurant' || tab === 'cuisine') {
+        setActiveTab(tab);
+        return;
+      }
       setRestrictedModalMessage(
-        "Accès Réservé : Votre compte Caisse Restaurant est dédié au Point de Vente (POS Restaurant), aux additions des tables et aux encaissements du restaurant."
+        "Accès Réservé : Votre compte Caisse Restaurant est dédié au Point de Vente (POS Restaurant), aux additions des tables, à la cuisine et à la Facture Globale & Certification FNE DGI."
       );
       return;
     }
-    if (isDirecteurRestaurant && tab !== 'restaurant' && tab !== 'stock' && tab !== 'services' && tab !== 'profile') {
+
+    // 4. Rôle Directeur Restaurant : accès restaurant, cuisine, POS, stocks, services, facture_globale, profil
+    if (isDirecteurRestaurant) {
+      if (tab === 'restaurant' || tab === 'cuisine' || tab === 'stock' || tab === 'services') {
+        setActiveTab(tab);
+        return;
+      }
       setRestrictedModalMessage(
-        "Accès Administrateur Restreint : Votre compte Directeur Restaurant est dédié à la gestion du Restaurant, des Tables, du Menu Gastronomique et des Stocks."
+        "Accès Administrateur Restreint : Votre compte Direction Restaurant supervise la gestion du Restaurant, des Tables, de la Cuisine (KDS), du Menu, de la Facturation Globale et des Stocks."
       );
       return;
     }
-    if (isCaisse && tab !== 'reservations' && tab !== 'profile') {
+
+    // 5. Rôle Caisse Hôtel : accès réservations, cuisine, facture_globale, profil
+    if (isCaisse) {
+      if (tab === 'reservations' || tab === 'cuisine') {
+        setActiveTab(tab);
+        return;
+      }
       setRestrictedModalMessage(
-        "Accès Réservé : Votre compte Caisse Hôtel a été configuré pour gérer exclusivement les Réservations de chambres, les Règlements et la Facturation client."
+        "Accès Réservé : Votre compte Caisse Hôtel a été configuré pour gérer les Réservations de chambres, les Règlements, la Cuisine et la Facture Globale & Certification FNE DGI."
       );
       return;
     }
+
+    // 6. Rôle Chef de Réception : restrictions spécifiques (finance, expenses, settings, erd, pricing, antioverbooking)
     if (isChefReception && (tab === 'finance' || tab === 'expenses' || tab === 'settings' || tab === 'erd' || tab === 'pricing' || tab === 'antioverbooking')) {
       setRestrictedModalMessage(
         "Accès Administrateur Restreint : Les bilans financiers, dépenses de gestion et paramètres généraux sont réservés au Directeur Général (Super Admin)."
       );
       return;
     }
+
+    // 7. Administrateur Général (DG) & accès autorisé
     setActiveTab(tab);
   };
 
@@ -203,6 +321,14 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                     <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">
                       Chef Réception
                     </span>
+                  ) : isCaisseRestaurant ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 font-bold">
+                      Caisse Restaurant
+                    </span>
+                  ) : isDirecteurRestaurant ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/25 text-purple-300 border border-purple-500/50 font-bold">
+                      Direction Restaurant
+                    </span>
                   ) : (
                     <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
                       Super Admin (DG)
@@ -217,6 +343,22 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
             {/* Profile & Navigation Actions */}
             <div className="flex items-center space-x-3">
+              {/* ACCÈS DIRECT 1-CLIC : Facture Globale & Certification FNE DGI (Header Principal) */}
+              <button
+                type="button"
+                onClick={() => handleTabClick('facture_globale')}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                  activeTab === 'facture_globale'
+                    ? 'bg-amber-500 text-stone-950 font-extrabold shadow-md ring-2 ring-amber-400/40'
+                    : 'bg-amber-950/40 text-amber-300 hover:text-white hover:bg-amber-900/60 border border-amber-600/40'
+                }`}
+                title="Accéder immédiatement à la Facture Globale Consolidée (Hôtel & Restaurant) et Certification FNE DGI"
+              >
+                <Receipt className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden md:inline">Facture Globale &amp; FNE DGI</span>
+                <span className="md:hidden">Facture FNE</span>
+              </button>
+
               {/* Notification Sonore Bell Trigger */}
               <button
                 type="button"
@@ -664,12 +806,12 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setActiveTab('restaurant');
+                        setActiveTab('cuisine');
                         setRestaurantSubTab('commandes');
                         setIsRestaurantMenuOpen(false);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold ${
-                        activeTab === 'restaurant' && restaurantSubTab === 'commandes'
+                        activeTab === 'cuisine' || (activeTab === 'restaurant' && restaurantSubTab === 'commandes')
                           ? 'bg-amber-500/20 text-amber-300'
                           : 'text-stone-200'
                       }`}
@@ -784,6 +926,26 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         </div>
                       </div>
                     </button>
+
+                    {/* Sous-page 7 : Facture Globale & FNE */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('facture_globale');
+                        setIsRestaurantMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold border-t border-stone-800 pt-2 text-amber-300"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                          <Receipt className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-xs">Facture Globale &amp; FNE DGI</span>
+                          <span className="text-[10px] text-stone-400 font-normal">Facturation restaurant &amp; certification</span>
+                        </div>
+                      </div>
+                    </button>
                   </div>
                 </>
               )}
@@ -811,11 +973,11 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             <button
               type="button"
               onClick={() => {
-                setActiveTab('restaurant');
+                setActiveTab('cuisine');
                 setRestaurantSubTab('commandes');
               }}
               className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
-                activeTab === 'restaurant' && restaurantSubTab === 'commandes'
+                activeTab === 'cuisine' || (activeTab === 'restaurant' && restaurantSubTab === 'commandes')
                   ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
                   : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
               }`}
@@ -828,6 +990,21 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   {restaurantOrders.filter((o) => o.statutAddition === 'en_cours').length}
                 </span>
               )}
+            </button>
+
+            {/* Accès DIRECT : Facture Globale & FNE (1 clic pour Admin, Caisse Restaurant, Directeur Restaurant) */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('facture_globale')}
+              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                activeTab === 'facture_globale'
+                  ? 'bg-amber-500 text-stone-950 border-2 border-amber-300 shadow-lg ring-2 ring-amber-400/40'
+                  : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
+              }`}
+              title="Accéder directement à la Facture Globale Consolidée (Hôtel & Restaurant) et Certification FNE DGI"
+            >
+              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+              <span>Facture Globale &amp; FNE</span>
             </button>
 
             {/* Tab POS : Point de Vente (Nourriture, Boissons, Services) -> AMBRE / OR CHAUD */}
@@ -1082,17 +1259,27 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('reservations');
-                setReservationSubTab('ajouter');
-              }}
-              className="px-4 py-2 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Créer une Réservation</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('reservations');
+                  setReservationSubTab('ajouter');
+                }}
+                className="px-4 py-2 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span>Créer une Réservation</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('facture_globale')}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+              >
+                <Receipt className="w-4 h-4 stroke-[2.5]" />
+                <span>Facture Globale &amp; FNE</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1105,21 +1292,31 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               </div>
               <div>
                 <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider block">
-                  SESSION CAISSE RESTAURANT ACTIVE • POINT DE VENTE &amp; ADDITIONS TABLES
+                  SESSION CAISSE RESTAURANT ACTIVE • POINT DE VENTE, ADDITIONS &amp; FACTURATION
                 </span>
                 <p className="text-xs text-stone-700">
-                  Votre profil de <strong>Caisse Restaurant</strong> est configuré pour gérer le Point de Vente, les commandes des tables, les encaissements en espèces/Mobile Money et les tickets de caisse.
+                  Votre profil de <strong>Caisse Restaurant</strong> est configuré pour gérer le Point de Vente, les commandes des tables, les encaissements et la <strong>Facture Globale &amp; FNE DGI</strong>.
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('restaurant')}
-              className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
-            >
-              <Utensils className="w-4 h-4 stroke-[2.5]" />
-              <span>Ouvrir le POS Restaurant</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab('restaurant')}
+                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+              >
+                <Utensils className="w-4 h-4 stroke-[2.5]" />
+                <span>Ouvrir le POS</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('facture_globale')}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+              >
+                <Receipt className="w-4 h-4 stroke-[2.5]" />
+                <span>Facture Globale &amp; FNE</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1135,9 +1332,27 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   DIRECTION RESTAURANT &amp; LOUNGE • GESTION COMPLÈTE DU SERVICE
                 </span>
                 <p className="text-xs text-stone-700">
-                  Votre profil de <strong>Directeur Restaurant</strong> supervise le plan de salle, le menu gastronomique, les réservations de tables et le suivi des commandes.
+                  Votre profil de <strong>Directeur Restaurant</strong> supervise le plan de salle, le menu gastronomique, les réservations de tables et la facturation globale FNE.
                 </p>
               </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab('restaurant')}
+                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+              >
+                <Utensils className="w-4 h-4 stroke-[2.5]" />
+                <span>Restaurant</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('facture_globale')}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+              >
+                <Receipt className="w-4 h-4 stroke-[2.5]" />
+                <span>Facture Globale &amp; FNE</span>
+              </button>
             </div>
           </div>
         )}
@@ -1151,8 +1366,28 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
 
         {/* Tab Dédié Restaurant (Plan de Tables, POS Restaurant, Réservations Tables, KDS, Menu) */}
-        {activeTab === 'restaurant' && !isCaisse && (
-          <RestaurantManagementTab key={restaurantSubTab} initialSubTab={restaurantSubTab} />
+        {activeTab === 'restaurant' && (!isCaisse || restaurantSubTab === 'commandes') && (
+          <RestaurantManagementTab
+            key={`rest-${restaurantSubTab}`}
+            initialSubTab={restaurantSubTab}
+            onSubTabChange={(tab) => setRestaurantSubTab(tab)}
+            onGoToFactureGlobale={() => setActiveTab('facture_globale')}
+          />
+        )}
+
+        {/* Tab Dédié Cuisine et Suivi KDS (Accès direct garanti sans blocage) */}
+        {activeTab === 'cuisine' && (
+          <RestaurantManagementTab
+            key="kds-cuisine-view"
+            initialSubTab="commandes"
+            onSubTabChange={(tab) => {
+              if (tab !== 'commandes') {
+                setActiveTab('restaurant');
+                setRestaurantSubTab(tab);
+              }
+            }}
+            onGoToFactureGlobale={() => setActiveTab('facture_globale')}
+          />
         )}
 
         {/* Tab Point de Vente (POS) */}

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useHotelSettings, CURRENCIES, CurrencyCode } from '../../context/SettingsContext.tsx';
 import { MobileMoneySettingsForm } from './MobileMoneySettingsForm.tsx';
+import { FneSettingsForm } from './FneSettingsForm.tsx';
 import {
   Settings,
   Image,
   DollarSign,
   ShieldAlert,
   FileText,
+  FileCheck2,
   Search,
   Megaphone,
   Check,
@@ -31,6 +33,7 @@ interface HotelSettingsTabProps {
     | 'general'
     | 'currency'
     | 'mobile_money'
+    | 'fne_ivoirienne'
     | 'cancellation'
     | 'banner'
     | 'seo'
@@ -46,7 +49,7 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
   const [formData, setFormData] = useState(settings);
   const [saveNotification, setSaveNotification] = useState(false);
   const [activeSubSection, setActiveSubSection] = useState<
-    'general' | 'currency' | 'mobile_money' | 'cancellation' | 'legal' | 'seo' | 'banner'
+    'general' | 'currency' | 'mobile_money' | 'fne_ivoirienne' | 'cancellation' | 'legal' | 'seo' | 'banner'
   >(initialSubSection);
 
   // Synchroniser l'état local si les réglages globaux changent
@@ -162,6 +165,22 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
           <span>APIs Mobile Money (Moov, Orange, MTN)</span>
           <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
             3 Opérateurs
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubSection('fne_ivoirienne')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+            activeSubSection === 'fne_ivoirienne'
+              ? 'bg-[#1C1B18] text-white shadow-sm ring-2 ring-[#C5A880]/60'
+              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <FileCheck2 className="w-4 h-4 text-[#C5A880]" />
+          <span>Norme FNE Côte d'Ivoire (DGI)</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 text-[10px] font-mono font-bold">
+            DGI CI
           </span>
         </button>
 
@@ -913,6 +932,16 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
           <MobileMoneySettingsForm
             value={formData.mobileMoney}
             onChange={(newMm) => setFormData({ ...formData, mobileMoney: newMm })}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* 2.ter SECTION NORME FNE CÔTE D'IVOIRE (DGI)                               */}
+        {/* ========================================================================= */}
+        {activeSubSection === 'fne_ivoirienne' && (
+          <FneSettingsForm
+            formData={formData.fneIvoirienne}
+            onChange={(newFne) => setFormData({ ...formData, fneIvoirienne: newFne })}
           />
         )}
 

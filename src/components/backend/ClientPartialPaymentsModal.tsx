@@ -22,32 +22,46 @@ import {
 } from 'lucide-react';
 import { ReservationItem, PaiementPartiel, PaymentMethod } from '../../types.ts';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
+import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { jsPDF } from 'jspdf';
 
 interface ClientPartialPaymentsModalProps {
+  isOpen?: boolean;
   initialReservationId?: string;
+  clientReservationId?: string;
   onClose: () => void;
 }
 
 export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProps> = ({
+  isOpen = true,
   initialReservationId,
+  clientReservationId,
   onClose
 }) => {
   const {
     reservations,
     addPaiementPartiel,
     deletePaiementPartiel,
-    settings,
     thermalPrinterConfig
   } = useHotelData();
+  const { settings, formatPrice: formatCurrency } = useHotelSettings();
+
+  const targetInitialId = clientReservationId || initialReservationId;
 
   // Selected reservation
   const [selectedResId, setSelectedResId] = useState<string>(() => {
-    if (initialReservationId && reservations.some((r) => r.id === initialReservationId)) {
-      return initialReservationId;
+    if (targetInitialId && reservations.some((r) => r.id === targetInitialId)) {
+      return targetInitialId;
     }
     return reservations[0]?.id || '';
   });
+
+  // Synchroniser quand targetInitialId change
+  React.useEffect(() => {
+    if (targetInitialId && reservations.some((r) => r.id === targetInitialId)) {
+      setSelectedResId(targetInitialId);
+    }
+  }, [targetInitialId, reservations]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'unpaid' | 'paid'>('all');
@@ -67,8 +81,11 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
   }, [reservations, selectedResId]);
 
   const formatPrice = (amount: number) => {
-    return `${amount.toLocaleString('fr-FR')} ${settings.currency}`;
+    if (formatCurrency) return formatCurrency(amount);
+    return `${amount.toLocaleString('fr-FR')} ${settings?.currency || 'FCFA'}`;
   };
+
+  if (!isOpen) return null;
 
   // Filtrage des dossiers clients
   const filteredReservations = useMemo(() => {
@@ -261,13 +278,13 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
       doc.setTextColor(gold[0], gold[1], gold[2]);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
-      doc.text(settings.appName || 'HOTELIA RESORT & SPA', 14, 15);
+      doc.text(settings?.appName || 'HOTELIA RESORT & SPA', 14, 15);
 
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.text(
-        `${settings.address || 'Abidjan, Côte d’Ivoire'}  •  Tél: ${settings.phone || '+225 07 00 00 00'}`,
+        `${settings?.address || 'Abidjan, Côte d’Ivoire'}  •  Tél: ${settings?.phone || '+225 07 00 00 00'}`,
         14,
         23
       );
@@ -349,7 +366,7 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
         doc.setTextColor(0, 0, 0);
         doc.text(`${p.modePaiement}`, 142, y + 5.5);
         doc.setFont('helvetica', 'bold');
-        doc.text(`${p.montant.toLocaleString('fr-FR')} ${settings.currency}`, 192, y + 5.5, { align: 'right' });
+        doc.text(`${p.montant.toLocaleString('fr-FR')} ${settings?.currency || 'FCFA'}`, 192, y + 5.5, { align: 'right' });
 
         y += 8;
       });
@@ -364,11 +381,11 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
       doc.text('Total Facturé Dossier :', 114, y + 8);
       doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'bold');
-      doc.text(`${totalDossier.toLocaleString('fr-FR')} ${settings.currency}`, 192, y + 8, { align: 'right' });
+      doc.text(`${totalDossier.toLocaleString('fr-FR')} ${settings?.currency || 'FCFA'}`, 192, y + 8, { align: 'right' });
 
       doc.setTextColor(0, 120, 60);
       doc.text('Total Acomptes Encaissés :', 114, y + 16);
-      doc.text(`${totalPaye.toLocaleString('fr-FR')} ${settings.currency}`, 192, y + 16, { align: 'right' });
+      doc.text(`${totalPaye.toLocaleString('fr-FR')} ${settings?.currency || 'FCFA'}`, 192, y + 16, { align: 'right' });
 
       doc.setDrawColor(200, 200, 200);
       doc.line(114, y + 20, 192, y + 20);
@@ -377,11 +394,11 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
       if (resteDu > 0) {
         doc.setTextColor(200, 30, 30);
         doc.text('RESTE À PAYER (SOLDE) :', 114, y + 27);
-        doc.text(`${resteDu.toLocaleString('fr-FR')} ${settings.currency}`, 192, y + 27, { align: 'right' });
+        doc.text(`${resteDu.toLocaleString('fr-FR')} ${settings?.currency || 'FCFA'}`, 192, y + 27, { align: 'right' });
       } else {
         doc.setTextColor(0, 140, 50);
         doc.text('DOSSIER ENTIÈREMENT SOLDÉ', 114, y + 27);
-        doc.text(`0 ${settings.currency}`, 192, y + 27, { align: 'right' });
+        doc.text(`0 ${settings?.currency || 'FCFA'}`, 192, y + 27, { align: 'right' });
       }
 
       // Pied de page
@@ -728,7 +745,7 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-[10px] font-mono text-stone-300 uppercase mb-1">
-                          Montant à Encaisser ({settings.currency}) *
+                          Montant à Encaisser ({settings?.currency || 'FCFA'}) *
                         </label>
                         <input
                           type="number"
@@ -1033,8 +1050,8 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
             <div className="p-8 text-black font-sans space-y-6">
               <div className="flex justify-between items-start border-b-2 border-black pb-4">
                 <div>
-                  <h1 className="text-2xl font-serif font-black">{settings.appName || 'HOTELIA RESORT & SPA'}</h1>
-                  <p className="text-xs text-stone-600">{settings.address || 'Abidjan, Côte d’Ivoire'} • Tél: {settings.phone || '+225 07 00 00 00'}</p>
+                  <h1 className="text-2xl font-serif font-black">{settings?.appName || 'HOTELIA RESORT & SPA'}</h1>
+                  <p className="text-xs text-stone-600">{settings?.address || 'Abidjan, Côte d’Ivoire'} • Tél: {settings?.phone || '+225 07 00 00 00'}</p>
                 </div>
                 <div className="text-right">
                   <div className="text-base font-mono font-bold uppercase">RELEVÉ DES PAIEMENTS PARTIELS</div>

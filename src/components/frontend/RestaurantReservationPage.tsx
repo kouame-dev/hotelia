@@ -929,14 +929,24 @@ export const RestaurantReservationPage: React.FC<RestaurantReservationPageProps>
                       </div>
                     </div>
 
-                    {/* Contenu textuel */}
+                    {/* Contenu textuel avec titre aligné horizontalement sous l'image pour toutes les catégories */}
                     <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
                       <div>
-                        <h4 className="font-serif font-bold text-base text-white group-hover:text-[#C5A880] transition-colors leading-snug">
-                          {dish.nom}
-                        </h4>
+                        {/* Ligne de Titre ou Nom du Plat alignée horizontalement sous l'image */}
+                        <div className="h-14 flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-stone-800/80">
+                          <h4
+                            className="font-serif font-bold text-base text-white group-hover:text-[#C5A880] transition-colors leading-snug line-clamp-2"
+                            title={dish.nom}
+                          >
+                            {dish.nom}
+                          </h4>
+                          <span className="font-mono font-bold text-sm text-[#C5A880] bg-[#161513] px-2.5 py-1 rounded-xl border border-[#C5A880]/30 shrink-0 shadow-xs">
+                            {formatPrice(dish.prix)}
+                          </span>
+                        </div>
+
                         {dish.description && (
-                          <p className="text-xs text-stone-400 mt-1.5 leading-relaxed line-clamp-3">
+                          <p className="text-xs text-stone-400 leading-relaxed line-clamp-2">
                             {dish.description}
                           </p>
                         )}

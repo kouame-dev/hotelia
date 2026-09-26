@@ -106,10 +106,12 @@ interface HotelDataContextType {
 
   // 4. Notifications sonores & visuelles
   notifications: ReservationNotification[];
+  allNotifications: ReservationNotification[];
   unreadCount: number;
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
   simulateNewIncomingReservation: (customData?: Partial<ReservationNotification>) => void;
+  simulateNewRestaurantReservation: (customData?: Partial<ReservationNotification>) => void;
   soundEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
 
@@ -540,20 +542,99 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.setItem('hotelia_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
-  const unreadCount = notifications.filter((n) => !n.lue).length;
+  // Restriction des notifications par rôle :
+  // Le compte admin restaurant (Directeur Restaurant) et caisse restaurant ne voient QUE les notifications du restaurant
+  const isRestaurantStaff =
+    currentUserProfile.role === 'Directeur Restaurant' ||
+    currentUserProfile.role === 'Caisse Restaurant';
+
+  const isHotelStaffOnly =
+    currentUserProfile.role === 'Chef de Réception' ||
+    currentUserProfile.role === 'Caisse' ||
+    currentUserProfile.role === 'Réceptionniste';
+
+  // Notifications filtrées selon le profil connecté
+  const roleFilteredNotifications = notifications.filter((n) => {
+    if (isRestaurantStaff) {
+      return n.source === 'restaurant';
+    }
+    if (isHotelStaffOnly) {
+      return n.source === 'hotel' || !n.source;
+    }
+    // Directeur Général / Gérant (Super Admin) voit toutes les notifications
+    return true;
+  });
+
+  const unreadCount = roleFilteredNotifications.filter((n) => !n.lue).length;
 
   const markNotificationAsRead = (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, lue: true } : n)));
   };
 
   const markAllNotificationsAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, lue: true })));
+    setNotifications((prev) =>
+      prev.map((n) => {
+        if (isRestaurantStaff && n.source !== 'restaurant') {
+          return n;
+        }
+        if (isHotelStaffOnly && n.source === 'restaurant') {
+          return n;
+        }
+        return { ...n, lue: true };
+      })
+    );
   };
 
   /**
-   * Déclenche une nouvelle notification de réservation avec SONNERIE si l'utilisateur est DG ou Chef de réception
+   * Simule une nouvelle réservation Restaurant (table ou commande) avec sonnette luxueuse
+   */
+  const simulateNewRestaurantReservation = (customData?: Partial<ReservationNotification>) => {
+    if (soundEnabled) {
+      playLuxuryBellSound();
+    }
+
+    const tables = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'VIP 8'];
+    const chosenTable = customData?.tableNumero || tables[Math.floor(Math.random() * tables.length)];
+    const nbCouverts = customData?.nbCouverts || Math.floor(2 + Math.random() * 5);
+    const services = ['Déjeuner en Salle', 'Dîner Gastronomique', 'Soirée Lounge VIP'];
+    const chosenService = customData?.serviceRestaurant || services[Math.floor(Math.random() * services.length)];
+    const amount = customData?.montant || nbCouverts * 18500;
+    const clientNoms = ['M. Yao Kouamé', 'Mme Kady Diabaté', 'Dr. Christian Konan', 'M. Serge Brou'];
+    const clientNom = customData?.clientNom || clientNoms[Math.floor(Math.random() * clientNoms.length)];
+
+    const newNotif: ReservationNotification = {
+      id: `notif-rest-${Date.now()}`,
+      source: 'restaurant',
+      timestamp: "À l'instant",
+      titre: '🍽️ Nouvelle Réservation Restaurant !',
+      message: `${clientNom} a réservé la table ${chosenTable} (${nbCouverts} couverts) pour le ${chosenService}`,
+      clientNom,
+      clientTelephone: customData?.clientTelephone || '+225 07 45 67 89 10',
+      clientEmail: customData?.clientEmail || 'contact.client@abidjan.ci',
+      tableNumero: chosenTable,
+      nbCouverts,
+      serviceRestaurant: chosenService,
+      montant: amount,
+      modePaiement: customData?.modePaiement || 'Orange Money',
+      dateReservation: new Date().toISOString().split('T')[0],
+      creneauHoraire: '20:00 - 22:30',
+      lue: false,
+      ...customData
+    };
+
+    setNotifications((prev) => [newNotif, ...prev]);
+  };
+
+  /**
+   * Déclenche une nouvelle notification de réservation avec SONNERIE selon le rôle
    */
   const simulateNewIncomingReservation = (customData?: Partial<ReservationNotification>) => {
+    // Si c'est un compte restaurant ou si demandé explicitement
+    if (isRestaurantStaff || customData?.source === 'restaurant') {
+      simulateNewRestaurantReservation(customData);
+      return;
+    }
+
     const isTargetRole =
       currentUserProfile.role === 'Directeur Général' ||
       currentUserProfile.role === 'Chef de Réception';
@@ -571,7 +652,9 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const newNotif: ReservationNotification = {
       id: `notif-${Date.now()}`,
+      source: 'hotel',
       timestamp: "À l'instant",
+      titre: '🏨 Nouvelle Réservation Hôtel !',
       clientNom: customData?.clientNom || 'Sékou Traoré',
       clientTelephone: customData?.clientTelephone || '+225 07 77 88 99 00',
       clientEmail: customData?.clientEmail || 'sekou.traore@business.ci',
@@ -591,9 +674,9 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     addRevenue({
       date: newNotif.dateReservation,
       clientNom: newNotif.clientNom,
-      chambreNumero: newNotif.chambreNumero,
-      typeReservation: newNotif.typeReservation,
-      modePaiement: newNotif.modePaiement,
+      chambreNumero: newNotif.chambreNumero || '101',
+      typeReservation: newNotif.typeReservation || 'nuit',
+      modePaiement: (newNotif.modePaiement as PaymentMethod) || 'Orange Money',
       montant: newNotif.montant,
       statut: 'paye'
     });
@@ -1358,6 +1441,103 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         .sort((a, b) => new Date(b.dateDebut).getTime() - new Date(a.dateDebut).getTime())[0];
     }
 
+    // 1b. Si aucune réservation d'hôtel trouvée, vérifier s'il s'agit d'une commande / addition restaurant
+    if (!targetRes && reservationId) {
+      const targetOrder = restaurantOrders.find(
+        (o) => o.id === reservationId || o.numeroCommande === reservationId
+      );
+      if (targetOrder) {
+        const orderItems = targetOrder.items || targetOrder.articles || [];
+        const flatRestaurantLines = orderItems.map((it) => ({
+          id: it.id || `cmd-${Math.random()}`,
+          date: targetOrder.date || targetOrder.dateCommande || new Date().toISOString().split('T')[0],
+          tableNumero: targetOrder.tableNumero || 'Salle',
+          description: `${it.nom}${it.cuissonOuNote ? ` (${it.cuissonOuNote})` : ''}`,
+          quantite: it.quantite,
+          totalLigne: it.totalLigne || it.prixUnitaire * it.quantite
+        }));
+
+        const flatPosLines = orderItems.map((it) => ({
+          id: it.id || `pos-${Math.random()}`,
+          date: targetOrder.date || targetOrder.dateCommande || new Date().toISOString().split('T')[0],
+          nom: it.nom,
+          categorie: (it.categorie as any) || 'restaurant',
+          quantite: it.quantite,
+          prixUnitaire: it.prixUnitaire,
+          totalLigne: it.totalLigne || it.prixUnitaire * it.quantite
+        }));
+
+        const sousTotalRestaurant = flatRestaurantLines.reduce((sum, item) => sum + item.totalLigne, 0);
+        const totalBrut = targetOrder.totalBrut || sousTotalRestaurant;
+        const remiseTotale = targetOrder.remise || 0;
+        const acompteDeduit = targetOrder.acompteDeduit || 0;
+        const netApresRemise = Math.max(0, totalBrut - remiseTotale);
+        const totalTTC = targetOrder.totalNet || netApresRemise;
+        const isPaid = targetOrder.statutPaiement === 'paye' || targetOrder.statutAddition === 'payee';
+        const totalAcomptesVerses = isPaid
+          ? totalTTC
+          : (targetOrder.montantVerse || 0) + acompteDeduit;
+        const resteAPayer = Math.max(0, totalTTC - totalAcomptesVerses);
+
+        const historiqueReglements: FactureGlobaleData['historiqueReglements'] = [];
+        if (acompteDeduit > 0) {
+          historiqueReglements.push({
+            date: targetOrder.date || new Date().toISOString().split('T')[0],
+            mode: (targetOrder.modePaiement as PaymentMethod) || 'Espèces / Caisse',
+            montant: acompteDeduit,
+            reference: `Acompte Réservation Table #${targetOrder.tableNumero}`
+          });
+        }
+        if (isPaid && totalTTC > acompteDeduit) {
+          historiqueReglements.push({
+            date: targetOrder.date || new Date().toISOString().split('T')[0],
+            mode: (targetOrder.modePaiement as PaymentMethod) || 'Espèces / Caisse',
+            montant: totalTTC - acompteDeduit,
+            reference: `Règlement Addition Table #${targetOrder.tableNumero} (${targetOrder.numeroCommande})`
+          });
+        } else if (targetOrder.montantVerse && targetOrder.montantVerse > 0) {
+          historiqueReglements.push({
+            date: targetOrder.date || new Date().toISOString().split('T')[0],
+            mode: (targetOrder.modePaiement as PaymentMethod) || 'Espèces / Caisse',
+            montant: targetOrder.montantVerse,
+            reference: `Versement Partiel (${targetOrder.numeroCommande})`
+          });
+        }
+
+        const invoiceNumber = `FAC-REST-${new Date().getFullYear()}-${targetOrder.numeroCommande.replace(/[^0-9]/g, '') || Math.floor(100 + Math.random() * 900)}`;
+
+        return {
+          numeroFacture: invoiceNumber,
+          dateEmission: targetOrder.date || new Date().toISOString().split('T')[0],
+          heureEmission: targetOrder.heure || new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          client: {
+            nom: targetOrder.clientNom || 'Client Restaurant',
+            telephone: targetOrder.clientTelephone || '',
+            email: ''
+          },
+          services: [],
+          produitsPos: flatPosLines,
+          restaurantCommandes: flatRestaurantLines,
+          sousTotalHebergement: 0,
+          sousTotalServices: 0,
+          sousTotalPos: sousTotalRestaurant,
+          sousTotalRestaurant,
+          totalBrut,
+          remise: remiseTotale,
+          tvaTaux: 0,
+          tvaMontant: 0,
+          taxeSejour: 0,
+          totalTTC,
+          totalAcomptesVerses,
+          resteAPayer,
+          statutPaiement: resteAPayer === 0 ? 'solde' : totalAcomptesVerses > 0 ? 'acompte' : 'impaye',
+          modeReglementPrincipal: (targetOrder.modePaiement as PaymentMethod) || 'Espèces / Caisse',
+          historiqueReglements,
+          notes: `Addition Table ${targetOrder.tableNumero} — Serveur: ${targetOrder.serveurNom || 'Service Restaurant'}`
+        };
+      }
+    }
+
     const targetRoomNumber = targetRes ? targetRes.chambreNumero : chambreNumero;
     const clientName = targetRes ? targetRes.clientNom : 'Client de Passage';
     const clientPhone = targetRes ? targetRes.clientTelephone : '';
@@ -1571,7 +1751,17 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [restaurantOrders, setRestaurantOrders] = useState<RestaurantOrder[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_restaurant_orders');
-      return saved ? JSON.parse(saved) : INITIAL_RESTAURANT_ORDERS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((o: any) => ({
+            ...o,
+            items: o.items || o.articles || [],
+            articles: o.articles || o.items || []
+          }));
+        }
+      }
+      return INITIAL_RESTAURANT_ORDERS;
     } catch {
       return INITIAL_RESTAURANT_ORDERS;
     }
@@ -1643,14 +1833,23 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (soundEnabled) {
       playLuxuryBellSound();
     }
-    const notif = {
+    const notif: ReservationNotification = {
       id: `notif-rest-${Date.now()}`,
+      source: 'restaurant',
       titre: '🍽️ Nouvelle Réservation Restaurant !',
       message: `${newReservation.clientNom} a réservé pour ${newReservation.nbCouverts} couvert(s) (${newReservation.service}) le ${newReservation.date} à ${newReservation.heure}. Réf: ${newReservation.reference}`,
-      type: 'reservation' as const,
+      clientNom: newReservation.clientNom,
+      clientTelephone: newReservation.clientTelephone,
+      clientEmail: newReservation.clientEmail,
+      tableNumero: newReservation.tableNumero || 'À assigner',
+      nbCouverts: newReservation.nbCouverts,
+      serviceRestaurant: newReservation.service,
+      montant: (newReservation.nbCouverts || 2) * 18500,
+      modePaiement: newReservation.modePaiementAcompte || 'En attente',
+      dateReservation: newReservation.date,
+      creneauHoraire: newReservation.heure,
       timestamp: dateCreation,
-      lu: false,
-      reservationId: newReservation.id
+      lue: false
     };
     setNotifications((prev) => [notif, ...prev]);
 
@@ -1745,10 +1944,13 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   ): RestaurantOrder => {
     const randomNum = Math.floor(100 + Math.random() * 900);
     const numeroCommande = `CMD-REST-${randomNum}`;
+    const orderItemsList = order.articles || order.items || [];
     const created: RestaurantOrder = {
       ...order,
       id: `cmd-rest-${Date.now()}`,
-      numeroCommande
+      numeroCommande,
+      items: (order.items || orderItemsList) as any,
+      articles: (order.articles || orderItemsList) as any
     };
 
     setRestaurantOrders((prev) => [created, ...prev]);
@@ -1774,6 +1976,25 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (soundEnabled) {
       playAlertChime();
     }
+
+    // Notification spécifique pour le passe-plat et la cuisine
+    const orderNotif: ReservationNotification = {
+      id: `notif-kds-${Date.now()}`,
+      source: 'restaurant',
+      titre: '🔥 Commande Cuisine Transmise !',
+      message: `Bon ${numeroCommande} pour Table ${created.tableNumero || 'Comptoir'} (${(created.articles?.length || created.items?.length || 0)} plat(s))`,
+      clientNom: created.clientNom,
+      clientTelephone: created.clientTelephone || '',
+      tableNumero: created.tableNumero,
+      numeroCommande: created.numeroCommande,
+      montant: created.totalNet,
+      modePaiement: created.modePaiement || 'En cours',
+      dateReservation: new Date().toISOString().split('T')[0],
+      creneauHoraire: created.heureCommande || 'Immédiat',
+      timestamp: "À l'instant",
+      lue: false
+    };
+    setNotifications((prev) => [orderNotif, ...prev]);
 
     return created;
   };
@@ -2395,11 +2616,13 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         switchUserRole,
         thermalPrinterConfig,
         updateThermalPrinterConfig,
-        notifications,
+        notifications: roleFilteredNotifications,
+        allNotifications: notifications,
         unreadCount,
         markNotificationAsRead,
         markAllNotificationsAsRead,
         simulateNewIncomingReservation,
+        simulateNewRestaurantReservation,
         soundEnabled,
         setSoundEnabled,
         expenses,

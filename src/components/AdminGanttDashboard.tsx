@@ -71,14 +71,14 @@ export const AdminGanttDashboard: React.FC = () => {
   const endHour = viewMode === 'business' ? 24 : 24;
   const totalHours = endHour - startHour;
 
-  // Chambres de l'établissement
+  // Chambres de l'établissement (Fourchette 10 000 à 35 000 FCFA)
   const chambres: ChambreGantt[] = [
-    { id: 'c101', numero: '101', type: 'Deluxe', etage: 1, statutActuel: 'menage', prixNuit: 140, prixHeure: 35 },
-    { id: 'c102', numero: '102', type: 'Standard', etage: 1, statutActuel: 'occupee', prixNuit: 110, prixHeure: 30 },
-    { id: 'c103', numero: '103', type: 'Deluxe', etage: 1, statutActuel: 'libre', prixNuit: 140, prixHeure: 35 },
-    { id: 'c201', numero: '201', type: 'Executive', etage: 2, statutActuel: 'occupee', prixNuit: 180, prixHeure: 45 },
-    { id: 'c202', numero: '202', type: 'Standard', etage: 2, statutActuel: 'arrivee_imminente', prixNuit: 110, prixHeure: 30 },
-    { id: 'c301', numero: '301', type: 'Suite Panoramique', etage: 3, statutActuel: 'libre', prixNuit: 280, prixHeure: 70 }
+    { id: 'c101', numero: '101', type: 'Deluxe', etage: 1, statutActuel: 'menage', prixNuit: 20000, prixHeure: 8000 },
+    { id: 'c102', numero: '102', type: 'Standard', etage: 1, statutActuel: 'occupee', prixNuit: 10000, prixHeure: 5000 },
+    { id: 'c103', numero: '103', type: 'Deluxe', etage: 1, statutActuel: 'libre', prixNuit: 15000, prixHeure: 6000 },
+    { id: 'c201', numero: '201', type: 'Executive', etage: 2, statutActuel: 'occupee', prixNuit: 25000, prixHeure: 10000 },
+    { id: 'c202', numero: '202', type: 'Standard', etage: 2, statutActuel: 'arrivee_imminente', prixNuit: 15000, prixHeure: 6000 },
+    { id: 'c301', numero: '301', type: 'Suite Panoramique', etage: 3, statutActuel: 'libre', prixNuit: 35000, prixHeure: 15000 }
   ];
 
   // Réservations & créneaux de la journée (Gantt Blocks)
@@ -91,11 +91,11 @@ export const AdminGanttDashboard: React.FC = () => {
       type: 'heure',
       chambreId: 'c101',
       clientNom: 'Alexandre Laurent',
-      clientTel: '+33 6 12 34 56 78',
+      clientTel: '+225 07 12 34 56 78',
       heureDebut: '10:00',
       heureFin: '13:00',
       statut: 'termine',
-      montant: 105,
+      montant: 24000,
       voyageurs: 2,
       note: 'Option Champagne & Arrivée discrète demandée'
     },
@@ -113,13 +113,13 @@ export const AdminGanttDashboard: React.FC = () => {
       type: 'nuitee',
       chambreId: 'c101',
       clientNom: 'Claire & Thomas Moreau',
-      clientTel: '+33 6 98 76 54 32',
+      clientTel: '+225 05 98 76 54 32',
       heureDebut: '18:00',
       heureFin: '24:00',
       statut: 'confirme',
-      montant: 140,
+      montant: 20000,
       voyageurs: 2,
-      note: 'Check-in prévu à 18h30. Arrivée gare TGV.'
+      note: 'Check-in prévu à 18h30. Arrivée aéroport.'
     },
 
     // Chambre 102
@@ -128,11 +128,11 @@ export const AdminGanttDashboard: React.FC = () => {
       type: 'heure',
       chambreId: 'c102',
       clientNom: 'Dr. Marc Valadier',
-      clientTel: '+33 6 45 12 89 63',
+      clientTel: '+225 07 45 12 89 63',
       heureDebut: '08:30',
       heureFin: '12:30',
       statut: 'termine',
-      montant: 120,
+      montant: 20000,
       voyageurs: 1,
       note: 'Usage bureau télétravail au calme'
     },
@@ -150,11 +150,11 @@ export const AdminGanttDashboard: React.FC = () => {
       type: 'heure',
       chambreId: 'c102',
       clientNom: 'Sophie Danet',
-      clientTel: '+33 6 77 88 99 00',
+      clientTel: '+225 01 77 88 99 00',
       heureDebut: '14:00',
       heureFin: '17:00',
       statut: 'en_cours',
-      montant: 90,
+      montant: 15000,
       voyageurs: 2,
       note: 'Accès Spa inclus'
     },

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { HoteliaFrontEnd } from './components/frontend/HoteliaFrontEnd.tsx';
 import { RestaurantReservationPage } from './components/frontend/RestaurantReservationPage.tsx';
 import { AdminLoginPage } from './components/backend/AdminLoginPage.tsx';
-import { AdminBackOffice } from './components/backend/AdminBackOffice.tsx';
+import { AdminBackOffice, BackOfficeTab } from './components/backend/AdminBackOffice.tsx';
 import { Navbar, AppTab } from './components/Navbar.tsx';
 import { ReservationFormShowcase } from './components/ReservationFormShowcase.tsx';
 import { BoutiqueClientDashboard } from './components/BoutiqueClientDashboard.tsx';
@@ -23,7 +23,9 @@ import {
   ShieldCheck,
   Building,
   Utensils,
-  Award
+  Award,
+  ChefHat,
+  Receipt
 } from 'lucide-react';
 
 export type MainAppView = 'frontend' | 'restaurant_booking' | 'login' | 'backend' | 'dev_tools';
@@ -32,6 +34,8 @@ export default function App() {
   // Vue active principale : par défaut 'frontend' avec le slider Hotelia
   const [appView, setAppView] = useState<MainAppView>('frontend');
   const [isClientSpaceOpen, setIsClientSpaceOpen] = useState(false);
+  const [backendInitialTab, setBackendInitialTab] = useState<BackOfficeTab | undefined>(undefined);
+  const [backendTabTimestamp, setBackendTabTimestamp] = useState<number>(0);
 
   // Utilisateur connecté au back-end
   const [currentUser, setCurrentUser] = useState<{
@@ -132,6 +136,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => {
+                setBackendInitialTab(undefined);
                 if (!currentUser) {
                   setAppView('login');
                 } else {
@@ -139,13 +144,64 @@ export default function App() {
                 }
               }}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                appView === 'backend'
+                appView === 'backend' && backendInitialTab !== 'cuisine'
                   ? 'bg-[#C5A880] text-slate-950 font-bold shadow-sm'
                   : 'text-stone-300 hover:text-white'
               }`}
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               <span>Back-End Admin</span>
+            </button>
+
+            {/* Accès DIRECT : Écran Suivi de Cuisine (KDS) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!currentUser) {
+                  setCurrentUser({
+                    nom: 'Chef Jean-Luc Gnahoua (Directeur Restaurant)',
+                    role: 'Directeur Restaurant',
+                    email: 'restaurant.admin@hotelia.dekouassiholding.com'
+                  });
+                }
+                setBackendInitialTab('cuisine');
+                setAppView('backend');
+              }}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                appView === 'backend' && backendInitialTab === 'cuisine'
+                  ? 'bg-amber-500 text-stone-950 shadow-md font-extrabold ring-2 ring-amber-400/40'
+                  : 'bg-amber-950/40 text-amber-300 hover:text-white hover:bg-amber-900/60 border border-amber-600/40'
+              }`}
+              title="Ouvrir directement l'écran de suivi de cuisine (KDS) en temps réel"
+            >
+              <ChefHat className="w-3.5 h-3.5 text-amber-400" />
+              <span>Suivi Cuisine</span>
+            </button>
+
+            {/* Accès DIRECT : Facture Globale & FNE */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!currentUser) {
+                  setCurrentUser({
+                    nom: 'Koua Dibi (Dekouassi Holding)',
+                    role: 'Directeur Général & Administrateur',
+                    email: 'directeur@hotelia.dekouassiholding.com'
+                  });
+                }
+                setBackendInitialTab('facture_globale');
+                setBackendTabTimestamp(Date.now());
+                setAppView('backend');
+              }}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                appView === 'backend' && backendInitialTab === 'facture_globale'
+                  ? 'bg-amber-500 text-stone-950 shadow-md font-extrabold ring-2 ring-amber-400/40'
+                  : 'bg-amber-950/40 text-amber-300 hover:text-white hover:bg-amber-900/60 border border-amber-600/40'
+              }`}
+              title="Ouvrir directement la Facture Globale Consolidée (Hôtel & Restaurant) et Certification FNE DGI"
+            >
+              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+              <span>Facture Globale</span>
             </button>
 
             {/* 5. Outils SQL & Architecture */}
@@ -192,6 +248,8 @@ export default function App() {
           user={currentUser}
           onLogout={handleLogout}
           onGoToPublicSite={() => setAppView('frontend')}
+          initialTab={backendInitialTab}
+          initialTabTimestamp={backendTabTimestamp}
         />
       )}
 

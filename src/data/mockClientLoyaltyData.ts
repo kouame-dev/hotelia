@@ -105,6 +105,68 @@ export const INITIAL_PROMO_COUPONS: PromoCoupon[] = [
 
 export const INITIAL_CLIENT_ACCOUNTS: ClientAccount[] = [
   {
+    id: 'client-acc-kd',
+    nom: 'Koua Dibi (Dekouassi Holding)',
+    email: 'koua.dibi@gmail.com',
+    telephone: '+225 07 08 09 10 11',
+    ville: 'Abidjan',
+    pays: 'Côte d’Ivoire',
+    dateInscription: '2025-10-01',
+    codePin: '1234',
+    carteFidelite: {
+      numeroCarte: 'HTL-FID-77701',
+      tier: 'Platine',
+      points: 5200,
+      pointsHistoriqueTotal: 6800,
+      dateEmission: '2025-10-01',
+      dateExpiration: '2027-10-01',
+      statut: 'active',
+      codeQr: 'HTL-FID-77701-KOUADIBI-PLATINE-5200',
+      transactions: [
+        {
+          id: 'tx-kd-1',
+          date: '2025-10-01',
+          heure: '10:00',
+          type: 'bonus_bienvenue',
+          points: 150,
+          description: 'Bonus adhésion statut VIP Platine'
+        },
+        {
+          id: 'tx-kd-2',
+          date: '2026-08-15',
+          heure: '18:30',
+          type: 'gain_sejour',
+          points: 5050,
+          description: 'Séjours réguliers suites VIP & Dîners gastronomiques',
+          montantFacture: 5050000
+        }
+      ]
+    },
+    notifications: [
+      {
+        id: 'notif-kd1',
+        titre: 'Statut Privilège Platine Actif',
+        message: 'Bienvenue M. Koua Dibi. Vos avantages exclusifs Platine (10% permanent, Champagne d’accueil, conciergerie 24/7) sont actifs.',
+        date: '2026-09-01',
+        heure: '09:00',
+        lue: false,
+        type: 'fidelite'
+      }
+    ],
+    smsMessages: [
+      {
+        id: 'sms-kd1',
+        destinataireTelephone: '+225 07 08 09 10 11',
+        destinataireNom: 'Koua Dibi',
+        expediteur: 'HOTELIA',
+        message: 'HOTELIA: Bienvenue M. Koua Dibi, votre carte Privilège Platine HTL-FID-77701 est active. Conciergerie VIP à votre disposition.',
+        date: '2026-09-01',
+        heure: '09:05',
+        statut: 'delivre'
+      }
+    ]
+  },
+  {
     id: 'client-acc-1',
     nom: 'Marc-Aurèle Kouassi',
     email: 'm.kouassi@groupe-ivoire.ci',

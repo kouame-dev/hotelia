@@ -154,6 +154,81 @@ export const DEFAULT_MOBILE_MONEY_SETTINGS: MobileMoneySettings = {
   }
 };
 
+export interface FneIvoirienneConfig {
+  enabled: boolean;
+  modeTransmission: 'direct_dgi' | 'module_securise' | 'sandbox_test';
+  nomEntreprise: string;
+  nccEntreprise: string; // Numéro de Compte Contribuable (ex: "2104592 X")
+  rccmEntreprise: string; // Registre du Commerce (ex: "CI-ABJ-2022-B-14892")
+  centreImpotRattachement: string; // ex: "Centre des Impôts de Cocody"
+  regimeImposition: 'Régime Réel Normal (RRN)' | 'Régime Réel Simplifié (RRS)' | 'Régime de l\'Entreprenant';
+  codePointVenteDgi: string; // ex: "POS-HOTELIA-01"
+  telephoneOfficiel: string;
+  adresseFiscale: string;
+
+  // Sécurité & API DGI Côte d'Ivoire
+  dgiApiEndpoint: string;
+  dgiApiKey: string;
+  cleSecuriteFiscale: string;
+  urlVerificationQrDgi: string;
+
+  // Fiscalité Ivoirienne
+  tauxTva: number; // 18% standard
+  activerTdt: boolean; // Taxe de Développement Touristique
+  typeTdt: 'forfait_par_nuitee' | 'pourcentage';
+  valeurTdtForfait: number; // 500 FCFA
+  tauxTdtPourcentage: number; // 5%
+  tauxAirsi: number; // 5%
+  appliquerAirsiClientSansNcc: boolean;
+  timbreFiscalMontant: number; // 100 FCFA
+
+  // Numérotation & Mentions
+  prefixeFne: string; // "FNE-CI"
+  serieCourante: string; // "2026-HTL"
+  prochainNumeroSequence: number; // 483
+  mentionLegaleObligatoire: string;
+  signatureResponsable: string;
+  dernierPingDgiStatus?: 'success' | 'error' | 'idle';
+  dernierPingDgiDate?: string;
+  dernierPingDgiMessage?: string;
+}
+
+export const DEFAULT_FNE_IVOIRIENNE_CONFIG: FneIvoirienneConfig = {
+  enabled: true,
+  modeTransmission: 'direct_dgi',
+  nomEntreprise: 'Dekouassi Holding SA • Hotelia Résidence & Suites',
+  nccEntreprise: '2104592 X',
+  rccmEntreprise: 'CI-ABJ-2022-B-14892',
+  centreImpotRattachement: 'Direction des Grandes Entreprises (DGE) / Centre des Impôts de Cocody',
+  regimeImposition: 'Régime Réel Normal (RRN)',
+  codePointVenteDgi: 'POS-HTL-ABJ-01',
+  telephoneOfficiel: '+225 27 22 44 88 00',
+  adresseFiscale: "Boulevard Hassan II, Cocody Ambassades, Abidjan, Côte d'Ivoire",
+
+  dgiApiEndpoint: 'https://fne-api.dgi.gouv.ci/v1/factures',
+  dgiApiKey: 'dgi_sec_token_ci_9832148092_abj',
+  cleSecuriteFiscale: 'SEC-DGI-CI-884920-HTL',
+  urlVerificationQrDgi: 'https://dgi.gouv.ci/verification-fne',
+
+  tauxTva: 18,
+  activerTdt: true,
+  typeTdt: 'forfait_par_nuitee',
+  valeurTdtForfait: 500,
+  tauxTdtPourcentage: 5,
+  tauxAirsi: 5,
+  appliquerAirsiClientSansNcc: true,
+  timbreFiscalMontant: 100,
+
+  prefixeFne: 'FNE-CI',
+  serieCourante: '2026-HTL',
+  prochainNumeroSequence: 483,
+  mentionLegaleObligatoire: "Facture Normalisée Électronique délivrée conformément aux dispositions du Code Général des Impôts de Côte d'Ivoire (DGI CI).",
+  signatureResponsable: 'Koua Dibi (Directeur Général & Administrateur Dekouassi Holding)',
+  dernierPingDgiStatus: 'success',
+  dernierPingDgiDate: '2026-09-24 10:15',
+  dernierPingDgiMessage: "Connexion opérationnelle avec le concentrateur fiscal e-Impôts DGI Côte d'Ivoire"
+};
+
 export interface HotelSettings {
   // 1. Identité de marque & Logo
   appName: string;
@@ -194,6 +269,9 @@ export interface HotelSettings {
 
   // 7. Passerelles Mobile Money (Moov, Orange, MTN)
   mobileMoney: MobileMoneySettings;
+
+  // 8. Paramétrage FNE (Facture Normalisée Électronique - Côte d'Ivoire DGI)
+  fneIvoirienne: FneIvoirienneConfig;
 }
 
 export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
@@ -237,12 +315,16 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
     badgeText: 'PROMOTION'
   },
 
-  mobileMoney: DEFAULT_MOBILE_MONEY_SETTINGS
+  mobileMoney: DEFAULT_MOBILE_MONEY_SETTINGS,
+  fneIvoirienne: DEFAULT_FNE_IVOIRIENNE_CONFIG
 };
 
 interface SettingsContextType {
   settings: HotelSettings;
   updateSettings: (newSettings: Partial<HotelSettings>) => void;
+  updateFneSettings: (fne: Partial<FneIvoirienneConfig>) => void;
+  testDgiConnection: () => Promise<{ success: boolean; message: string; timestamp: string }>;
+  incrementFneSequence: () => number;
   resetSettings: () => void;
   formatPrice: (amountEUR: number) => string;
   convertPrice: (amountEUR: number) => number;
@@ -272,6 +354,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               ...DEFAULT_MOBILE_MONEY_SETTINGS.moovMoney,
               ...(parsed.mobileMoney?.moovMoney || {})
             }
+          },
+          fneIvoirienne: {
+            ...DEFAULT_FNE_IVOIRIENNE_CONFIG,
+            ...(parsed.fneIvoirienne || {})
           }
         };
       }
@@ -312,6 +398,50 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setSettings((prev) => ({ ...prev, ...newSettings }));
   };
 
+  const updateFneSettings = (fne: Partial<FneIvoirienneConfig>) => {
+    setSettings((prev) => ({
+      ...prev,
+      fneIvoirienne: {
+        ...prev.fneIvoirienne,
+        ...fne
+      }
+    }));
+  };
+
+  const testDgiConnection = async (): Promise<{ success: boolean; message: string; timestamp: string }> => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const now = new Date();
+    const timestamp = now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR');
+    const fne = settings?.fneIvoirienne || DEFAULT_FNE_IVOIRIENNE_CONFIG;
+    const isValidKey = Boolean(fne.dgiApiKey && fne.nccEntreprise);
+
+    if (isValidKey) {
+      const message = `Succès : Connexion établie avec le concentrateur fiscal DGI Côte d'Ivoire (NCC: ${fne.nccEntreprise}, Centre: ${fne.centreImpotRattachement}). Accusé de test N° DGI-PING-${Date.now().toString().slice(-6)}.`;
+      updateFneSettings({
+        dernierPingDgiStatus: 'success',
+        dernierPingDgiDate: timestamp,
+        dernierPingDgiMessage: message
+      });
+      return { success: true, message, timestamp };
+    } else {
+      const message = "Erreur : NCC ou Clé API DGI non renseignés. Veuillez vérifier vos identifiants fiscaux.";
+      updateFneSettings({
+        dernierPingDgiStatus: 'error',
+        dernierPingDgiDate: timestamp,
+        dernierPingDgiMessage: message
+      });
+      return { success: false, message, timestamp };
+    }
+  };
+
+  const incrementFneSequence = (): number => {
+    const fne = settings?.fneIvoirienne || DEFAULT_FNE_IVOIRIENNE_CONFIG;
+    const currentSeq = fne.prochainNumeroSequence || 483;
+    const nextSeq = currentSeq + 1;
+    updateFneSettings({ prochainNumeroSequence: nextSeq });
+    return currentSeq;
+  };
+
   const resetSettings = () => {
     setSettings(DEFAULT_HOTEL_SETTINGS);
   };
@@ -344,6 +474,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       value={{
         settings,
         updateSettings,
+        updateFneSettings,
+        testDgiConnection,
+        incrementFneSequence,
         resetSettings,
         formatPrice,
         convertPrice

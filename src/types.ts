@@ -81,6 +81,7 @@ export interface ChambreConfig {
 
 // Profil utilisateur et rôles du système
 export type UserRole =
+  | 'Admin'
   | 'Directeur Général'
   | 'Chef de Réception'
   | 'Caisse'
@@ -117,17 +118,24 @@ export interface ThermalPrinterConfig {
   paperFeedLines: number; // Lignes de saut avant coupe papier
 }
 
-// Notification sonore et visuelle de réservation
+// Notification sonore et visuelle de réservation (Hôtel & Restaurant)
 export interface ReservationNotification {
   id: string;
   timestamp: string;
+  source?: 'hotel' | 'restaurant';
+  titre?: string;
+  message?: string;
   clientNom: string;
   clientTelephone: string;
   clientEmail?: string;
-  chambreNumero: string;
-  typeReservation: ReservationType;
+  chambreNumero?: string;
+  tableNumero?: string;
+  nbCouverts?: number;
+  serviceRestaurant?: string;
+  numeroCommande?: string;
+  typeReservation?: ReservationType;
   montant: number;
-  modePaiement: PaymentMethod;
+  modePaiement: PaymentMethod | string;
   dateReservation: string;
   creneauHoraire?: string;
   lue: boolean;
@@ -443,6 +451,8 @@ export interface FactureGlobaleData {
     telephone: string;
     email?: string;
     adresse?: string;
+    nccClient?: string; // NCC Acheteur (Côte d'Ivoire) si entreprise
+    typeClient?: 'particulier' | 'entreprise';
   };
   reservation?: {
     id: string;
@@ -476,12 +486,21 @@ export interface FactureGlobaleData {
     prixUnitaire: number;
     totalLigne: number;
   }[];
+  restaurantCommandes?: {
+    id: string;
+    date: string;
+    tableNumero: string;
+    description: string;
+    quantite: number;
+    totalLigne: number;
+  }[];
   sousTotalHebergement: number;
   sousTotalServices: number;
   sousTotalPos: number;
+  sousTotalRestaurant?: number;
   totalBrut: number;
   remise: number;
-  tvaTaux: number; // ex: 0 ou 18%
+  tvaTaux: number; // ex: 18% (TVA Côte d'Ivoire)
   tvaMontant: number;
   taxeSejour: number;
   totalTTC: number;
@@ -496,6 +515,31 @@ export interface FactureGlobaleData {
     reference?: string;
   }[];
   notes?: string;
+
+  // =========================================================================
+  // CERTIFICATION FNE (FACTURE NORMALISÉE ÉLECTRONIQUE - DGI CÔTE D'IVOIRE)
+  // =========================================================================
+  fneDetails?: {
+    isFne: boolean;
+    numeroFne: string; // Format: FNE-CI-2026-HTL-00483
+    nccEntreprise: string; // ex: "2104592 X"
+    nccClient?: string; // NCC Acheteur si entreprise
+    rccmEntreprise: string; // ex: "CI-ABJ-2022-B-14892"
+    centreImpot: string; // ex: "Centre des Impôts de Cocody"
+    regimeFiscal: string; // ex: "Régime Réel Normal (RRN)"
+    codeSecuriteDgi: string; // Clé de contrôle DGI
+    signatureElectroniqueDgi: string; // Hash cryptographique SHA256
+    qrCodeData: string; // Données de contrôle fiscal pour scanner QR
+    dateHeureCertification: string;
+    statutTransmissionDgi: 'valide_teletransmis' | 'en_attente_asynchrone' | 'certifie_local';
+    accuseReceptionDgi?: string;
+    montantHt: number;
+    montantTva: number;
+    montantTdt: number;
+    montantAirsi?: number;
+    montantTimbreFiscal?: number;
+    mentionLegale: string;
+  };
 }
 
 // =========================================================================
@@ -588,6 +632,7 @@ export interface RestaurantOrder {
   tableNumero: string;
   serveurNom: string;
   clientNom: string;
+  clientTelephone?: string;
   chambreNumero?: string; // Si rattaché à une chambre d'hôtel
   date: string; // YYYY-MM-DD
   heure: string; // HH:mm
@@ -720,4 +765,6 @@ export interface NotificationCampaign {
   nbDestinataires: number;
   couponAssocie?: string;
 }
+
+export type FNESettings = Record<string, any>;
 

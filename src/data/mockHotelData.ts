@@ -222,11 +222,70 @@ export const DEFAULT_THERMAL_PRINTER_CONFIG: ThermalPrinterConfig = {
   paperFeedLines: 3
 };
 
-// 4. Notifications de réservation initiales (avec contact client)
+// 4. Notifications de réservation initiales (Hôtel et Restaurant)
 export const INITIAL_NOTIFICATIONS: ReservationNotification[] = [
+  // Notifications Restaurant
+  {
+    id: 'notif-rest-1',
+    source: 'restaurant',
+    timestamp: 'Il y a 2 minutes',
+    titre: '🍽️ Réservation Table Gastronomique',
+    message: 'Réservation Table VIP T8 pour 6 personnes - Dîner Prestige avec acompte validé',
+    clientNom: 'Directeur Jean-Philippe Konan',
+    clientTelephone: '+225 07 88 44 22 11',
+    clientEmail: 'jp.konan@ecobank-group.ci',
+    tableNumero: 'VIP 8',
+    nbCouverts: 6,
+    serviceRestaurant: 'Dîner Gastronomique (20h30)',
+    montant: 185000,
+    modePaiement: 'Orange Money',
+    dateReservation: '2026-09-24',
+    creneauHoraire: '20:30 - 23:30',
+    lue: false
+  },
+  {
+    id: 'notif-rest-2',
+    source: 'restaurant',
+    timestamp: 'Il y a 12 minutes',
+    titre: '🔥 Commande Cuisine en Direct',
+    message: 'Nouveau bon de commande CMD-REST-184 pour Table T3 (Kédjénou de Pintade & Vin Rouge)',
+    clientNom: 'Mme Sophie Touré',
+    clientTelephone: '+225 05 11 22 33 44',
+    clientEmail: 'sophie.toure@abidjan-luxe.ci',
+    tableNumero: 'T3',
+    nbCouverts: 2,
+    serviceRestaurant: 'Déjeuner en Salle',
+    numeroCommande: 'CMD-REST-184',
+    montant: 48500,
+    modePaiement: 'Carte Bancaire (POS)',
+    dateReservation: '2026-09-24',
+    creneauHoraire: '13:00',
+    lue: false
+  },
+  {
+    id: 'notif-rest-3',
+    source: 'restaurant',
+    timestamp: 'Il y a 35 minutes',
+    titre: '🥂 Réservation Table Terrasse',
+    message: 'Table T5 réservée pour cocktail dînatoire (4 personnes)',
+    clientNom: "Benoît D'Almeida",
+    clientTelephone: '+225 01 77 99 33 55',
+    clientEmail: 'b.dalmeida@holding.ci',
+    tableNumero: 'T5',
+    nbCouverts: 4,
+    serviceRestaurant: 'Soirée Lounge & Dégustation',
+    montant: 92000,
+    modePaiement: 'Espèces / Caisse',
+    dateReservation: '2026-09-24',
+    creneauHoraire: '19:45',
+    lue: true
+  },
+  // Notifications Hôtel
   {
     id: 'notif-1',
-    timestamp: 'Il y a 3 minutes',
+    source: 'hotel',
+    timestamp: 'Il y a 5 minutes',
+    titre: '🏨 Réservation Chambre Courte Durée',
     clientNom: 'Marc-Antoine Giraud',
     clientTelephone: '+225 07 48 12 34 56',
     clientEmail: 'm.giraud@holding-ci.com',
@@ -234,13 +293,15 @@ export const INITIAL_NOTIFICATIONS: ReservationNotification[] = [
     typeReservation: 'heure',
     montant: 105,
     modePaiement: 'Orange Money',
-    dateReservation: '2026-09-12',
+    dateReservation: '2026-09-24',
     creneauHoraire: '14:00 - 17:00 (3h)',
     lue: false
   },
   {
     id: 'notif-2',
-    timestamp: 'Il y a 18 minutes',
+    source: 'hotel',
+    timestamp: 'Il y a 22 minutes',
+    titre: '🏨 Réservation Nuitée Suite Prestige',
     clientNom: 'Dr. Fatou Bamba',
     clientTelephone: '+225 05 99 88 77 66',
     clientEmail: 'fatou.bamba@polyclinique.ci',
@@ -248,12 +309,14 @@ export const INITIAL_NOTIFICATIONS: ReservationNotification[] = [
     typeReservation: 'nuit',
     montant: 360,
     modePaiement: 'MTN Money',
-    dateReservation: '2026-09-12 au 2026-09-14',
+    dateReservation: '2026-09-24 au 2026-09-26',
     lue: false
   },
   {
     id: 'notif-3',
-    timestamp: 'Il y a 45 minutes',
+    source: 'hotel',
+    timestamp: 'Il y a 50 minutes',
+    titre: '🏨 Réservation Chambre Passage',
     clientNom: 'Christian Kouassi',
     clientTelephone: '+225 01 23 45 67 89',
     clientEmail: 'c.kouassi@abidjan-tech.com',
@@ -261,7 +324,7 @@ export const INITIAL_NOTIFICATIONS: ReservationNotification[] = [
     typeReservation: 'heure',
     montant: 60,
     modePaiement: 'MOOV Money',
-    dateReservation: '2026-09-12',
+    dateReservation: '2026-09-24',
     creneauHoraire: '11:00 - 13:00 (2h)',
     lue: true
   }

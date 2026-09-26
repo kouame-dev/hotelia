@@ -14,7 +14,12 @@ import {
   CreditCard,
   HelpCircle,
   ChevronLeft,
-  Utensils
+  Utensils,
+  Globe,
+  Copy,
+  Check,
+  Link2,
+  ExternalLink
 } from 'lucide-react';
 
 interface AdminLoginPageProps {
@@ -24,29 +29,60 @@ interface AdminLoginPageProps {
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, onBackToSite }) => {
   const { switchUserRole, usersList } = useHotelData();
-  const [email, setEmail] = useState('manager@hotelia.dekouassiholding.com');
+  const [email, setEmail] = useState('koua.dibi@gmail.com');
   const [password, setPassword] = useState('HoteliaAdmin2026!');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [selectedDomain, setSelectedDomain] = useState<'hotel' | 'restaurant'>('hotel');
+
+  const domainAdminUrl = typeof window !== 'undefined' ? `${window.location.origin}/#admin` : 'https://hotelia.ci/#admin';
+  const specificSubdomainUrl = 'https://admin.hotelia.dekouassiholding.com';
+
+  const handleCopyAdminUrl = () => {
+    navigator.clipboard?.writeText(domainAdminUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleSelectDomain = (domain: 'hotel' | 'restaurant') => {
+    setSelectedDomain(domain);
+    if (domain === 'hotel') {
+      setEmail('koua.dibi@gmail.com');
+    } else {
+      setEmail('restaurant.admin@hotelia.dekouassiholding.com');
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!email || !password) {
-      setErrorMessage('Veuillez saisir votre identifiant et votre mot de passe.');
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setErrorMessage('Veuillez saisir votre identifiant ou email professionnel.');
       return;
     }
 
     setIsLoading(true);
 
-    // Simulation d'authentification sécurisée
+    // Authentification rapide et robuste
     setTimeout(() => {
       setIsLoading(false);
-      // Trouver profil correspondant ou défaut DG
-      const matched = usersList.find(u => u.email.toLowerCase() === email.toLowerCase());
+      const lowEmail = cleanEmail.toLowerCase();
+      // Chercher par email, username ou rôle approchant
+      const matched = usersList.find(
+        (u) =>
+          u.email.toLowerCase() === lowEmail ||
+          u.username?.toLowerCase() === lowEmail ||
+          (lowEmail.includes('koua') || lowEmail.includes('directeur') || lowEmail.includes('manager') || lowEmail.includes('admin@')) && u.role === 'Directeur Général' ||
+          lowEmail.includes('restaurant') && u.role.includes('Restaurant') ||
+          lowEmail.includes('reception') && u.role === 'Chef de Réception' ||
+          lowEmail.includes('caisse') && u.role === 'Caisse'
+      );
+
       if (matched) {
         switchUserRole(matched.id);
         onLoginSuccess({
@@ -55,14 +91,14 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
           email: matched.email
         });
       } else {
-        switchUserRole('Directeur Général');
+        switchUserRole('directeur');
         onLoginSuccess({
-          nom: 'Koua Dibi (Dekouassi Holding)',
+          nom: cleanEmail.includes('@') ? cleanEmail.split('@')[0] : 'Koua Dibi (Dekouassi Holding)',
           role: 'Directeur Général & Administrateur',
-          email
+          email: cleanEmail
         });
       }
-    }, 500);
+    }, 150);
   };
 
   const handleQuickLogin = (roleName: string, userEmail: string) => {
@@ -107,7 +143,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
           email: userEmail
         });
       }
-    }, 400);
+    }, 150);
   };
 
   return (
@@ -153,6 +189,71 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
             <p className="text-xs text-stone-400 max-w-xs mx-auto leading-relaxed">
               Espace d'administration réservé au gérant, à la réception et aux équipes d'étage.
             </p>
+          </div>
+
+          {/* Bannière du lien spécifique Domaine / Admin */}
+          <div className="bg-[#24231F] border border-amber-500/30 rounded-2xl p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-amber-400" />
+                Lien Spécifique Domaine / Admin
+              </span>
+              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                Accès Restreint
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between bg-[#181714] px-2.5 py-1.5 rounded-xl border border-stone-800 text-[11px] font-mono text-stone-300">
+              <span className="truncate mr-2 text-stone-200">
+                {domainAdminUrl}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyAdminUrl}
+                className="shrink-0 px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition-colors flex items-center gap-1 text-[10px] font-semibold cursor-pointer"
+                title="Copier le lien spécifique domaine/admin"
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-400" />
+                    <span>Copié !</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3" />
+                    <span>Copier</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Sélecteur de sous-domaine / profil rapide */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => handleSelectDomain('hotel')}
+                className={`py-1.5 px-2 rounded-lg text-[10px] font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  selectedDomain === 'hotel'
+                    ? 'bg-[#C5A880] text-slate-950 font-bold shadow-xs'
+                    : 'bg-[#1C1B18] text-stone-400 hover:text-white border border-stone-800'
+                }`}
+              >
+                <Building className="w-3 h-3" />
+                <span>Domaine Hôtel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectDomain('restaurant')}
+                className={`py-1.5 px-2 rounded-lg text-[10px] font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  selectedDomain === 'restaurant'
+                    ? 'bg-[#C5A880] text-slate-950 font-bold shadow-xs'
+                    : 'bg-[#1C1B18] text-stone-400 hover:text-white border border-stone-800'
+                }`}
+              >
+                <Utensils className="w-3 h-3" />
+                <span>Domaine Restaurant</span>
+              </button>
+            </div>
           </div>
 
           {/* Error notification if any */}
@@ -275,7 +376,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
                 onClick={() =>
                   handleQuickLogin(
                     'Koua Dibi (Directeur Général)',
-                    'directeur@hotelia.dekouassiholding.com'
+                    'koua.dibi@gmail.com'
                   )
                 }
                 className="p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#34332F] border border-stone-700 text-left transition-all group cursor-pointer"
