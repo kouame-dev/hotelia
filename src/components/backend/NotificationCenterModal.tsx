@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
-import { playLuxuryBellSound } from '../../utils/soundNotification.ts';
+import { playLuxuryBellSound, playStockAlertChime } from '../../utils/soundNotification.ts';
 import {
   BellRing,
   Volume2,
@@ -14,13 +14,19 @@ import {
   Utensils,
   ChefHat,
   Building,
-  Users
+  Users,
+  AlertTriangle,
+  AlertCircle,
+  ShoppingBag,
+  PackageCheck,
+  Boxes
 } from 'lucide-react';
 
-export const NotificationCenterModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
-  isOpen,
-  onClose
-}) => {
+export const NotificationCenterModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onGoToStockAlerts?: () => void;
+}> = ({ isOpen, onClose, onGoToStockAlerts }) => {
   const {
     notifications,
     allNotifications,
@@ -29,13 +35,18 @@ export const NotificationCenterModal: React.FC<{ isOpen: boolean; onClose: () =>
     markAllNotificationsAsRead,
     simulateNewIncomingReservation,
     simulateNewRestaurantReservation,
+    simulerAlerteStockRestaurant,
+    genererBonsAchatAutoPourStocksCritiques,
+    restaurantStockAlerts,
+    unreadStockAlertsCount,
     soundEnabled,
     setSoundEnabled,
     currentUserProfile
   } = useHotelData();
   const { formatPrice } = useHotelSettings();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'restaurant' | 'hotel'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'restaurant' | 'hotel' | 'stocks'>('all');
+  const [stockOrderSuccess, setStockOrderSuccess] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -53,7 +64,6 @@ export const NotificationCenterModal: React.FC<{ isOpen: boolean; onClose: () =>
     currentUserProfile.role === 'Gérant';
 
   // Base list depending on role:
-  // Admin Restaurant and Caisse Restaurant ONLY see restaurant notifications!
   const baseList = isRestaurantRole
     ? notifications.filter((n) => n.source === 'restaurant')
     : isHotelRole
@@ -62,12 +72,16 @@ export const NotificationCenterModal: React.FC<{ isOpen: boolean; onClose: () =>
 
   const filteredNotifs = baseList.filter((n) => {
     if (activeTab === 'unread') return !n.lue;
-    if (activeTab === 'restaurant') return n.source === 'restaurant';
+    if (activeTab === 'stocks') return n.typeNotification === 'stock_critique' || n.typeNotification === 'rupture_stock';
+    if (activeTab === 'restaurant') return n.source === 'restaurant' && !n.typeNotification;
     if (activeTab === 'hotel') return n.source === 'hotel' || !n.source;
     return true;
   });
 
   const currentUnreadCount = baseList.filter((n) => !n.lue).length;
+  const stockAlertsCountInNotifs = baseList.filter(
+    (n) => n.typeNotification === 'stock_critique' || n.typeNotification === 'rupture_stock'
+  ).length;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
@@ -169,6 +183,25 @@ export const NotificationCenterModal: React.FC<{ isOpen: boolean; onClose: () =>
               Non lues ({currentUnreadCount})
             </button>
 
+            {/* Onglet Stocks Restaurant */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('stocks')}
+              className={`px-2.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === 'stocks'
+                  ? 'bg-rose-700 text-white'
+                  : 'bg-white text-rose-800 border border-rose-200 hover:bg-rose-50'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+              <span>Stocks Restaurant</span>
+              {unreadStockAlertsCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px]">
+                  {unreadStockAlertsCount}
+                </span>
+              )}
+            </button>
+
             {isSuperAdmin && (
               <>
                 <button
@@ -209,6 +242,17 @@ export const NotificationCenterModal: React.FC<{ isOpen: boolean; onClose: () =>
             >
               <Play className="w-3 h-3 fill-amber-900" />
               <span>Tester le Son</span>
+            </button>
+
+            {/* Simuler alerte stock restaurant */}
+            <button
+              type="button"
+              onClick={() => simulerAlerteStockRestaurant()}
+              className="px-2.5 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-900 font-bold flex items-center gap-1.5 transition-all text-[11px] border border-rose-200"
+              title="Simuler une alerte automatique de stock critique"
+            >
+              <AlertTriangle className="w-3 h-3 text-rose-600" />
+              <span>Simuler Alerte Stock</span>
             </button>
 
             {/* Simuler notification adaptée au rôle */}
@@ -261,7 +305,156 @@ export const NotificationCenterModal: React.FC<{ isOpen: boolean; onClose: () =>
             </div>
           ) : (
             filteredNotifs.map((notif) => {
+              const isStockAlert =
+                notif.typeNotification === 'stock_critique' ||
+                notif.typeNotification === 'rupture_stock';
               const isRest = notif.source === 'restaurant';
+              const isRupture = notif.typeNotification === 'rupture_stock' || notif.stockActuel === 0;
+
+              if (isStockAlert) {
+                return (
+                  <div
+                    key={notif.id}
+                    onClick={() => markNotificationAsRead(notif.id)}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer space-y-3 ${
+                      notif.lue
+                        ? 'bg-white border-stone-200 opacity-80 hover:opacity-100'
+                        : isRupture
+                        ? 'bg-rose-50/70 border-rose-300 shadow-sm ring-1 ring-rose-400/20'
+                        : 'bg-amber-50/70 border-amber-300 shadow-sm ring-1 ring-amber-400/20'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${
+                            notif.lue
+                              ? 'bg-stone-300'
+                              : isRupture
+                              ? 'bg-rose-500 ring-4 ring-rose-100'
+                              : 'bg-amber-500 ring-4 ring-amber-100'
+                          }`}
+                        />
+
+                        {/* Badge type */}
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 ${
+                            isRupture
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-amber-100 text-amber-900 border border-amber-200'
+                          }`}
+                        >
+                          <AlertTriangle className="w-3 h-3 text-rose-600" />
+                          <span>{isRupture ? 'RUPTURE STOCK RESTAURANT' : 'SEUIL CRITIQUE RESTAURANT'}</span>
+                        </span>
+
+                        <h4 className="font-serif font-bold text-sm text-stone-900">
+                          {notif.articleDesignation || notif.titre}
+                        </h4>
+                      </div>
+
+                      <span className="text-[11px] font-mono text-stone-400 whitespace-nowrap">
+                        {notif.timestamp}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-stone-700 bg-white/90 p-2.5 rounded-lg border border-stone-200">
+                      {notif.message}
+                    </p>
+
+                    {/* Détails du stock & préconisation */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs bg-white/80 p-2.5 rounded-lg border border-stone-200">
+                      <div>
+                        <span className="text-stone-400 text-[10px] block uppercase font-semibold">
+                          Niveau Actuel
+                        </span>
+                        <span
+                          className={`font-mono font-extrabold text-sm ${
+                            isRupture ? 'text-rose-600' : 'text-amber-600'
+                          }`}
+                        >
+                          {notif.stockActuel ?? 0} {notif.unite || 'unités'}
+                        </span>
+                        <span className="text-[10px] text-stone-500 block">
+                          Seuil d'alerte : {notif.seuilAlerte}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-stone-400 text-[10px] block uppercase font-semibold">
+                          Réassort Suggéré
+                        </span>
+                        <span className="font-mono font-bold text-amber-700 text-xs">
+                          +{notif.quantiteSuggeree || 10} {notif.unite || 'unités'}
+                        </span>
+                        <span className="text-[10px] text-stone-500 block">
+                          Fournisseur : {notif.fournisseurNom || 'Habituel'}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-stone-400 text-[10px] block uppercase font-semibold">
+                          Budget Estimé
+                        </span>
+                        <span className="font-mono font-bold text-emerald-700">
+                          {formatPrice(notif.montant || 0)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions de réapprovisionnement direct */}
+                    <div className="flex flex-wrap items-center justify-between pt-2 border-t border-stone-200 text-xs gap-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (notif.articleId) {
+                              const created = genererBonsAchatAutoPourStocksCritiques([notif.articleId]);
+                              if (created.length > 0) {
+                                setStockOrderSuccess(
+                                  `Bon d'achat #${created[0].numero} créé avec succès !`
+                                );
+                                setTimeout(() => setStockOrderSuccess(null), 4000);
+                              }
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold flex items-center gap-1.5 shadow-xs cursor-pointer text-xs"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>Générer Bon d'Achat Auto</span>
+                        </button>
+
+                        {onGoToStockAlerts && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onClose();
+                              onGoToStockAlerts();
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold flex items-center gap-1 cursor-pointer text-xs"
+                          >
+                            <span>Ouvrir Gestionnaire</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {stockOrderSuccess && (
+                        <span className="text-[11px] font-bold text-emerald-700 animate-in fade-in">
+                          {stockOrderSuccess}
+                        </span>
+                      )}
+
+                      {!notif.lue && (
+                        <span className="text-[11px] font-semibold text-stone-500">
+                          Cliquer pour acquitter
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div

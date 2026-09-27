@@ -38,7 +38,12 @@ import {
   PromoCoupon,
   NotificationCampaign,
   LoyaltyTransaction,
-  LoyaltyTier
+  LoyaltyTier,
+  AuditLogEntry,
+  AuditActionType,
+  AuditFieldDiff,
+  RestaurantStockAlert,
+  StockAlertLevel
 } from '../types.ts';
 import {
   INITIAL_ROOM_TYPES,
@@ -48,6 +53,7 @@ import {
   INITIAL_EXPENSES,
   INITIAL_REVENUES,
   INITIAL_RESERVATIONS,
+  INITIAL_AUDIT_LOGS,
   DEFAULT_THERMAL_PRINTER_CONFIG
 } from '../data/mockHotelData.ts';
 import {
@@ -59,7 +65,8 @@ import {
   INITIAL_MOUVEMENTS_STOCK,
   INITIAL_BONS_ACHAT,
   INITIAL_SERVICE_ORDERS,
-  INITIAL_POS_SALES
+  INITIAL_POS_SALES,
+  INITIAL_RESTAURANT_STOCK_ALERTS
 } from '../data/mockServicesAndStockData.ts';
 import {
   INITIAL_RESTAURANT_TABLES,
@@ -73,7 +80,7 @@ import {
   INITIAL_PROMO_COUPONS,
   INITIAL_CAMPAIGNS
 } from '../data/mockClientLoyaltyData.ts';
-import { playLuxuryBellSound, playAlertChime } from '../utils/soundNotification.ts';
+import { playLuxuryBellSound, playAlertChime, playStockAlertChime } from '../utils/soundNotification.ts';
 
 interface HotelDataContextType {
   // 1. Types de Chambres
@@ -136,6 +143,11 @@ interface HotelDataContextType {
   completedReservationsCount: number;
   cancelledReservationsCount: number;
 
+  // 7b. Journal d'Audit des modifications de réservations
+  auditLogs: AuditLogEntry[];
+  addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'> & { timestamp?: string }) => AuditLogEntry;
+  clearAuditLogs: () => void;
+
   // 8. Services Payants (Catalogue & Tarifs)
   paidServices: PaidService[];
   addPaidService: (newService: Omit<PaidService, 'id'>) => PaidService;
@@ -188,6 +200,16 @@ interface HotelDataContextType {
   bonsAchat: BonAchat[];
   addBonAchat: (newBon: Omit<BonAchat, 'id' | 'numero'>) => BonAchat;
   receptionnerBonAchat: (id: string) => void;
+
+  // 11b. Alertes & Notifications de Stocks Restaurant (Seuils Critiques & Réapprovisionnements)
+  restaurantStockAlerts: RestaurantStockAlert[];
+  unreadStockAlertsCount: number;
+  acquitterStockAlert: (alertId: string) => void;
+  acquitterAllStockAlerts: () => void;
+  reapprovisionnerStockArticle: (articleId: string, quantiteAjout: number, motif?: string) => void;
+  genererBonsAchatAutoPourStocksCritiques: (articleIds?: string[]) => BonAchat[];
+  simulerAlerteStockRestaurant: (articleId?: string) => void;
+  updateArticleSeuilAlerte: (articleId: string, nouveauSeuil: number) => void;
 
   // 12. Facture Globale Consolidée
   generateGlobalInvoice: (reservationId?: string, chambreNumero?: string) => FactureGlobaleData | null;
@@ -751,7 +773,45 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   };
 
-  // --- G. Réservations de Chambres ---
+  // --- G. Réservations de Chambres & Traçabilité d'Audit ---
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_audit_logs');
+      return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
+    } catch {
+      return INITIAL_AUDIT_LOGS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hotelia_audit_logs', JSON.stringify(auditLogs));
+    } catch (e) {
+      console.error('Erreur sauvegarde audit logs', e);
+    }
+  }, [auditLogs]);
+
+  const addAuditLog = (
+    entry: Omit<AuditLogEntry, 'id' | 'timestamp'> & { timestamp?: string }
+  ): AuditLogEntry => {
+    const newEntry: AuditLogEntry = {
+      ...entry,
+      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: entry.timestamp || new Date().toISOString()
+    };
+    setAuditLogs((prev) => [newEntry, ...prev]);
+    return newEntry;
+  };
+
+  const clearAuditLogs = () => {
+    setAuditLogs([]);
+    try {
+      localStorage.removeItem('hotelia_audit_logs');
+    } catch (e) {
+      console.error('Erreur purge journal audit', e);
+    }
+  };
+
   const [reservations, setReservations] = useState<ReservationItem[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_reservations');
@@ -783,7 +843,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             montant: acompte,
             modePaiement: newRes.modePaiement,
             reference: `TXN-${newRes.modePaiement.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}-${Date.now().toString().slice(-4)}`,
-            recuPar: 'Réception Hôtel',
+            recuPar: currentUserProfile?.nom || 'Réception Hôtel',
             motif: 'Acompte réservation hébergement',
             note: 'Versement initial à la réservation'
           }
@@ -800,6 +860,32 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     setReservations((prev) => [fullReservation, ...prev]);
+
+    // 1. Audit automatique : Enregistrement de la création
+    const userNom = currentUserProfile?.nom || 'Utilisateur Système';
+    const userRoleStr = currentUserProfile?.role || 'Opérateur';
+    const userEmailStr = currentUserProfile?.email;
+
+    addAuditLog({
+      action: 'creation',
+      actionLabel: 'Création de réservation',
+      reservationId: fullReservation.id,
+      clientNom: fullReservation.clientNom,
+      clientTelephone: fullReservation.clientTelephone,
+      chambreNumero: fullReservation.chambreNumero,
+      chambreType: fullReservation.chambreType,
+      montantTotal: fullReservation.montantTotal,
+      userName: userNom,
+      userRole: userRoleStr,
+      userEmail: userEmailStr,
+      details: `Création de la réservation ${fullReservation.typeReservation === 'heure' ? 'Day-Use (à l’heure)' : 'Nuitée'} (${fullReservation.dateDebut} - Chambre ${fullReservation.chambreNumero}) pour ${fullReservation.clientNom}. Montant: ${fullReservation.montantTotal} FCFA (${fullReservation.modePaiement}).`,
+      modifications: [
+        { champ: 'statutReservation', label: 'Statut initial', ancienneValeur: 'aucun', nouvelleValeur: fullReservation.statutReservation },
+        { champ: 'montantTotal', label: 'Montant Total', ancienneValeur: 0, nouvelleValeur: fullReservation.montantTotal },
+        { champ: 'chambreNumero', label: 'Chambre assignée', ancienneValeur: 'non assignée', nouvelleValeur: fullReservation.chambreNumero },
+        { champ: 'statutPaiement', label: 'Statut Paiement', ancienneValeur: 'aucun', nouvelleValeur: fullReservation.statutPaiement }
+      ]
+    });
 
     // Déclencher carillon sonore d'alerte si activé
     if (soundEnabled) {
@@ -844,6 +930,48 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const updateReservation = (id: string, updated: Partial<ReservationItem>) => {
+    const currentRes = reservations.find((r) => r.id === id);
+    if (!currentRes) return;
+
+    // Détecter automatiquement les champs modifiés pour la traçabilité de l'audit
+    const diffs: AuditFieldDiff[] = [];
+    if (updated.clientNom !== undefined && updated.clientNom !== currentRes.clientNom) {
+      diffs.push({ champ: 'clientNom', label: 'Nom Client', ancienneValeur: currentRes.clientNom, nouvelleValeur: updated.clientNom });
+    }
+    if (updated.clientTelephone !== undefined && updated.clientTelephone !== currentRes.clientTelephone) {
+      diffs.push({ champ: 'clientTelephone', label: 'Téléphone', ancienneValeur: currentRes.clientTelephone, nouvelleValeur: updated.clientTelephone });
+    }
+    if (updated.chambreNumero !== undefined && updated.chambreNumero !== currentRes.chambreNumero) {
+      diffs.push({ champ: 'chambreNumero', label: 'Chambre', ancienneValeur: currentRes.chambreNumero, nouvelleValeur: updated.chambreNumero });
+    }
+    if (updated.chambreType !== undefined && updated.chambreType !== currentRes.chambreType) {
+      diffs.push({ champ: 'chambreType', label: 'Type Chambre', ancienneValeur: currentRes.chambreType, nouvelleValeur: updated.chambreType });
+    }
+    if (updated.dateDebut !== undefined && updated.dateDebut !== currentRes.dateDebut) {
+      diffs.push({ champ: 'dateDebut', label: 'Date Début', ancienneValeur: currentRes.dateDebut, nouvelleValeur: updated.dateDebut });
+    }
+    if (updated.dateFin !== undefined && updated.dateFin !== currentRes.dateFin) {
+      diffs.push({ champ: 'dateFin', label: 'Date Fin', ancienneValeur: currentRes.dateFin, nouvelleValeur: updated.dateFin });
+    }
+    if (updated.heureDebut !== undefined && updated.heureDebut !== currentRes.heureDebut) {
+      diffs.push({ champ: 'heureDebut', label: 'Heure Début', ancienneValeur: currentRes.heureDebut || 'N/A', nouvelleValeur: updated.heureDebut });
+    }
+    if (updated.heureFin !== undefined && updated.heureFin !== currentRes.heureFin) {
+      diffs.push({ champ: 'heureFin', label: 'Heure Fin', ancienneValeur: currentRes.heureFin || 'N/A', nouvelleValeur: updated.heureFin });
+    }
+    if (updated.montantTotal !== undefined && updated.montantTotal !== currentRes.montantTotal) {
+      diffs.push({ champ: 'montantTotal', label: 'Montant Total', ancienneValeur: currentRes.montantTotal, nouvelleValeur: updated.montantTotal });
+    }
+    if (updated.statutReservation !== undefined && updated.statutReservation !== currentRes.statutReservation) {
+      diffs.push({ champ: 'statutReservation', label: 'Statut Réservation', ancienneValeur: currentRes.statutReservation, nouvelleValeur: updated.statutReservation });
+    }
+    if (updated.statutPaiement !== undefined && updated.statutPaiement !== currentRes.statutPaiement) {
+      diffs.push({ champ: 'statutPaiement', label: 'Statut Paiement', ancienneValeur: currentRes.statutPaiement, nouvelleValeur: updated.statutPaiement });
+    }
+    if (updated.modePaiement !== undefined && updated.modePaiement !== currentRes.modePaiement) {
+      diffs.push({ champ: 'modePaiement', label: 'Mode Paiement', ancienneValeur: currentRes.modePaiement, nouvelleValeur: updated.modePaiement });
+    }
+
     setReservations((prev) =>
       prev.map((res) => {
         if (res.id !== id) return res;
@@ -856,9 +984,33 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return merged;
       })
     );
+
+    // 2. Audit automatique : Enregistrement de la modification
+    if (diffs.length > 0) {
+      const summary = diffs.map((d) => `${d.label}: "${d.ancienneValeur}" ➔ "${d.nouvelleValeur}"`).join(', ');
+      addAuditLog({
+        action: 'modification',
+        actionLabel: 'Modification de réservation',
+        reservationId: currentRes.id,
+        clientNom: updated.clientNom || currentRes.clientNom,
+        clientTelephone: updated.clientTelephone || currentRes.clientTelephone,
+        chambreNumero: updated.chambreNumero || currentRes.chambreNumero,
+        chambreType: updated.chambreType || currentRes.chambreType,
+        montantTotal: updated.montantTotal !== undefined ? updated.montantTotal : currentRes.montantTotal,
+        userName: currentUserProfile?.nom || 'Utilisateur Système',
+        userRole: currentUserProfile?.role || 'Opérateur',
+        userEmail: currentUserProfile?.email,
+        details: `Modification réservation pour ${currentRes.clientNom} (Chambre ${currentRes.chambreNumero}). Modifications: ${summary}`,
+        modifications: diffs
+      });
+    }
   };
 
   const updateReservationStatus = (id: string, newStatus: ReservationStatus, cancelReason?: string) => {
+    const currentRes = reservations.find((r) => r.id === id);
+    if (!currentRes) return;
+    const oldStatus = currentRes.statutReservation;
+
     setReservations((prev) =>
       prev.map((res) => {
         if (res.id !== id) return res;
@@ -884,9 +1036,104 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return updated;
       })
     );
+
+    // 3. Audit automatique : Changement de statut (Annulation, Confirmation, Check-in, Check-out, etc.)
+    const isCancel = newStatus === 'annulee';
+    const isConfirm = newStatus === 'confirmee';
+    const isCheckIn = newStatus === 'en_cours';
+    const isCheckOut = newStatus === 'terminee';
+    const isReactivate = oldStatus === 'annulee' && newStatus === 'en_attente';
+
+    const actionType: AuditActionType = isCancel
+      ? 'annulation'
+      : isReactivate
+      ? 'reactivation'
+      : isConfirm
+      ? 'confirmation'
+      : isCheckIn
+      ? 'check_in'
+      : isCheckOut
+      ? 'check_out'
+      : 'modification';
+
+    const actionLabel = isCancel
+      ? 'Annulation de réservation'
+      : isReactivate
+      ? 'Réactivation de réservation'
+      : isConfirm
+      ? 'Confirmation réservation'
+      : isCheckIn
+      ? 'Arrivée client (Check-in)'
+      : isCheckOut
+      ? 'Départ client (Check-out)'
+      : `Changement statut (${newStatus})`;
+
+    const details = isCancel
+      ? `Annulation de la réservation de ${currentRes.clientNom} (Chambre ${currentRes.chambreNumero}). Motif: ${cancelReason || 'Non précisé par l’utilisateur'}.`
+      : isReactivate
+      ? `Réactivation de la réservation précédemment annulée de ${currentRes.clientNom} (Chambre ${currentRes.chambreNumero}). Statut remis en attente.`
+      : isCheckIn
+      ? `Check-in effectué pour ${currentRes.clientNom} en Chambre ${currentRes.chambreNumero}. Clés remises.`
+      : isCheckOut
+      ? `Check-out effectué pour ${currentRes.clientNom} en Chambre ${currentRes.chambreNumero}. Séjour clôturé.`
+      : `Changement de statut pour ${currentRes.clientNom} (Chambre ${currentRes.chambreNumero}): "${oldStatus}" ➔ "${newStatus}".`;
+
+    addAuditLog({
+      action: actionType,
+      actionLabel,
+      reservationId: currentRes.id,
+      clientNom: currentRes.clientNom,
+      clientTelephone: currentRes.clientTelephone,
+      chambreNumero: currentRes.chambreNumero,
+      chambreType: currentRes.chambreType,
+      montantTotal: currentRes.montantTotal,
+      userName: currentUserProfile?.nom || 'Utilisateur Système',
+      userRole: currentUserProfile?.role || 'Opérateur',
+      userEmail: currentUserProfile?.email,
+      motifAnnulation: cancelReason,
+      details,
+      modifications: [
+        {
+          champ: 'statutReservation',
+          label: 'Statut Réservation',
+          ancienneValeur: oldStatus,
+          nouvelleValeur: newStatus
+        },
+        ...(isCancel
+          ? [
+              {
+                champ: 'motifAnnulation',
+                label: 'Motif d’annulation',
+                ancienneValeur: 'aucun',
+                nouvelleValeur: cancelReason || 'Non précisé'
+              }
+            ]
+          : [])
+      ]
+    });
   };
 
   const deleteReservation = (id: string) => {
+    const currentRes = reservations.find((r) => r.id === id);
+    if (currentRes) {
+      addAuditLog({
+        action: 'suppression',
+        actionLabel: 'Suppression définitive',
+        reservationId: currentRes.id,
+        clientNom: currentRes.clientNom,
+        clientTelephone: currentRes.clientTelephone,
+        chambreNumero: currentRes.chambreNumero,
+        chambreType: currentRes.chambreType,
+        montantTotal: currentRes.montantTotal,
+        userName: currentUserProfile?.nom || 'Utilisateur Système',
+        userRole: currentUserProfile?.role || 'Opérateur',
+        userEmail: currentUserProfile?.email,
+        details: `Suppression définitive du dossier de réservation de ${currentRes.clientNom} (Chambre ${currentRes.chambreNumero}, ${currentRes.montantTotal} FCFA).`,
+        modifications: [
+          { champ: 'id', label: 'Dossier Réservation', ancienneValeur: currentRes.id, nouvelleValeur: 'supprimé définitivement' }
+        ]
+      });
+    }
     setReservations((prev) => prev.filter((res) => res.id !== id));
   };
 
@@ -927,6 +1174,36 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         modePaiement: newPaiement.modePaiement,
         montant: newPaiement.montant,
         statut: 'paye'
+      });
+
+      // Audit automatique : Versement de paiement
+      addAuditLog({
+        action: 'paiement',
+        actionLabel: 'Encaissement règlement',
+        reservationId: targetRes.id,
+        clientNom: targetRes.clientNom,
+        clientTelephone: targetRes.clientTelephone,
+        chambreNumero: targetRes.chambreNumero,
+        chambreType: targetRes.chambreType,
+        montantTotal: targetRes.montantTotal,
+        userName: currentUserProfile?.nom || 'Utilisateur Système',
+        userRole: currentUserProfile?.role || 'Opérateur',
+        userEmail: currentUserProfile?.email,
+        details: `Encaissement d’un versement de ${newPaiement.montant} FCFA (${newPaiement.modePaiement}) pour ${targetRes.clientNom}. Motif: ${newPaiement.motif || 'Acompte'}. Réf: ${newPaiement.reference || 'N/A'}.`,
+        modifications: [
+          {
+            champ: 'acompteVerse',
+            label: 'Cumul acomptes',
+            ancienneValeur: targetRes.acompteVerse || 0,
+            nouvelleValeur: (targetRes.acompteVerse || 0) + newPaiement.montant
+          },
+          {
+            champ: 'resteAPayer',
+            label: 'Nouveau reste à payer',
+            ancienneValeur: targetRes.resteAPayer !== undefined ? targetRes.resteAPayer : targetRes.montantTotal,
+            nouvelleValeur: Math.max(0, targetRes.montantTotal - ((targetRes.acompteVerse || 0) + newPaiement.montant))
+          }
+        ]
       });
     }
 
@@ -1334,10 +1611,405 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           notes: `Réception automatique stock Bon #${bon.numero}`
         });
 
+        // Marquer les alertes associées comme réapprovisionnées
+        setRestaurantStockAlerts((prevAlerts) =>
+          prevAlerts.map((a) =>
+            a.bonAchatId === bon.id || (a.bonAchatNumero && a.bonAchatNumero === bon.numero)
+              ? {
+                  ...a,
+                  statut: 'reapprovisionne',
+                  acquittee: true,
+                  notes: `Réceptionné via Bon #${bon.numero} le ${new Date().toLocaleDateString('fr-FR')}`
+                }
+              : a
+          )
+        );
+
         return updatedBon;
       })
     );
   };
+
+  // =========================================================================
+  // 11b. MODULE DE NOTIFICATIONS AUTOMATIQUES & ALERTES STOCKS RESTAURANT
+  // =========================================================================
+  const [restaurantStockAlerts, setRestaurantStockAlerts] = useState<RestaurantStockAlert[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_restaurant_stock_alerts');
+      return saved ? JSON.parse(saved) : INITIAL_RESTAURANT_STOCK_ALERTS;
+    } catch {
+      return INITIAL_RESTAURANT_STOCK_ALERTS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_restaurant_stock_alerts', JSON.stringify(restaurantStockAlerts));
+  }, [restaurantStockAlerts]);
+
+  // Surveillance automatique des stocks du restaurant en temps réel
+  // Déclenche l'alerte sonore et visuelle dès qu'un article franchit son seuil critique
+  useEffect(() => {
+    const restaurantItems = stockItems.filter((item) => {
+      const cat = (item.categorie || '').toLowerCase();
+      const ent = (item.entrepotNom || '').toLowerCase();
+      const code = (item.code || '').toLowerCase();
+      return (
+        cat.includes('boisson') ||
+        cat.includes('nourriture') ||
+        cat.includes('épicerie') ||
+        cat.includes('epicerie') ||
+        ent.includes('restaurant') ||
+        ent.includes('bar') ||
+        ent.includes('cave') ||
+        ent.includes('économat') ||
+        ent.includes('economat') ||
+        ent.includes('cuisine') ||
+        code.startsWith('nou-') ||
+        code.startsWith('boi-')
+      );
+    });
+
+    let newAlertTriggered = false;
+
+    setRestaurantStockAlerts((prevAlerts) => {
+      let updated = [...prevAlerts];
+
+      restaurantItems.forEach((item) => {
+        const isCritical = item.quantite <= item.seuilAlerte;
+        const existingAlertIndex = updated.findIndex((a) => a.articleId === item.id);
+        const severite: StockAlertLevel =
+          item.quantite === 0 ? 'rupture' : item.quantite <= Math.ceil(item.seuilAlerte * 0.5) ? 'critique' : 'faible';
+        const quantiteSuggeree = Math.max(1, item.seuilAlerte * 2 - item.quantite);
+        const coutEstime = quantiteSuggeree * item.prixAchatUnitaire;
+
+        if (isCritical) {
+          if (existingAlertIndex >= 0) {
+            const currentAlert = updated[existingAlertIndex];
+            const worsened = item.quantite < currentAlert.stockActuel;
+            if (worsened && currentAlert.acquittee) {
+              newAlertTriggered = true;
+            }
+            updated[existingAlertIndex] = {
+              ...currentAlert,
+              stockActuel: item.quantite,
+              seuilAlerte: item.seuilAlerte,
+              severite,
+              quantiteSuggeree,
+              coutEstimeReassort: coutEstime,
+              statut: currentAlert.statut === 'reapprovisionne' ? 'actif' : currentAlert.statut,
+              acquittee: worsened ? false : currentAlert.acquittee
+            };
+          } else {
+            // Nouvelle alerte automatique détectée
+            newAlertTriggered = true;
+            const newAlert: RestaurantStockAlert = {
+              id: `alt-${item.id}-${Date.now()}`,
+              articleId: item.id,
+              articleCode: item.code,
+              articleDesignation: item.designation,
+              categorie: item.categorie,
+              entrepotNom: item.entrepotNom,
+              stockActuel: item.quantite,
+              seuilAlerte: item.seuilAlerte,
+              unite: item.unite,
+              quantiteSuggeree,
+              fournisseurId: item.fournisseurId,
+              fournisseurNom: item.fournisseurNom || 'Fournisseur Agréé',
+              fournisseurTelephone: '+225 07 48 90 12 34',
+              prixAchatUnitaire: item.prixAchatUnitaire,
+              coutEstimeReassort: coutEstime,
+              dateDetection: new Date().toISOString(),
+              dateDetectionFormatted: `Aujourd'hui à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+              severite,
+              statut: 'actif',
+              acquittee: false,
+              notes:
+                item.quantite === 0
+                  ? `Rupture totale détectée automatiquement (${item.designation}). Réapprovisionnement urgent requis.`
+                  : `Seuil critique atteint (${item.quantite} ${item.unite} restants sur un seuil de ${item.seuilAlerte}).`
+            };
+            updated = [newAlert, ...updated];
+
+            // Ajouter également au flux des notifications générales pour alerter le gérant
+            setNotifications((prevNotifs) => [
+              {
+                id: `notif-stock-${Date.now()}-${item.id}`,
+                timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                source: 'restaurant',
+                typeNotification: item.quantite === 0 ? 'rupture_stock' : 'stock_critique',
+                titre:
+                  item.quantite === 0
+                    ? `🚨 RUPTURE DE STOCK : ${item.designation}`
+                    : `⚠️ SEUIL CRITIQUE : ${item.designation} (${item.quantite}/${item.seuilAlerte} ${item.unite})`,
+                message: `L'article "${item.designation}" a atteint un seuil critique (${item.quantite} ${item.unite} restants). Réapprovisionnement suggéré : +${quantiteSuggeree} ${item.unite} auprès de ${item.fournisseurNom || 'Fournisseur'}.`,
+                clientNom: 'Alerte Économat Restaurant',
+                clientTelephone: item.fournisseurNom || 'Économat',
+                montant: coutEstime,
+                modePaiement: 'Réassort Urgence',
+                dateReservation: new Date().toISOString().split('T')[0],
+                lue: false,
+                articleId: item.id,
+                articleCode: item.code,
+                articleDesignation: item.designation,
+                stockActuel: item.quantite,
+                seuilAlerte: item.seuilAlerte,
+                unite: item.unite,
+                fournisseurNom: item.fournisseurNom,
+                quantiteSuggeree
+              },
+              ...prevNotifs
+            ]);
+          }
+        } else {
+          // L'article a été réapprovisionné au-dessus du seuil
+          if (existingAlertIndex >= 0 && updated[existingAlertIndex].statut !== 'reapprovisionne') {
+            updated[existingAlertIndex] = {
+              ...updated[existingAlertIndex],
+              stockActuel: item.quantite,
+              statut: 'reapprovisionne',
+              acquittee: true
+            };
+          }
+        }
+      });
+
+      return updated;
+    });
+
+    if (newAlertTriggered && soundEnabled) {
+      playStockAlertChime();
+    }
+  }, [stockItems, soundEnabled]);
+
+  const unreadStockAlertsCount = restaurantStockAlerts.filter(
+    (a) => !a.acquittee && (a.statut === 'actif' || a.statut === 'commande_en_cours')
+  ).length;
+
+  const acquitterStockAlert = (alertId: string) => {
+    setRestaurantStockAlerts((prev) =>
+      prev.map((a) =>
+        a.id === alertId
+          ? {
+              ...a,
+              acquittee: true,
+              acquitteePar: currentUserProfile.nom,
+              dateAcquittement: new Date().toLocaleString('fr-FR')
+            }
+          : a
+      )
+    );
+  };
+
+  const acquitterAllStockAlerts = () => {
+    setRestaurantStockAlerts((prev) =>
+      prev.map((a) => ({
+        ...a,
+        acquittee: true,
+        acquitteePar: currentUserProfile.nom,
+        dateAcquittement: new Date().toLocaleString('fr-FR')
+      }))
+    );
+  };
+
+  const reapprovisionnerStockArticle = (articleId: string, quantiteAjout: number, motif?: string) => {
+    if (quantiteAjout <= 0) return;
+
+    setStockItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== articleId) return item;
+        const newQty = item.quantite + quantiteAjout;
+
+        addMouvementStock({
+          date: new Date().toISOString().split('T')[0],
+          heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          articleId: item.id,
+          articleDesignation: item.designation,
+          entrepotId: item.entrepotId,
+          entrepotNom: item.entrepotNom,
+          type: 'entree_achat',
+          quantite: quantiteAjout,
+          prixUnitaire: item.prixAchatUnitaire,
+          valeurTotale: quantiteAjout * item.prixAchatUnitaire,
+          referenceDoc: `REASSORT-${Date.now().toString().slice(-4)}`,
+          responsable: currentUserProfile.nom,
+          motif: motif || 'Réapprovisionnement rapide suite alerte seuil critique'
+        });
+
+        return {
+          ...item,
+          quantite: newQty,
+          dernierReassort: new Date().toISOString().split('T')[0]
+        };
+      })
+    );
+
+    // Mettre à jour également dans posProducts si correspondance
+    setPosProducts((prev) =>
+      prev.map((p) => {
+        const stk = stockItems.find((s) => s.id === articleId);
+        if (stk && (p.nom.toLowerCase().includes(stk.designation.toLowerCase().slice(0, 8)) || stk.designation.toLowerCase().includes(p.nom.toLowerCase().slice(0, 8)))) {
+          return {
+            ...p,
+            stockActuel: p.stockActuel + quantiteAjout,
+            disponible: true
+          };
+        }
+        return p;
+      })
+    );
+
+    // Marquer l'alerte comme réapprovisionnée
+    setRestaurantStockAlerts((prev) =>
+      prev.map((a) =>
+        a.articleId === articleId
+          ? {
+              ...a,
+              statut: 'reapprovisionne',
+              acquittee: true,
+              notes: `Réapprovisionné de +${quantiteAjout} ${a.unite} le ${new Date().toLocaleDateString('fr-FR')}`
+            }
+          : a
+      )
+    );
+
+    if (soundEnabled) {
+      playLuxuryBellSound();
+    }
+  };
+
+  const genererBonsAchatAutoPourStocksCritiques = (articleIds?: string[]): BonAchat[] => {
+    // Filtrer les articles critiques concernés
+    const alertsToOrder = restaurantStockAlerts.filter(
+      (a) => (a.statut === 'actif' || a.statut === 'commande_en_cours') && (!articleIds || articleIds.includes(a.articleId))
+    );
+
+    if (alertsToOrder.length === 0) return [];
+
+    // Regrouper par fournisseur
+    const groupsBySupplier: Record<string, RestaurantStockAlert[]> = {};
+    alertsToOrder.forEach((alert) => {
+      const key = alert.fournisseurId || alert.fournisseurNom || 'fourn-default';
+      if (!groupsBySupplier[key]) {
+        groupsBySupplier[key] = [];
+      }
+      groupsBySupplier[key].push(alert);
+    });
+
+    const createdBons: BonAchat[] = [];
+
+    Object.entries(groupsBySupplier).forEach(([suppId, alerts]) => {
+      const fournisseur = fournisseurs.find((f) => f.id === suppId) || {
+        id: suppId,
+        nom: alerts[0].fournisseurNom,
+        telephone: alerts[0].fournisseurTelephone || ''
+      };
+
+      const entrepot = entrepots.find((e) => e.nom.includes('Restaurant') || e.nom.includes('Économat')) || entrepots[0] || {
+        id: 'ent-2',
+        nom: 'Économat & Réserve Restaurant'
+      };
+
+      const itemsLines = alerts.map((a) => {
+        const totalLigne = a.quantiteSuggeree * a.prixAchatUnitaire;
+        return {
+          articleId: a.articleId,
+          designation: a.articleDesignation,
+          quantiteCommandee: a.quantiteSuggeree,
+          quantiteRecue: 0,
+          prixUnitaireAchat: a.prixAchatUnitaire,
+          totalLigne
+        };
+      });
+
+      const montantTotal = itemsLines.reduce((acc, l) => acc + l.totalLigne, 0);
+
+      const newBon = addBonAchat({
+        date: new Date().toISOString().split('T')[0],
+        fournisseurId: fournisseur.id,
+        fournisseurNom: fournisseur.nom,
+        entrepotId: entrepot.id,
+        entrepotNom: entrepot.nom,
+        items: itemsLines,
+        montantTotal,
+        statut: 'en_attente',
+        modePaiement: 'Virement ou Mobile Money',
+        statutPaiement: 'en_attente',
+        notes: `Généré automatiquement par le module d'alertes stocks restaurant. ${itemsLines.length} article(s) à réapprovisionner d'urgence.`
+      });
+
+      createdBons.push(newBon);
+
+      // Mettre à jour le statut des alertes en commande_en_cours
+      alerts.forEach((a) => {
+        setRestaurantStockAlerts((prev) =>
+          prev.map((item) =>
+            item.id === a.id
+              ? {
+                  ...item,
+                  statut: 'commande_en_cours',
+                  bonAchatId: newBon.id,
+                  bonAchatNumero: newBon.numero,
+                  notes: `Bon d'achat ${newBon.numero} créé (${newBon.montantTotal} FCFA)`
+                }
+              : item
+          )
+        );
+      });
+    });
+
+    if (soundEnabled) {
+      playLuxuryBellSound();
+    }
+
+    return createdBons;
+  };
+
+  const simulerAlerteStockRestaurant = (targetArticleId?: string) => {
+    // Si aucun article spécifié, choisir un article du restaurant (stk-6 ou stk-1)
+    const targetId = targetArticleId || 'stk-6';
+    const item = stockItems.find((s) => s.id === targetId);
+    if (!item) return;
+
+    // Réduire la quantité à 1 (ou 0) pour forcer le seuil critique
+    const nouvelleQte = item.quantite > 0 ? 0 : 1;
+
+    setStockItems((prev) =>
+      prev.map((s) => (s.id === targetId ? { ...s, quantite: nouvelleQte } : s))
+    );
+
+    // Synchroniser POS
+    setPosProducts((prev) =>
+      prev.map((p) => {
+        if (p.nom.toLowerCase().includes(item.designation.toLowerCase().slice(0, 8))) {
+          return { ...p, stockActuel: nouvelleQte, disponible: nouvelleQte > 0 };
+        }
+        return p;
+      })
+    );
+
+    if (soundEnabled) {
+      playStockAlertChime();
+    }
+  };
+
+  const updateArticleSeuilAlerte = (articleId: string, nouveauSeuil: number) => {
+    if (nouveauSeuil < 0) return;
+
+    setStockItems((prev) =>
+      prev.map((item) => (item.id === articleId ? { ...item, seuilAlerte: nouveauSeuil } : item))
+    );
+
+    setPosProducts((prev) =>
+      prev.map((p) => {
+        const stk = stockItems.find((s) => s.id === articleId);
+        if (stk && p.nom.toLowerCase().includes(stk.designation.toLowerCase().slice(0, 8))) {
+          return { ...p, stockAlerte: nouveauSeuil };
+        }
+        return p;
+      })
+    );
+  };
+
 
   // Ajout d'une vente POS avec décrémentation de stock et flux financier
   const addPosSale = (newSale: Omit<PosSale, 'id' | 'numeroTicket'>): PosSale => {
@@ -2640,6 +3312,10 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         pendingReservationsCount,
         completedReservationsCount,
         cancelledReservationsCount,
+        // 7b. Journal d'Audit des modifications de réservations
+        auditLogs,
+        addAuditLog,
+        clearAuditLogs,
         // 8. Services payants
         paidServices,
         addPaidService,
@@ -2679,6 +3355,15 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         bonsAchat,
         addBonAchat,
         receptionnerBonAchat,
+        // 11b. Alertes & Notifications de Stocks Restaurant
+        restaurantStockAlerts,
+        unreadStockAlertsCount,
+        acquitterStockAlert,
+        acquitterAllStockAlerts,
+        reapprovisionnerStockArticle,
+        genererBonsAchatAutoPourStocksCritiques,
+        simulerAlerteStockRestaurant,
+        updateArticleSeuilAlerte,
         // 12. Facture Globale
         generateGlobalInvoice,
         // 13. Module Restaurant & POS Restaurant

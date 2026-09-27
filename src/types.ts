@@ -118,11 +118,12 @@ export interface ThermalPrinterConfig {
   paperFeedLines: number; // Lignes de saut avant coupe papier
 }
 
-// Notification sonore et visuelle de réservation (Hôtel & Restaurant)
+// Notification sonore et visuelle (Hôtel, Restaurant, Stocks Critiques)
 export interface ReservationNotification {
   id: string;
   timestamp: string;
-  source?: 'hotel' | 'restaurant';
+  source?: 'hotel' | 'restaurant' | 'stock';
+  typeNotification?: 'reservation' | 'stock_critique' | 'rupture_stock' | 'reapprovisionnement';
   titre?: string;
   message?: string;
   clientNom: string;
@@ -139,6 +140,16 @@ export interface ReservationNotification {
   dateReservation: string;
   creneauHoraire?: string;
   lue: boolean;
+  // Données complémentaires pour alertes de stock restaurant
+  articleId?: string;
+  articleCode?: string;
+  articleDesignation?: string;
+  stockActuel?: number;
+  seuilAlerte?: number;
+  unite?: string;
+  fournisseurNom?: string;
+  fournisseurTelephone?: string;
+  quantiteSuggeree?: number;
 }
 
 // Module de Dépenses (Ménage, Réparation, etc.)
@@ -767,4 +778,76 @@ export interface NotificationCampaign {
 }
 
 export type FNESettings = Record<string, any>;
+
+// 15. Journal d'Audit des Réservations (Traçabilité complète des modifications)
+export type AuditActionType =
+  | 'creation'
+  | 'modification'
+  | 'annulation'
+  | 'confirmation'
+  | 'check_in'
+  | 'check_out'
+  | 'reactivation'
+  | 'suppression'
+  | 'paiement';
+
+export interface AuditFieldDiff {
+  champ: string;
+  label: string;
+  ancienneValeur: string | number;
+  nouvelleValeur: string | number;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string; // ISO 8601 string (ex: 2026-09-27T08:25:00.000Z)
+  action: AuditActionType;
+  actionLabel: string;
+  reservationId: string;
+  clientNom: string;
+  clientTelephone?: string;
+  chambreNumero: string;
+  chambreType?: string;
+  montantTotal?: number;
+  userName: string;
+  userRole: string;
+  userEmail?: string;
+  details: string;
+  motifAnnulation?: string;
+  modifications?: AuditFieldDiff[];
+}
+
+// =========================================================================
+// 16. MODULE DE NOTIFICATIONS AUTOMATIQUES & ALERTES STOCKS RESTAURANT
+// =========================================================================
+export type StockAlertLevel = 'rupture' | 'critique' | 'faible';
+
+export interface RestaurantStockAlert {
+  id: string; // ex: "alt-stk-1-17274400000"
+  articleId: string;
+  articleCode: string;
+  articleDesignation: string;
+  categorie: string; // 'Boissons', 'Nourriture & Épicerie', etc.
+  entrepotNom: string;
+  stockActuel: number;
+  seuilAlerte: number;
+  unite: string;
+  quantiteSuggeree: number; // ex: (seuilAlerte * 2) - stockActuel
+  fournisseurId?: string;
+  fournisseurNom: string;
+  fournisseurTelephone?: string;
+  prixAchatUnitaire: number;
+  coutEstimeReassort: number; // quantiteSuggeree * prixAchatUnitaire
+  dateDetection: string; // ISO 8601
+  dateDetectionFormatted: string; // HH:mm ou DD/MM/YYYY HH:mm
+  severite: StockAlertLevel;
+  statut: 'actif' | 'commande_en_cours' | 'reapprovisionne' | 'ignore';
+  acquittee: boolean;
+  acquitteePar?: string;
+  dateAcquittement?: string;
+  notes?: string;
+  bonAchatId?: string;
+  bonAchatNumero?: string;
+}
+
 

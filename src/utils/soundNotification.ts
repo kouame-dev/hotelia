@@ -93,3 +93,42 @@ export function playAlertChime(): void {
     console.warn('Audio alert unavailable', err);
   }
 }
+
+/**
+ * Joue un carillon d'avertissement spécifique pour les alertes de stock critique (Restaurant / Économat)
+ * Double tonalité d'alerte : Sol4 (392Hz) -> Ré5 (587Hz) -> Fa#5 (740Hz)
+ */
+export function playStockAlertChime(): void {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const notes = [
+      { freq: 440.0, time: 0.0, duration: 0.25 },
+      { freq: 554.37, time: 0.15, duration: 0.25 },
+      { freq: 659.25, time: 0.3, duration: 0.5 }
+    ];
+
+    notes.forEach((note) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+      gain.gain.setValueAtTime(0, now + note.time);
+      gain.gain.linearRampToValueAtTime(0.28, now + note.time + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + note.time + note.duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + note.time);
+      osc.stop(now + note.time + note.duration + 0.05);
+    });
+  } catch (err) {
+    console.warn('Stock audio alert unavailable', err);
+  }
+}
+

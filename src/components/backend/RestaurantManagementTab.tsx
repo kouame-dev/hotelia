@@ -100,12 +100,14 @@ interface RestaurantManagementTabProps {
   initialSubTab?: RestSubTab;
   onSubTabChange?: (tab: RestSubTab) => void;
   onGoToFactureGlobale?: () => void;
+  onGoToStockAlerts?: () => void;
 }
 
 export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = ({
   initialSubTab = 'pos',
   onSubTabChange,
-  onGoToFactureGlobale
+  onGoToFactureGlobale,
+  onGoToStockAlerts
 }) => {
   const {
     restaurantTables,
@@ -128,7 +130,9 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
     deleteRestaurantOrder,
     currentUserProfile,
     chambres,
-    reservations
+    reservations,
+    restaurantStockAlerts,
+    unreadStockAlertsCount
   } = useHotelData();
 
   const { settings, formatPrice } = useHotelSettings();
@@ -877,6 +881,27 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
               >
                 <Receipt className="w-3.5 h-3.5 text-amber-400" />
                 <span>Facture Globale &amp; FNE DGI</span>
+              </button>
+            )}
+
+            {onGoToStockAlerts && (
+              <button
+                type="button"
+                onClick={onGoToStockAlerts}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm ${
+                  unreadStockAlertsCount > 0
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500 hover:text-white ring-1 ring-rose-500/20'
+                    : 'bg-stone-800/80 text-stone-300 hover:bg-stone-800 hover:text-white border border-stone-700'
+                }`}
+                title="Consulter les alertes automatiques de stock restaurant et anticiper les réapprovisionnements"
+              >
+                <AlertCircle className={`w-3.5 h-3.5 ${unreadStockAlertsCount > 0 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
+                <span>Alertes Stocks</span>
+                {unreadStockAlertsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono bg-rose-500 text-white animate-pulse">
+                    {unreadStockAlertsCount}
+                  </span>
+                )}
               </button>
             )}
           </div>

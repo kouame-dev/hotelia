@@ -7,7 +7,8 @@ import {
   MouvementStock,
   BonAchat,
   ServiceOrder,
-  PosSale
+  PosSale,
+  RestaurantStockAlert
 } from '../types.ts';
 
 // 1. Catalogue initial des Services Payants
@@ -206,7 +207,7 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
     categorie: 'Boissons',
     entrepotId: 'ent-1',
     entrepotNom: 'Cave Principale & Bar Lounge',
-    quantite: 18,
+    quantite: 2,
     seuilAlerte: 6,
     prixAchatUnitaire: 85,
     prixVenteUnitaire: 140,
@@ -286,7 +287,7 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
     categorie: 'Nourriture & Épicerie',
     entrepotId: 'ent-2',
     entrepotNom: 'Économat & Réserve Restaurant',
-    quantite: 35,
+    quantite: 4,
     seuilAlerte: 12,
     prixAchatUnitaire: 6.5,
     prixVenteUnitaire: 18,
@@ -302,8 +303,8 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
     categorie: 'Nourriture & Épicerie',
     entrepotId: 'ent-2',
     entrepotNom: 'Économat & Réserve Restaurant',
-    quantite: 18,
-    seuilAlerte: 8,
+    quantite: 0,
+    seuilAlerte: 10,
     prixAchatUnitaire: 5,
     prixVenteUnitaire: 12,
     unite: 'kg',
@@ -383,12 +384,12 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     sousCategorie: 'Spécialités Ivoiriennes',
     prixVente: 12,
     prixAchat: 5,
-    stockActuel: 18,
-    stockAlerte: 5,
+    stockActuel: 0,
+    stockAlerte: 10,
     unite: 'assiette',
     description: 'Morceau noble de thon braisé aux oignons doux, piment frais et semoule fine.',
     imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80',
-    disponible: true
+    disponible: false
   },
   {
     id: 'pos-food-2',
@@ -397,8 +398,8 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     sousCategorie: 'Spécialités Ivoiriennes',
     prixVente: 18,
     prixAchat: 6.5,
-    stockActuel: 35,
-    stockAlerte: 10,
+    stockActuel: 4,
+    stockAlerte: 12,
     unite: 'portion',
     description: 'Poulet fermier mariné aux épices locales, alloco doré et sauce tomate pimentée.',
     imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=600&auto=format&fit=crop&q=80',
@@ -971,3 +972,77 @@ export const INITIAL_POS_SALES: PosSale[] = [
     notes: 'Encaissement direct comptoir bar.'
   }
 ];
+
+// 11. Alertes initiales de Stock Restaurant (Seuils Critiques & Ruptures)
+export const INITIAL_RESTAURANT_STOCK_ALERTS: RestaurantStockAlert[] = [
+  {
+    id: 'alt-stk-8-init',
+    articleId: 'stk-8',
+    articleCode: 'NOU-THO-01',
+    articleDesignation: 'Thon Frais pour Garba Prestige (Kg)',
+    categorie: 'Nourriture & Épicerie',
+    entrepotNom: 'Économat & Réserve Restaurant',
+    stockActuel: 0,
+    seuilAlerte: 10,
+    unite: 'kg',
+    quantiteSuggeree: 20,
+    fournisseurId: 'fourn-3',
+    fournisseurNom: 'Régie Vivrière & Marée Tropicale',
+    fournisseurTelephone: '+225 07 48 90 12 34',
+    prixAchatUnitaire: 5,
+    coutEstimeReassort: 100,
+    dateDetection: '2026-09-27T08:15:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 08:15',
+    severite: 'rupture',
+    statut: 'actif',
+    acquittee: false,
+    notes: 'Rupture totale constatée lors du contrôle matinal. Plat Garba Prestige indisponible au menu.'
+  },
+  {
+    id: 'alt-stk-7-init',
+    articleId: 'stk-7',
+    articleCode: 'NOU-POU-01',
+    articleDesignation: 'Poulet Fermier Cuisiné Braisé (Pièce entière)',
+    categorie: 'Nourriture & Épicerie',
+    entrepotNom: 'Économat & Réserve Restaurant',
+    stockActuel: 4,
+    seuilAlerte: 12,
+    unite: 'pièce',
+    quantiteSuggeree: 20,
+    fournisseurId: 'fourn-3',
+    fournisseurNom: 'Régie Vivrière & Marée Tropicale',
+    fournisseurTelephone: '+225 07 48 90 12 34',
+    prixAchatUnitaire: 6.5,
+    coutEstimeReassort: 130,
+    dateDetection: '2026-09-27T08:20:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 08:20',
+    severite: 'critique',
+    statut: 'actif',
+    acquittee: false,
+    notes: 'Seuil critique atteint (4 pièces restantes sur 12 requises). Risque de rupture pour le service du dîner.'
+  },
+  {
+    id: 'alt-stk-2-init',
+    articleId: 'stk-2',
+    articleCode: 'BOI-CHAMP-01',
+    articleDesignation: 'Champagne Ruinart Blanc de Blancs 75cl',
+    categorie: 'Boissons',
+    entrepotNom: 'Cave Principale & Bar Lounge',
+    stockActuel: 2,
+    seuilAlerte: 6,
+    unite: 'bouteille',
+    quantiteSuggeree: 10,
+    fournisseurId: 'fourn-2',
+    fournisseurNom: 'Les Chais d’Abidjan & Vins Fins',
+    fournisseurTelephone: '+225 05 12 34 56 78',
+    prixAchatUnitaire: 85,
+    coutEstimeReassort: 850,
+    dateDetection: '2026-09-27T08:25:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 08:25',
+    severite: 'critique',
+    statut: 'actif',
+    acquittee: false,
+    notes: 'Seulement 2 bouteilles en cave. Réassort impératif avant les réservations VIP du week-end.'
+  }
+];
+

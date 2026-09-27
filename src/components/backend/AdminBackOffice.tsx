@@ -14,8 +14,11 @@ import { PaidServicesTab } from './PaidServicesTab.tsx';
 import { PosSystemTab } from './PosSystemTab.tsx';
 import { StockManagementTab } from './StockManagementTab.tsx';
 import { GlobalInvoiceView } from './GlobalInvoiceView.tsx';
+import { ReservationAuditLogTab } from './ReservationAuditLogTab.tsx';
 import { RestaurantManagementTab } from './RestaurantManagementTab.tsx';
 import { LoyaltyAndMarketingTab } from './LoyaltyAndMarketingTab.tsx';
+import { RestaurantStockAlertBanner } from './RestaurantStockAlertBanner.tsx';
+import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
@@ -60,7 +63,8 @@ import {
   FileSpreadsheet,
   ShoppingBag,
   ChefHat,
-  Award
+  Award,
+  History
 } from 'lucide-react';
 
 export type BackOfficeTab =
@@ -71,7 +75,9 @@ export type BackOfficeTab =
   | 'pos'
   | 'services'
   | 'facture_globale'
+  | 'audit'
   | 'stock'
+  | 'stock_alerts'
   | 'loyalty'
   | 'chambres'
   | 'finance'
@@ -111,6 +117,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     restaurantReservations,
     restaurantOrders,
     usersList,
+    auditLogs,
+    restaurantStockAlerts,
+    unreadStockAlertsCount,
     switchUserRole
   } = useHotelData();
 
@@ -200,9 +209,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     );
 
   // Guard de routage : Si un utilisateur restreint tente d'accéder à un onglet interdit,
-  // Facture Globale et Profil restent 100% ACCESSIBLES ET GARANTIS POUR TOUS LES RÔLES.
+  // Facture Globale, Journal d'Audit, Alertes Stocks et Profil restent 100% ACCESSIBLES ET GARANTIS POUR TOUS LES RÔLES.
   useEffect(() => {
-    if (activeTab === 'facture_globale' || activeTab === 'profile') {
+    if (activeTab === 'facture_globale' || activeTab === 'profile' || activeTab === 'audit' || activeTab === 'stock_alerts') {
       return;
     }
     if (isCaisseRestaurant && activeTab !== 'restaurant' && activeTab !== 'cuisine' && activeTab !== 'pos') {
@@ -222,8 +231,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   }, [isCaisseRestaurant, isDirecteurRestaurant, isCaisse, activeTab]);
 
   const handleTabClick = (tab: BackOfficeTab) => {
-    // 1. Facture Globale & Certification FNE DGI et Profil sont TOUJOURS ACCESSIBLES À 100% SANS RESTRICTION
-    if (tab === 'facture_globale' || tab === 'profile') {
+    // 1. Facture Globale & FNE, Journal d'Audit, Alertes Stocks et Profil sont TOUJOURS ACCESSIBLES À 100% SANS RESTRICTION
+    if (tab === 'facture_globale' || tab === 'profile' || tab === 'audit' || tab === 'stock_alerts') {
       setActiveTab(tab);
       return;
     }
@@ -364,7 +373,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 type="button"
                 onClick={() => setIsNotifModalOpen(true)}
                 className="relative p-2.5 rounded-xl bg-[#2A2925] hover:bg-[#383631] text-stone-300 hover:text-white border border-stone-700 transition-all cursor-pointer flex items-center gap-1.5"
-                title="Notifications de réservations sonores"
+                title="Notifications de réservations sonores & stocks critiques"
               >
                 {unreadCount > 0 ? (
                   <BellRing className="w-4 h-4 text-[#C5A880] animate-bounce" />
@@ -377,6 +386,32 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   </span>
                 )}
                 <span className="hidden sm:inline text-xs font-semibold">Alertes</span>
+              </button>
+
+              {/* Accès DIRECT 1-Clic : Alertes Stocks Restaurant Critiques */}
+              <button
+                type="button"
+                onClick={() => handleTabClick('stock_alerts')}
+                className={`relative p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                  activeTab === 'stock_alerts'
+                    ? 'bg-rose-600 text-white font-extrabold shadow-md ring-2 ring-rose-400/40 border-rose-400'
+                    : unreadStockAlertsCount > 0
+                    ? 'bg-rose-950/70 text-rose-300 hover:text-white hover:bg-rose-900 border-rose-500/60 ring-1 ring-rose-500/30'
+                    : 'bg-[#2A2925] hover:bg-[#383631] text-stone-300 hover:text-white border-stone-700'
+                }`}
+                title="Alertes automatiques des stocks critiques du restaurant & réapprovisionnement"
+              >
+                <AlertTriangle
+                  className={`w-4 h-4 ${
+                    unreadStockAlertsCount > 0 ? 'text-rose-400 animate-pulse' : 'text-amber-400'
+                  }`}
+                />
+                {unreadStockAlertsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px] animate-pulse">
+                    {unreadStockAlertsCount}
+                  </span>
+                )}
+                <span className="hidden lg:inline text-xs font-semibold">Stocks Restaurant</span>
               </button>
 
               {/* Sélecteur / Dropdown de Profil & Rôles */}
@@ -724,6 +759,29 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         {reservations.length}
                       </span>
                     </button>
+
+                    {/* Sous-menu 7 : Journal d'Audit & Traçabilité */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleTabClick('audit');
+                        setIsReservationMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-stone-800 text-left text-amber-300 transition-all cursor-pointer font-semibold border-t border-stone-800/80 mt-1"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
+                          <History className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold">Journal d'Audit</span>
+                          <span className="text-[11px] text-stone-400 font-normal">Traçabilité des modifications</span>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-amber-500/20 text-amber-400">
+                        {auditLogs.length}
+                      </span>
+                    </button>
                   </div>
                 </>
               )}
@@ -946,6 +1004,31 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         </div>
                       </div>
                     </button>
+
+                    {/* Sous-page 8 : Alertes Stocks & Réapprovisionnement Restaurant */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('stock_alerts');
+                        setIsRestaurantMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-stone-800 text-left transition-all cursor-pointer font-semibold border-t border-stone-800 pt-2 text-rose-300"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <span className="block font-bold text-xs">Alertes Stocks &amp; Réassort</span>
+                          <span className="text-[10px] text-stone-400 font-normal">Anticipation des seuils critiques</span>
+                        </div>
+                      </div>
+                      {unreadStockAlertsCount > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-rose-500 text-white animate-pulse">
+                          {unreadStockAlertsCount}
+                        </span>
+                      )}
+                    </button>
                   </div>
                 </>
               )}
@@ -1049,6 +1132,26 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               <span>Facture Globale</span>
             </button>
 
+            {/* Tab Audit : Journal d'Audit & Traçabilité des Réservations */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('audit')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                activeTab === 'audit'
+                  ? 'bg-amber-600 text-stone-950 border-2 border-amber-300 shadow-lg ring-2 ring-amber-400/40 font-extrabold'
+                  : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
+              }`}
+              title="Journal d'audit : traçabilité complète de chaque création, modification, annulation et règlement"
+            >
+              <History className="w-3.5 h-3.5 text-amber-400" />
+              <span>Journal d'Audit</span>
+              {auditLogs.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono bg-amber-400 text-stone-950 ml-0.5">
+                  {auditLogs.length}
+                </span>
+              )}
+            </button>
+
             {/* Tab Stock : Gestion de Stock & Entrepôts -> CYAN / TEAL */}
             <button
               type="button"
@@ -1064,6 +1167,28 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               {isCaisse ? <Lock className="w-3.5 h-3.5 text-stone-500" /> : <Boxes className="w-3.5 h-3.5 text-cyan-300" />}
               <span>Gestion de Stock</span>
               {isCaisse && <span className="text-[9px] font-mono text-stone-500">[DG / Réception]</span>}
+            </button>
+
+            {/* Tab Alertes Stocks : Surveillance Seuils Critiques Restaurant */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('stock_alerts')}
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-xs ${
+                activeTab === 'stock_alerts'
+                  ? 'bg-rose-600 text-white border-2 border-rose-300 shadow-lg ring-2 ring-rose-400/40 font-extrabold'
+                  : unreadStockAlertsCount > 0
+                  ? 'bg-rose-950/60 text-rose-300 border border-rose-700/80 hover:bg-rose-900 hover:text-white'
+                  : 'bg-stone-900 text-stone-300 border border-stone-700 hover:bg-stone-800 hover:text-white'
+              }`}
+              title="Module d'alertes automatiques et de réapprovisionnement des stocks du restaurant"
+            >
+              <AlertTriangle className={`w-3.5 h-3.5 ${unreadStockAlertsCount > 0 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`} />
+              <span>Alertes Stocks</span>
+              {unreadStockAlertsCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono bg-rose-500 text-white ml-0.5 animate-pulse">
+                  {unreadStockAlertsCount}
+                </span>
+              )}
             </button>
 
             {/* Tab Fidélité & Marketing -> AMBRE / DORE */}
@@ -1243,6 +1368,11 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
       {/* 2. Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Bandeau d'Alerte Proactif : Surveillance des Stocks Critiques Restaurant */}
+        <RestaurantStockAlertBanner
+          onNavigateToStockAlerts={() => handleTabClick('stock_alerts')}
+        />
+
         {/* Bannière de Session Caisse : Confirmation du périmètre exclusif réservations */}
         {isCaisse && (
           <div className="bg-[#FF9900]/15 border-2 border-[#FF9900] text-stone-900 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
@@ -1372,6 +1502,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             initialSubTab={restaurantSubTab}
             onSubTabChange={(tab) => setRestaurantSubTab(tab)}
             onGoToFactureGlobale={() => setActiveTab('facture_globale')}
+            onGoToStockAlerts={() => handleTabClick('stock_alerts')}
           />
         )}
 
@@ -1387,6 +1518,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               }
             }}
             onGoToFactureGlobale={() => setActiveTab('facture_globale')}
+            onGoToStockAlerts={() => handleTabClick('stock_alerts')}
           />
         )}
 
@@ -1399,8 +1531,19 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {/* Tab Facture Globale Consolidée */}
         {activeTab === 'facture_globale' && <GlobalInvoiceView />}
 
+        {/* Tab Journal d'Audit des Réservations */}
+        {activeTab === 'audit' && <ReservationAuditLogTab />}
+
         {/* Tab Gestion de Stock & Approvisionnements */}
         {activeTab === 'stock' && !isCaisse && <StockManagementTab />}
+
+        {/* Tab Alertes Stocks & Réapprovisionnement Restaurant */}
+        {activeTab === 'stock_alerts' && (
+          <RestaurantStockAlertsTab
+            onGoToStockModule={() => handleTabClick('stock')}
+            onGoToRestaurant={() => handleTabClick('restaurant')}
+          />
+        )}
 
         {/* Tab Fidélité, Comptes Clients, Coupons Promo & Campagnes SMS / Push */}
         {activeTab === 'loyalty' && !isCaisse && <LoyaltyAndMarketingTab />}
@@ -1436,6 +1579,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       <NotificationCenterModal
         isOpen={isNotifModalOpen}
         onClose={() => setIsNotifModalOpen(false)}
+        onGoToStockAlerts={() => handleTabClick('stock_alerts')}
       />
 
       {/* Modal d'Alerte : Accès Restreint par le Contrôle de Rôle (RBAC) */}

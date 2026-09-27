@@ -275,8 +275,8 @@ export interface HotelSettings {
 }
 
 export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
-  appName: 'Hotelia Résidence & Suites',
-  brandSubtitle: 'L’élégance hôtelière signée Dekouassi Holding',
+  appName: "Gestion d'Hôtel - Maison Meublées et services",
+  brandSubtitle: 'Hôtels, Résidences, Maisons Meublées & Services signés Dekouassi Holding',
   holdingName: 'Dekouassi Holding',
   logoUrl: '',
   logoType: 'icon',
@@ -296,9 +296,9 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
   privacyPolicy: 'Dekouassi Holding s’engage à protéger la confidentialité de vos données personnelles. Les informations recueillies lors de votre réservation sont utilisées exclusivement pour la gestion de votre séjour et ne seront jamais cédées à des tiers.',
 
   seo: {
-    metaTitle: 'Hotelia Résidence | Hôtel de Prestige & Réservation à l’Heure',
-    metaDescription: 'Découvrez Hotelia Résidence par Dekouassi Holding. Chambres et suites d’exception réservables à la nuitée ou à l’heure (Day-Use). Confort, discrétion et luxe garanti.',
-    metaKeywords: 'hôtel, résidence hôtelière, réservation à l’heure, day use, suite de luxe, Dekouassi Holding, Abidjan, Paris',
+    metaTitle: "Gestion d'Hôtel - Maison Meublées et services",
+    metaDescription: "Système complet de gestion hôtelière PMS Hotelia : gestion des chambres, résidences et maisons meublées, réservations nuitées & heures, module restaurant, facturation globale consolidée et FNE DGI.",
+    metaKeywords: "hôtel, maison meublée, gestion hôtelière, résidence meublée, réservation à l'heure, day use, restaurant, Dekouassi Holding",
     ogImageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
     canonicalUrl: 'https://hotelia.dekouassiholding.com',
     googleAnalyticsId: 'G-HOTELIA2026'
@@ -338,6 +338,22 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const saved = localStorage.getItem('hotelia_settings');
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (
+          parsed.appName &&
+          (parsed.appName.includes('PostgreSQL') ||
+            parsed.appName.includes('Architect') ||
+            parsed.appName === 'Hotelia Résidence & Suites')
+        ) {
+          parsed.appName = "Gestion d'Hôtel - Maison Meublées et services";
+        }
+        if (
+          parsed.seo?.metaTitle &&
+          (parsed.seo.metaTitle.includes('PostgreSQL') ||
+            parsed.seo.metaTitle.includes('Architect') ||
+            parsed.seo.metaTitle.includes('Hotelia Résidence'))
+        ) {
+          parsed.seo.metaTitle = "Gestion d'Hôtel - Maison Meublées et services";
+        }
         return {
           ...DEFAULT_HOTEL_SETTINGS,
           ...parsed,

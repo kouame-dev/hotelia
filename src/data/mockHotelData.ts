@@ -6,7 +6,8 @@ import {
   ReservationNotification,
   UserProfile,
   ReservationItem,
-  ThermalPrinterConfig
+  ThermalPrinterConfig,
+  AuditLogEntry
 } from '../types.ts';
 
 // 1. Types de chambre initiaux
@@ -809,3 +810,130 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     dateCreation: '2026-09-11T08:20:00'
   }
 ];
+
+// 12. Journal d'Audit initial (Historique des modifications de réservations)
+export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
+  {
+    id: 'audit-001',
+    timestamp: '2026-09-27T07:15:22.000Z',
+    action: 'creation',
+    actionLabel: 'Création de réservation',
+    reservationId: 'res-101',
+    clientNom: 'Jean-Marc Kouamé',
+    clientTelephone: '+225 07 08 09 10 11',
+    chambreNumero: '101',
+    chambreType: 'Deluxe Harmonie',
+    montantTotal: 420,
+    userName: 'Aminata Koné',
+    userRole: 'Chef de Réception',
+    userEmail: 'reception@hotelia.dekouassiholding.com',
+    details: 'Création de la réservation Nuitée (3 nuits) pour Jean-Marc Kouamé en Chambre 101. Montant total: 420 FCFA via Orange Money.',
+    modifications: [
+      { champ: 'statutReservation', label: 'Statut', ancienneValeur: 'aucun', nouvelleValeur: 'confirmee' },
+      { champ: 'montantTotal', label: 'Montant Total', ancienneValeur: 0, nouvelleValeur: 420 },
+      { champ: 'chambreNumero', label: 'Chambre', ancienneValeur: 'non assignée', nouvelleValeur: '101' }
+    ]
+  },
+  {
+    id: 'audit-002',
+    timestamp: '2026-09-26T16:40:10.000Z',
+    action: 'paiement',
+    actionLabel: 'Encaissement acompte',
+    reservationId: 'res-102',
+    clientNom: 'Dr. Fatou Camara',
+    clientTelephone: '+225 05 12 34 56 78',
+    chambreNumero: '202',
+    chambreType: 'Confort Supérieure',
+    montantTotal: 220,
+    userName: 'Mariam Diallo',
+    userRole: 'Caisse',
+    userEmail: 'caisse@hotelia.dekouassiholding.com',
+    details: 'Enregistrement d’un versement partiel de 110 FCFA par Espèces / Caisse (Reçu de caisse généré).',
+    modifications: [
+      { champ: 'acompteVerse', label: 'Acompte', ancienneValeur: 0, nouvelleValeur: 110 },
+      { champ: 'resteAPayer', label: 'Reste à payer', ancienneValeur: 220, nouvelleValeur: 110 }
+    ]
+  },
+  {
+    id: 'audit-003',
+    timestamp: '2026-09-26T14:10:05.000Z',
+    action: 'modification',
+    actionLabel: 'Modification de chambre',
+    reservationId: 'res-103',
+    clientNom: 'Sarah Touré',
+    clientTelephone: '+225 07 44 55 66 77',
+    chambreNumero: '303',
+    chambreType: 'Suite Exécutive',
+    montantTotal: 540,
+    userName: 'Koua Dibi (Dekouassi Holding)',
+    userRole: 'Directeur Général',
+    userEmail: 'koua.dibi@gmail.com',
+    details: 'Surclassement client de la Chambre 203 vers la Suite Exécutive 303 avec ajustement du tarif de séjour.',
+    modifications: [
+      { champ: 'chambreNumero', label: 'Chambre', ancienneValeur: '203', nouvelleValeur: '303' },
+      { champ: 'chambreType', label: 'Catégorie', ancienneValeur: 'Confort Supérieure', nouvelleValeur: 'Suite Exécutive' },
+      { champ: 'montantTotal', label: 'Montant Total', ancienneValeur: 330, nouvelleValeur: 540 }
+    ]
+  },
+  {
+    id: 'audit-004',
+    timestamp: '2026-09-25T11:32:00.000Z',
+    action: 'annulation',
+    actionLabel: 'Annulation avec motif',
+    reservationId: 'res-ann-1',
+    clientNom: 'Marc-André Beaulieu',
+    clientTelephone: '+33 6 12 34 56 78',
+    chambreNumero: '101',
+    chambreType: 'Deluxe Harmonie',
+    montantTotal: 280,
+    userName: 'Aminata Koné',
+    userRole: 'Chef de Réception',
+    userEmail: 'reception@hotelia.dekouassiholding.com',
+    motifAnnulation: 'Vol international reporté pour cause météo. Chambre remise en disponibilité.',
+    details: 'Annulation de la réservation après signalement client. Statut passé à "annulee". Motif: Vol international reporté.',
+    modifications: [
+      { champ: 'statutReservation', label: 'Statut Réservation', ancienneValeur: 'confirmee', nouvelleValeur: 'annulee' },
+      { champ: 'statutPaiement', label: 'Statut Paiement', ancienneValeur: 'en_attente', nouvelleValeur: 'annule' }
+    ]
+  },
+  {
+    id: 'audit-005',
+    timestamp: '2026-09-24T09:05:45.000Z',
+    action: 'check_in',
+    actionLabel: 'Arrivée client (Check-in)',
+    reservationId: 'res-104',
+    clientNom: 'Yao Kan Éric',
+    clientTelephone: '+225 01 23 45 67 89',
+    chambreNumero: '102',
+    chambreType: 'Confort Supérieure',
+    montantTotal: 90,
+    userName: 'Mariam Diallo',
+    userRole: 'Caisse',
+    userEmail: 'caisse@hotelia.dekouassiholding.com',
+    details: 'Enregistrement de l’arrivée du client en Day-Use (créneau 14:00 - 17:00). Remise de clé physique.',
+    modifications: [
+      { champ: 'statutReservation', label: 'Statut Réservation', ancienneValeur: 'en_attente', nouvelleValeur: 'en_cours' }
+    ]
+  },
+  {
+    id: 'audit-006',
+    timestamp: '2026-09-23T18:22:15.000Z',
+    action: 'check_out',
+    actionLabel: 'Départ client (Check-out)',
+    reservationId: 'res-105',
+    clientNom: 'Nathalie Mensah',
+    clientTelephone: '+225 07 89 01 23 45',
+    chambreNumero: '304',
+    chambreType: 'Suite Panoramique',
+    montantTotal: 560,
+    userName: 'Aminata Koné',
+    userRole: 'Chef de Réception',
+    userEmail: 'reception@hotelia.dekouassiholding.com',
+    details: 'Clôture du séjour, restitution des clés et génération de la facture définitive acquittée.',
+    modifications: [
+      { champ: 'statutReservation', label: 'Statut Réservation', ancienneValeur: 'en_cours', nouvelleValeur: 'terminee' },
+      { champ: 'statutPaiement', label: 'Statut Paiement', ancienneValeur: 'paye', nouvelleValeur: 'paye' }
+    ]
+  }
+];
+

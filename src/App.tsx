@@ -25,7 +25,8 @@ import {
   Utensils,
   Award,
   ChefHat,
-  Receipt
+  Receipt,
+  History
 } from 'lucide-react';
 
 export type MainAppView = 'frontend' | 'restaurant_booking' | 'login' | 'backend' | 'dev_tools';
@@ -70,11 +71,11 @@ export default function App() {
           <div className="flex items-center space-x-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#C5A880] animate-pulse"></span>
             <span className="font-serif font-bold tracking-wider text-white">
-              HOTELIA • DEKOUASSI HOLDING
+              GESTION D'HÔTEL - MAISONS MEUBLÉES ET SERVICES
             </span>
             <span className="text-stone-600 hidden md:inline">|</span>
             <span className="text-stone-400 font-mono text-[11px] hidden md:inline">
-              hotelia.dekouassiholding.com
+              HOTELIA • DEKOUASSI HOLDING
             </span>
           </div>
 
@@ -202,6 +203,32 @@ export default function App() {
             >
               <Receipt className="w-3.5 h-3.5 text-amber-400" />
               <span>Facture Globale</span>
+            </button>
+
+            {/* Accès DIRECT : Journal d'Audit des Réservations */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!currentUser) {
+                  setCurrentUser({
+                    nom: 'Koua Dibi (Dekouassi Holding)',
+                    role: 'Directeur Général & Administrateur',
+                    email: 'directeur@hotelia.dekouassiholding.com'
+                  });
+                }
+                setBackendInitialTab('audit');
+                setBackendTabTimestamp(Date.now());
+                setAppView('backend');
+              }}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                appView === 'backend' && backendInitialTab === 'audit'
+                  ? 'bg-amber-500 text-stone-950 shadow-md font-extrabold ring-2 ring-amber-400/40'
+                  : 'bg-amber-950/40 text-amber-300 hover:text-white hover:bg-amber-900/60 border border-amber-600/40'
+              }`}
+              title="Consulter le journal d'audit et la traçabilité des modifications de réservations"
+            >
+              <History className="w-3.5 h-3.5 text-amber-400" />
+              <span>Journal d'Audit</span>
             </button>
 
             {/* 5. Outils SQL & Architecture */}

@@ -35,10 +35,12 @@ import {
   Building,
   Check,
   X,
-  MessageSquare
+  MessageSquare,
+  History
 } from 'lucide-react';
+import { ReservationAuditLogTab } from './ReservationAuditLogTab.tsx';
 
-export type ReservationSubTab = 'ajouter' | 'en_attente' | 'terminees' | 'annulees' | 'confirmees' | 'toutes';
+export type ReservationSubTab = 'ajouter' | 'en_attente' | 'terminees' | 'annulees' | 'confirmees' | 'toutes' | 'audit';
 
 interface ReservationManagementTabProps {
   initialSubTab?: ReservationSubTab;
@@ -57,13 +59,15 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     roomTypes,
     pendingReservationsCount,
     completedReservationsCount,
-    cancelledReservationsCount
+    cancelledReservationsCount,
+    auditLogs
   } = useHotelData();
 
   const { formatPrice, settings } = useHotelSettings();
 
   // Sous-menu actif
   const [activeSubTab, setActiveSubTab] = useState<ReservationSubTab>(initialSubTab);
+  const [auditReservationFilter, setAuditReservationFilter] = useState<string | undefined>(undefined);
 
   // Colonnes pour l'export Excel & PDF
   const reservationExportColumns: ExportColumn<ReservationItem>[] = [
@@ -684,6 +688,29 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
           <FileText className="w-4 h-4 text-slate-400" />
           <span>Toutes ({reservations.length})</span>
         </button>
+
+        {/* Sous-menu 7 : Journal d'Audit -> AMBRE / OR */}
+        <button
+          type="button"
+          onClick={() => {
+            setAuditReservationFilter(undefined);
+            setActiveSubTab('audit');
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
+            activeSubTab === 'audit'
+              ? 'bg-amber-500 text-stone-950 border-2 border-amber-300 shadow-md ring-2 ring-amber-400/40 font-extrabold'
+              : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
+          }`}
+          title="Historique et journal d'audit de chaque modification, création et annulation"
+        >
+          <History className="w-4 h-4 text-amber-400" />
+          <span>Journal d'Audit</span>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold font-mono ${
+            activeSubTab === 'audit' ? 'bg-stone-950 text-amber-300' : 'bg-amber-500 text-stone-950'
+          }`}>
+            {auditLogs.length}
+          </span>
+        </button>
       </div>
 
       {/* 3. CONTENU : SOUS-MENU "AJOUTER UNE RÉSERVATION" */}
@@ -1185,7 +1212,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
       )}
 
       {/* 4. CONTENU : LISTES FILTRÉES (En attente, Terminées, Annulées, Confirmées, Toutes) */}
-      {activeSubTab !== 'ajouter' && (
+      {activeSubTab !== 'ajouter' && activeSubTab !== 'audit' && (
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
           {/* Barre d'outils, recherche et filtres */}
           <div className="p-4 sm:p-5 border-b border-stone-200 bg-[#FAF9F5] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -1243,6 +1270,20 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                 columns={reservationExportColumns}
                 data={filteredReservations}
               />
+
+              {/* Accès rapide au Journal d'Audit */}
+              <button
+                type="button"
+                onClick={() => {
+                  setAuditReservationFilter(undefined);
+                  setActiveSubTab('audit');
+                }}
+                className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500 hover:text-stone-950 text-amber-800 border border-amber-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Consulter le journal d'audit des réservations"
+              >
+                <History className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden sm:inline">Journal d'Audit ({auditLogs.length})</span>
+              </button>
             </div>
           </div>
 
@@ -1518,6 +1559,19 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                             <FileText className="w-4 h-4 text-[#C5A880]" />
                           </button>
 
+                          {/* Action 3b : Historique & Journal d'Audit de cette réservation */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAuditReservationFilter(res.id);
+                              setActiveSubTab('audit');
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-amber-100 text-stone-600 hover:text-amber-900 transition-all cursor-pointer"
+                            title="Consulter l'historique d'audit & modifications de cette réservation"
+                          >
+                            <History className="w-4 h-4 text-amber-600" />
+                          </button>
+
                           {/* Action 4 : Annuler (si non terminée et non annulée) */}
                           {res.statutReservation !== 'annulee' && res.statutReservation !== 'terminee' && (
                             <button
@@ -1570,7 +1624,15 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
         </div>
       )}
 
-      {/* 5. MODAL DE MOTIF D'ANNULATION */}
+      {/* 5. CONTENU : SOUS-MENU JOURNAL D'AUDIT & TRAÇABILITÉ */}
+      {activeSubTab === 'audit' && (
+        <ReservationAuditLogTab
+          reservationIdFilter={auditReservationFilter}
+          onSelectReservation={(resId) => setAuditReservationFilter(resId)}
+        />
+      )}
+
+      {/* 6. MODAL DE MOTIF D'ANNULATION */}
       {cancelModalRes && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-stone-200 space-y-4">

@@ -39,7 +39,9 @@ import { ExportColumn } from '../../utils/exportUtils.ts';
 
 type StockSubTab = 'articles' | 'entrepots' | 'fournisseurs' | 'achats' | 'rapports';
 
-export const StockManagementTab: React.FC = () => {
+export const StockManagementTab: React.FC<{ onGoToStockAlerts?: () => void }> = ({
+  onGoToStockAlerts
+}) => {
   const {
     stockItems,
     addStockItem,
@@ -58,7 +60,9 @@ export const StockManagementTab: React.FC = () => {
     addBonAchat,
     receptionnerBonAchat,
     mouvementsStock,
-    currentUserProfile
+    currentUserProfile,
+    restaurantStockAlerts,
+    unreadStockAlertsCount
   } = useHotelData();
   const { formatPrice, settings } = useHotelSettings();
 
@@ -409,6 +413,26 @@ export const StockManagementTab: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {onGoToStockAlerts && (
+              <button
+                type="button"
+                onClick={onGoToStockAlerts}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer ${
+                  unreadStockAlertsCount > 0
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white ring-2 ring-rose-400/40'
+                    : 'bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700'
+                }`}
+                title="Consulter le module des alertes automatiques stocks restaurant"
+              >
+                <AlertTriangle className={`w-4 h-4 ${unreadStockAlertsCount > 0 ? 'text-white animate-pulse' : 'text-amber-400'}`} />
+                <span>Alertes Stocks Restaurant</span>
+                {unreadStockAlertsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-white text-rose-700 font-mono font-bold text-[10px]">
+                    {unreadStockAlertsCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleOpenCreateBonAchat}
@@ -434,8 +458,18 @@ export const StockManagementTab: React.FC = () => {
             <div className="text-[10px] text-stone-400 uppercase font-mono">Articles Référencés</div>
             <div className="text-lg font-bold font-mono text-white mt-0.5">{stockItems.length} références</div>
           </div>
-          <div className="bg-stone-950/60 border border-stone-800 rounded-2xl p-3">
-            <div className="text-[10px] text-rose-400 uppercase font-mono font-semibold">Alertes Rupture</div>
+          <div
+            onClick={onGoToStockAlerts}
+            className={`border rounded-2xl p-3 cursor-pointer transition-all ${
+              unreadStockAlertsCount > 0
+                ? 'bg-rose-950/40 border-rose-500/60 hover:bg-rose-950/60'
+                : 'bg-stone-950/60 border-stone-800'
+            }`}
+          >
+            <div className="text-[10px] text-rose-400 uppercase font-mono font-semibold flex items-center justify-between">
+              <span>Alertes Rupture</span>
+              {onGoToStockAlerts && <span className="text-[9px] text-amber-400 font-sans">Voir alertes →</span>}
+            </div>
             <div className="text-lg font-bold font-mono text-rose-400 mt-0.5">
               {alertStockCount} article(s) bas
             </div>
