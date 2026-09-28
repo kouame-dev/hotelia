@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useHotelSettings } from '../context/SettingsContext.tsx';
 import {
   calculerPrixReservationDetaille,
   TypeReservation,
@@ -18,14 +19,15 @@ import {
 } from 'lucide-react';
 
 export const PricingFunctionPlayground: React.FC = () => {
+  const { formatPrice } = useHotelSettings();
   const [type, setType] = useState<TypeReservation>('heure');
   const [debut, setDebut] = useState<string>('09:00');
   const [fin, setFin] = useState<string>('16:00'); // 7 hours -> triggers > 5h rule!
   const [dateReference, setDateReference] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [prixNuit, setPrixNuit] = useState<number>(140);
-  const [prixHeure, setPrixHeure] = useState<number>(35);
+  const [prixNuit, setPrixNuit] = useState<number>(10000);
+  const [prixHeure, setPrixHeure] = useState<number>(2500);
   const [copied, setCopied] = useState<boolean>(false);
 
   // Exécution de la fonction avec capture des erreurs
@@ -276,27 +278,59 @@ export function calculerPrixReservation(
           <div className="grid grid-cols-2 gap-3 pt-2 border-t border-stone-100">
             <div>
               <label className="block text-xs font-semibold text-stone-700 uppercase mb-1">
-                Prix par nuit (€)
+                Tarif Nuitée (FCFA)
               </label>
               <input
                 type="number"
                 min="0"
                 value={prixNuit}
                 onChange={(e) => setPrixNuit(Number(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs font-medium"
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs font-medium font-mono"
               />
+              <div className="flex flex-wrap gap-1 pt-1.5">
+                {[10000, 13000, 15000, 20000, 25000].map((pr) => (
+                  <button
+                    key={pr}
+                    type="button"
+                    onClick={() => setPrixNuit(pr)}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition-all cursor-pointer ${
+                      prixNuit === pr
+                        ? 'bg-[#C5A880] text-slate-950 font-bold shadow-xs'
+                        : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                    }`}
+                  >
+                    {formatPrice(pr)}
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-stone-700 uppercase mb-1">
-                Prix par heure (€)
+                Tarif Horaire (FCFA)
               </label>
               <input
                 type="number"
                 min="0"
                 value={prixHeure}
                 onChange={(e) => setPrixHeure(Number(e.target.value))}
-                className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs font-medium"
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs font-medium font-mono"
               />
+              <div className="flex flex-wrap gap-1 pt-1.5">
+                {[2500].map((pr) => (
+                  <button
+                    key={pr}
+                    type="button"
+                    onClick={() => setPrixHeure(pr)}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition-all cursor-pointer ${
+                      prixHeure === pr
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                        : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                    }`}
+                  >
+                    {formatPrice(pr)} / h
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -320,7 +354,7 @@ export function calculerPrixReservation(
                 <div>
                   <span className="text-xs text-stone-400 block">Prix Total Retourné</span>
                   <span className="text-3xl sm:text-4xl font-serif font-bold text-[#C5A880]">
-                    {evaluation.data.prixTotal.toFixed(2)} €
+                    {formatPrice(evaluation.data.prixTotal)}
                   </span>
                 </div>
                 <div className="text-right">
@@ -337,7 +371,7 @@ export function calculerPrixReservation(
                   <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
                     <strong className="text-amber-300 block">Plafond Nuitée Activé :</strong>
-                    La durée ({evaluation.data.duree}h) dépasse le seuil de 5 heures. Le tarif forfaitaire d'une nuit complète ({prixNuit} €) a été automatiquement substitué au tarif horaire ({evaluation.data.duree * prixHeure} €).
+                    La durée ({evaluation.data.duree}h) dépasse le seuil de 5 heures. Le tarif forfaitaire d'une nuit complète ({formatPrice(prixNuit)}) a été automatiquement substitué au tarif horaire ({formatPrice(evaluation.data.duree * prixHeure)}).
                   </div>
                 </div>
               )}

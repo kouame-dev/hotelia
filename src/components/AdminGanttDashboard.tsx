@@ -45,7 +45,7 @@ export interface GanttBlock {
 export interface ChambreGantt {
   id: string;
   numero: string;
-  type: 'Deluxe' | 'Standard' | 'Suite Panoramique' | 'Executive';
+  type: 'Deluxe' | 'Standard' | 'Suite Panoramique' | 'Executive' | 'Classique';
   etage: number;
   statutActuel: 'occupee' | 'libre' | 'menage' | 'arrivee_imminente';
   prixNuit: number;
@@ -71,21 +71,21 @@ export const AdminGanttDashboard: React.FC = () => {
   const endHour = viewMode === 'business' ? 24 : 24;
   const totalHours = endHour - startHour;
 
-  // Chambres de l'établissement (Fourchette 10 000 à 35 000 FCFA)
+  // Chambres de l'établissement (10 000, 13 000, 15 000, 20 000 et 25 000 FCFA - Heure: 2 500 FCFA)
   const chambres: ChambreGantt[] = [
-    { id: 'c101', numero: '101', type: 'Deluxe', etage: 1, statutActuel: 'menage', prixNuit: 20000, prixHeure: 8000 },
-    { id: 'c102', numero: '102', type: 'Standard', etage: 1, statutActuel: 'occupee', prixNuit: 10000, prixHeure: 5000 },
-    { id: 'c103', numero: '103', type: 'Deluxe', etage: 1, statutActuel: 'libre', prixNuit: 15000, prixHeure: 6000 },
-    { id: 'c201', numero: '201', type: 'Executive', etage: 2, statutActuel: 'occupee', prixNuit: 25000, prixHeure: 10000 },
-    { id: 'c202', numero: '202', type: 'Standard', etage: 2, statutActuel: 'arrivee_imminente', prixNuit: 15000, prixHeure: 6000 },
-    { id: 'c301', numero: '301', type: 'Suite Panoramique', etage: 3, statutActuel: 'libre', prixNuit: 35000, prixHeure: 15000 }
+    { id: 'c101', numero: '101', type: 'Deluxe', etage: 1, statutActuel: 'menage', prixNuit: 15000, prixHeure: 2500 },
+    { id: 'c102', numero: '102', type: 'Standard', etage: 1, statutActuel: 'occupee', prixNuit: 10000, prixHeure: 2500 },
+    { id: 'c103', numero: '103', type: 'Classique', etage: 1, statutActuel: 'libre', prixNuit: 13000, prixHeure: 2500 },
+    { id: 'c201', numero: '201', type: 'Executive', etage: 2, statutActuel: 'occupee', prixNuit: 20000, prixHeure: 2500 },
+    { id: 'c202', numero: '202', type: 'Classique', etage: 2, statutActuel: 'arrivee_imminente', prixNuit: 13000, prixHeure: 2500 },
+    { id: 'c301', numero: '301', type: 'Suite Panoramique', etage: 3, statutActuel: 'libre', prixNuit: 25000, prixHeure: 2500 }
   ];
 
   // Réservations & créneaux de la journée (Gantt Blocks)
   // Scénario explicite de la demande :
   // "Chambre 101 occupée de 10h à 13h, puis libre/ménage, puis occupée pour la nuit à partir de 18h"
   const reservationsJournee: GanttBlock[] = [
-    // Chambre 101
+    // Chambre 101 (Deluxe Harmonie - Nuitée: 15 000 FCFA, Heure: 2 500 FCFA)
     {
       id: 'res-101-1',
       type: 'heure',
@@ -95,7 +95,7 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '10:00',
       heureFin: '13:00',
       statut: 'termine',
-      montant: 24000,
+      montant: 7500, // 3h x 2 500 FCFA
       voyageurs: 2,
       note: 'Option Champagne & Arrivée discrète demandée'
     },
@@ -117,12 +117,12 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '18:00',
       heureFin: '24:00',
       statut: 'confirme',
-      montant: 20000,
+      montant: 15000, // Nuitée Deluxe Harmonie
       voyageurs: 2,
       note: 'Check-in prévu à 18h30. Arrivée aéroport.'
     },
 
-    // Chambre 102
+    // Chambre 102 (Confort Éco Standard - Nuitée: 10 000 FCFA, Heure: 2 500 FCFA)
     {
       id: 'res-102-1',
       type: 'heure',
@@ -132,7 +132,7 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '08:30',
       heureFin: '12:30',
       statut: 'termine',
-      montant: 20000,
+      montant: 10000, // 4h x 2 500 FCFA
       voyageurs: 1,
       note: 'Usage bureau télétravail au calme'
     },
@@ -154,7 +154,7 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '14:00',
       heureFin: '17:00',
       statut: 'en_cours',
-      montant: 15000,
+      montant: 7500, // 3h x 2 500 FCFA
       voyageurs: 2,
       note: 'Accès Spa inclus'
     },
@@ -167,12 +167,12 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '19:30',
       heureFin: '24:00',
       statut: 'confirme',
-      montant: 110,
+      montant: 10000, // Nuitée Standard
       voyageurs: 1,
       note: 'Lit simple ou Queen Size'
     },
 
-    // Chambre 201 (Executive)
+    // Chambre 201 (Suite Exécutive Dekouassi - Nuitée: 20 000 FCFA, Heure: 2 500 FCFA)
     {
       id: 'res-201-1',
       type: 'heure',
@@ -182,7 +182,7 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '09:00',
       heureFin: '15:00',
       statut: 'en_cours',
-      montant: 180, // Plafond 5h activé ! (6h facturées au forfait nuitée)
+      montant: 20000, // Plafond > 5h activé ! (facturé au forfait nuitée de 20 000 FCFA)
       voyageurs: 3,
       note: 'Réunion client confidentielle. Forfait journée complète appliqué (>5h).'
     },
@@ -204,12 +204,12 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '17:00',
       heureFin: '24:00',
       statut: 'confirme',
-      montant: 180,
+      montant: 20000, // Nuitée Suite Exécutive
       voyageurs: 2,
       note: 'Bouteille de Crémant en chambre à l’arrivée'
     },
 
-    // Chambre 202 (Standard)
+    // Chambre 202 (Classique Supérieure - Nuitée: 13 000 FCFA, Heure: 2 500 FCFA)
     {
       id: 'res-202-1',
       type: 'nuitee',
@@ -218,7 +218,7 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '00:00',
       heureFin: '10:30',
       statut: 'termine',
-      montant: 110,
+      montant: 13000,
       voyageurs: 2,
       note: 'Late check-out 10h30 effectué'
     },
@@ -238,11 +238,11 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '15:00',
       heureFin: '24:00',
       statut: 'confirme',
-      montant: 110,
+      montant: 13000,
       voyageurs: 1
     },
 
-    // Suite 301 (Suite Panoramique)
+    // Suite 301 (Suite Royale Panoramique VIP - Nuitée: 25 000 FCFA, Heure: 2 500 FCFA)
     {
       id: 'res-301-1',
       type: 'heure',
@@ -251,7 +251,7 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '11:00',
       heureFin: '14:00',
       statut: 'termine',
-      montant: 210,
+      montant: 7500, // 3h x 2 500 FCFA
       voyageurs: 4,
       note: 'Shooting mode lumière naturelle'
     },
@@ -271,7 +271,7 @@ export const AdminGanttDashboard: React.FC = () => {
       heureDebut: '16:00',
       heureFin: '24:00',
       statut: 'confirme',
-      montant: 280,
+      montant: 25000, // Nuitée Suite Panoramique VIP
       voyageurs: 2,
       note: 'Décoration florale demandée'
     }
@@ -675,7 +675,7 @@ export const AdminGanttDashboard: React.FC = () => {
                               </span>
                               {block.montant && (
                                 <span className="font-mono text-[10px] font-bold opacity-90 shrink-0">
-                                  {block.montant} €
+                                  {formatPrice(block.montant)}
                                 </span>
                               )}
                             </div>
@@ -882,7 +882,7 @@ export const AdminGanttDashboard: React.FC = () => {
           "debut": "18:00",
           "fin": "24:00",             // Continue sur le lendemain
           "client": { "nom": "Claire Moreau" },
-          "montant": 140.00
+          "montant": 15000.00
         }
       ]
     }

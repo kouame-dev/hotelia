@@ -176,9 +176,9 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
   const calculatedTotal = useMemo(() => {
     if (!selectedChambreObj) return 0;
     if (formMode === 'nuit') {
-      return (selectedChambreObj.prixNuit || 140) * calculatedNights;
+      return (selectedChambreObj.prixNuit || 10000) * calculatedNights;
     } else {
-      const baseHourPrice = selectedChambreObj.prixHeure || 35;
+      const baseHourPrice = selectedChambreObj.prixHeure || 2500;
       const totalHours = formDureeHeures + (formDureeMinutes || 0) / 60;
       return Math.round(baseHourPrice * totalHours);
     }

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useHotelSettings } from '../context/SettingsContext.tsx';
 import {
   Calendar,
   Clock,
@@ -38,11 +39,11 @@ const BOUTIQUE_ROOMS: RoomUI[] = [
   {
     id: 1,
     numero: '101',
-    nom: 'Chambre Botanique & Cour',
+    nom: 'Chambre Confort Éco Standard',
     type: 'Standard Double',
     surface: '24 m²',
-    prix_nuit: 140,
-    prix_heure: 35,
+    prix_nuit: 10000,
+    prix_heure: 2500,
     capacite: 2,
     image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80',
     amenities: ['Lit King-Size', 'Baignoire en céramique', 'Wifi Fibre', 'Machine Nespresso'],
@@ -51,11 +52,11 @@ const BOUTIQUE_ROOMS: RoomUI[] = [
   {
     id: 2,
     numero: '102',
-    nom: 'Suite Balcon & Verrière',
+    nom: 'Chambre Deluxe Harmonie',
     type: 'Deluxe Balcon',
     surface: '36 m²',
-    prix_nuit: 210,
-    prix_heure: 50,
+    prix_nuit: 15000,
+    prix_heure: 2500,
     capacite: 2,
     image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80',
     amenities: ['Balcon privé', 'Douche pluie & marbre', 'Coin salon cosy', 'Bar artisanal'],
@@ -64,11 +65,11 @@ const BOUTIQUE_ROOMS: RoomUI[] = [
   {
     id: 3,
     numero: '201',
-    nom: 'Atelier Signature Day-Use',
+    nom: 'Suite Exécutive Dekouassi',
     type: 'Suite Exécutive',
     surface: '45 m²',
-    prix_nuit: 290,
-    prix_heure: 65,
+    prix_nuit: 20000,
+    prix_heure: 2500,
     capacite: 3,
     image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=80',
     amenities: ['Bureau ergonomique', 'Espace réunion intimiste', 'Système audio Devialet', 'Service majordome'],
@@ -77,6 +78,7 @@ const BOUTIQUE_ROOMS: RoomUI[] = [
 ];
 
 export const BoutiqueClientDashboard: React.FC = () => {
+  const { formatPrice } = useHotelSettings();
   // Booking Mode
   const [bookingMode, setBookingMode] = useState<ReservationType>('heure');
 
@@ -543,7 +545,7 @@ export const BoutiqueClientDashboard: React.FC = () => {
           {BOUTIQUE_ROOMS.map((room) => {
             const availability = checkRoomAvailability(room.id);
             const price = bookingMode === 'nuit' ? room.prix_nuit * nbNuits : room.prix_heure * nbHeures;
-            const unitRateLabel = bookingMode === 'nuit' ? `${room.prix_nuit} € / nuit` : `${room.prix_heure} € / heure`;
+            const unitRateLabel = bookingMode === 'nuit' ? `${formatPrice(room.prix_nuit)} / nuit` : `${formatPrice(room.prix_heure)} / h`;
 
             return (
               <div
@@ -617,7 +619,7 @@ export const BoutiqueClientDashboard: React.FC = () => {
                       <div>
                         <span className="text-xs text-[#8C877E] block">{unitRateLabel}</span>
                         <div className="text-2xl font-bold font-serif text-[#1C1B18]">
-                          {price.toFixed(2)} €
+                          {formatPrice(price)}
                         </div>
                       </div>
                       <span className="text-[11px] text-[#8C877E]">Taxes & service inclus</span>
@@ -689,7 +691,7 @@ export const BoutiqueClientDashboard: React.FC = () => {
               </div>
               <div className="flex justify-between py-1 text-sm font-bold text-[#1C1B18] pt-1">
                 <span>Total Réglé</span>
-                <span className="text-[#C5A880]">{confirmedBooking.total.toFixed(2)} €</span>
+                <span className="text-[#C5A880]">{formatPrice(confirmedBooking.total)}</span>
               </div>
             </div>
 

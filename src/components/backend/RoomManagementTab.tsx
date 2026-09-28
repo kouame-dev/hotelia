@@ -48,8 +48,8 @@ export const RoomManagementTab: React.FC = () => {
     typeId: roomTypes[0]?.id || 'type-deluxe',
     typeNom: roomTypes[0]?.nom || 'Deluxe Harmonie',
     etage: 1,
-    prixNuit: 140,
-    prixHeure: 35,
+    prixNuit: 10000,
+    prixHeure: 2500,
     statut: 'Disponible',
     disponibleHeure: true,
     disponibleNuit: true,
@@ -66,8 +66,8 @@ export const RoomManagementTab: React.FC = () => {
     description: '',
     surface: '30 m²',
     capaciteMax: 2,
-    prixNuitDefaut: 120,
-    prixHeureDefaut: 30,
+    prixNuitDefaut: 10000,
+    prixHeureDefaut: 2500,
     equipements: ['WiFi Fibre', 'Climatisation', 'TV HD', 'Douche italienne'],
     couleurBadge: 'bg-stone-100 text-stone-800 border-stone-300'
   });
@@ -89,9 +89,9 @@ export const RoomManagementTab: React.FC = () => {
       typeId: defaultType?.id || '',
       typeNom: defaultType?.nom || '',
       etage: 1,
-      prixNuit: defaultType?.prixNuitDefaut || 140,
-      prixHeureDefaut: defaultType?.prixHeureDefaut || 35,
-      prixHeure: defaultType?.prixHeureDefaut || 35,
+      prixNuit: defaultType?.prixNuitDefaut || 10000,
+      prixHeureDefaut: defaultType?.prixHeureDefaut || 2500,
+      prixHeure: defaultType?.prixHeureDefaut || 2500,
       statut: 'Disponible',
       disponibleHeure: true,
       disponibleNuit: true,
@@ -163,8 +163,8 @@ export const RoomManagementTab: React.FC = () => {
       description: '',
       surface: '28 m²',
       capaciteMax: 2,
-      prixNuitDefaut: 120,
-      prixHeureDefaut: 30,
+      prixNuitDefaut: 10000,
+      prixHeureDefaut: 2500,
       equipements: ['WiFi Fibre 1 Gbps', 'Climatisation', 'Smart TV', 'Machine Café'],
       couleurBadge: 'bg-amber-100 text-amber-900 border-amber-300'
     });
@@ -660,7 +660,7 @@ export const RoomManagementTab: React.FC = () => {
                       className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
                     />
                     <div className="flex flex-wrap gap-1 pt-1">
-                      {[10000, 15000, 20000, 25000, 35000].map((pr) => (
+                      {[10000, 13000, 15000, 20000, 25000].map((pr) => (
                         <button
                           key={pr}
                           type="button"
@@ -694,7 +694,7 @@ export const RoomManagementTab: React.FC = () => {
                       className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
                     />
                     <div className="flex flex-wrap gap-1 pt-1">
-                      {[5000, 6000, 8000, 10000, 15000].map((pr) => (
+                      {[2500].map((pr) => (
                         <button
                           key={pr}
                           type="button"
@@ -705,7 +705,7 @@ export const RoomManagementTab: React.FC = () => {
                               : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
                           }`}
                         >
-                          {pr.toLocaleString()} F
+                          {pr.toLocaleString()} F (Tarif fixe)
                         </button>
                       ))}
                     </div>
@@ -893,7 +893,7 @@ export const RoomManagementTab: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                    Tarif Nuitée par Défaut (€)
+                    Tarif Nuitée par Défaut (FCFA)
                   </label>
                   <input
                     type="number"
@@ -903,11 +903,27 @@ export const RoomManagementTab: React.FC = () => {
                     onChange={(e) => setTypeFormData({ ...typeFormData, prixNuitDefaut: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
                   />
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {[10000, 13000, 15000, 20000, 25000].map((pr) => (
+                      <button
+                        key={pr}
+                        type="button"
+                        onClick={() => setTypeFormData({ ...typeFormData, prixNuitDefaut: pr })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition-all cursor-pointer ${
+                          typeFormData.prixNuitDefaut === pr
+                            ? 'bg-[#C5A880] text-slate-950 font-bold shadow-xs'
+                            : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                        }`}
+                      >
+                        {formatPrice(pr)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="font-semibold text-stone-700 block uppercase tracking-wider text-[10px]">
-                    Tarif Horaire par Défaut (€)
+                    Tarif Horaire par Défaut (FCFA)
                   </label>
                   <input
                     type="number"
@@ -917,6 +933,22 @@ export const RoomManagementTab: React.FC = () => {
                     onChange={(e) => setTypeFormData({ ...typeFormData, prixHeureDefaut: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono font-bold text-xs focus:border-[#C5A880] focus:outline-none"
                   />
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {[2500].map((pr) => (
+                      <button
+                        key={pr}
+                        type="button"
+                        onClick={() => setTypeFormData({ ...typeFormData, prixHeureDefaut: pr })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold transition-all cursor-pointer ${
+                          typeFormData.prixHeureDefaut === pr
+                            ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                            : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                        }`}
+                      >
+                        {formatPrice(pr)} / h
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

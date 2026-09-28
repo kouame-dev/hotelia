@@ -13,52 +13,64 @@ import {
 // 1. Types de chambre initiaux
 export const INITIAL_ROOM_TYPES: TypeChambreConfig[] = [
   {
+    id: 'type-eco',
+    nom: 'Confort Éco Standard',
+    code: 'ECO',
+    description: 'Cocon d’intimité au calme absolu, lit Queen Size, climatisation et WiFi Fibre. Idéal pour une courte escale ou séjour économique.',
+    surface: '22 m²',
+    capaciteMax: 2,
+    prixNuitDefaut: 10000,
+    prixHeureDefaut: 2500,
+    equipements: ['Literie Queen Size', 'Climatisation', 'WiFi Fibre 1 Gbps', 'Smart TV HD'],
+    couleurBadge: 'bg-emerald-100 text-emerald-900 border-emerald-300'
+  },
+  {
+    id: 'type-confort',
+    nom: 'Classique Supérieure',
+    code: 'SUP',
+    description: 'Chambre soignée avec bureau de travail élégant, douche à l’italienne et ambiance reposante.',
+    surface: '26 m²',
+    capaciteMax: 2,
+    prixNuitDefaut: 13000,
+    prixHeureDefaut: 2500,
+    equipements: ['WiFi Fibre 1 Gbps', 'Smart TV 50"', 'Douche à l’Italienne', 'Espace Bureau Exécutif'],
+    couleurBadge: 'bg-blue-100 text-blue-900 border-blue-300'
+  },
+  {
     id: 'type-deluxe',
     nom: 'Deluxe Harmonie',
     code: 'DLX',
     description: 'Chambre spacieuse avec lit King Size ergonomique, marbre italien et vue panoramique.',
     surface: '32 m²',
     capaciteMax: 2,
-    prixNuitDefaut: 140,
-    prixHeureDefaut: 35,
+    prixNuitDefaut: 15000,
+    prixHeureDefaut: 2500,
     equipements: ['WiFi Fibre 1 Gbps', 'Smart TV 55" 4K', 'Machine Nespresso', 'Climatisation silencieuse', 'Coffre-fort'],
     couleurBadge: 'bg-amber-100 text-amber-900 border-amber-300'
   },
   {
-    id: 'type-confort',
-    nom: 'Confort Supérieure',
-    code: 'SUP',
-    description: 'Écrin d’intimité avec bureau de travail élégant, douche à l’italienne et insonorisation 50dB.',
-    surface: '26 m²',
-    capaciteMax: 2,
-    prixNuitDefaut: 110,
-    prixHeureDefaut: 30,
-    equipements: ['WiFi Fibre 1 Gbps', 'Smart TV 50"', 'Douche à l’Italienne', 'Espace Bureau Exécutif'],
-    couleurBadge: 'bg-blue-100 text-blue-900 border-blue-300'
-  },
-  {
     id: 'type-suite-exec',
-    nom: 'Suite Exécutive',
+    nom: 'Suite Exécutive Dekouassi',
     code: 'STE-EX',
     description: 'Grand salon séparé, literie d’exception, espace lounge pour réceptions privées et baignoire balnéo.',
-    surface: '45 m²',
+    surface: '48 m²',
     capaciteMax: 3,
-    prixNuitDefaut: 180,
-    prixHeureDefaut: 45,
+    prixNuitDefaut: 20000,
+    prixHeureDefaut: 2500,
     equipements: ['Salon Lounge privé', 'Baignoire balnéo', 'Bar garni offert', 'Service VIP Majordome'],
     couleurBadge: 'bg-purple-100 text-purple-900 border-purple-300'
   },
   {
     id: 'type-suite-pano',
-    nom: 'Suite Panoramique',
+    nom: 'Suite Royale Panoramique VIP',
     code: 'STE-PAN',
     description: 'Dernier étage avec terrasse privative 360°, jacuzzi privatif et vue imprenable.',
     surface: '65 m²',
     capaciteMax: 4,
-    prixNuitDefaut: 280,
-    prixHeureDefaut: 70,
+    prixNuitDefaut: 25000,
+    prixHeureDefaut: 2500,
     equipements: ['Terrasse avec Jacuzzi', 'Vue 360°', 'Lit King Size 200x200', 'Champagne d’accueil'],
-    couleurBadge: 'bg-emerald-100 text-emerald-900 border-emerald-300'
+    couleurBadge: 'bg-indigo-100 text-indigo-900 border-indigo-300'
   }
 ];
 
@@ -70,9 +82,9 @@ export const INITIAL_CHAMBRES: ChambreConfig[] = [
     typeId: 'type-deluxe',
     typeNom: 'Deluxe Harmonie',
     etage: 1,
-    prixNuit: 140,
-    prixHeure: 35,
-    statut: 'Ménage en cours',
+    prixNuit: 15000,
+    prixHeure: 2500,
+    statut: 'Disponible',
     disponibleHeure: true,
     disponibleNuit: true,
     descriptionSpecifique: 'Vue sur les jardins intérieurs calmes.'
@@ -80,38 +92,38 @@ export const INITIAL_CHAMBRES: ChambreConfig[] = [
   {
     id: '102',
     numero: '102',
-    typeId: 'type-confort',
-    typeNom: 'Confort Supérieure',
+    typeId: 'type-eco',
+    typeNom: 'Confort Éco Standard',
     etage: 1,
-    prixNuit: 110,
-    prixHeure: 30,
-    statut: 'Occupée (Heure)',
+    prixNuit: 10000,
+    prixHeure: 2500,
+    statut: 'Disponible',
     disponibleHeure: true,
     disponibleNuit: true,
-    descriptionSpecifique: 'Orientation est, très lumineuse le matin.'
+    descriptionSpecifique: 'Chambre confortable et économique, lit Queen Size.'
   },
   {
     id: '103',
     numero: '103',
-    typeId: 'type-deluxe',
-    typeNom: 'Deluxe Harmonie',
+    typeId: 'type-confort',
+    typeNom: 'Classique Supérieure',
     etage: 1,
-    prixNuit: 140,
-    prixHeure: 35,
+    prixNuit: 13000,
+    prixHeure: 2500,
     statut: 'Disponible',
     disponibleHeure: true,
     disponibleNuit: true,
-    descriptionSpecifique: 'Chambre d’angle avec double exposition.'
+    descriptionSpecifique: 'Chambre soignée avec bureau de travail élégant.'
   },
   {
     id: '201',
     numero: '201',
     typeId: 'type-suite-exec',
-    typeNom: 'Suite Exécutive',
+    typeNom: 'Suite Exécutive Dekouassi',
     etage: 2,
-    prixNuit: 180,
-    prixHeure: 45,
-    statut: 'Occupée (Journée)',
+    prixNuit: 20000,
+    prixHeure: 2500,
+    statut: 'Disponible',
     disponibleHeure: true,
     disponibleNuit: true,
     descriptionSpecifique: 'Idéale pour réunions d’affaires confidentielles.'
@@ -120,11 +132,11 @@ export const INITIAL_CHAMBRES: ChambreConfig[] = [
     id: '202',
     numero: '202',
     typeId: 'type-confort',
-    typeNom: 'Confort Supérieure',
+    typeNom: 'Classique Supérieure',
     etage: 2,
-    prixNuit: 110,
-    prixHeure: 30,
-    statut: 'Arrivée ce soir',
+    prixNuit: 13000,
+    prixHeure: 2500,
+    statut: 'Disponible',
     disponibleHeure: true,
     disponibleNuit: true,
     descriptionSpecifique: 'Récemment rénovée avec literie prestige.'
@@ -133,10 +145,10 @@ export const INITIAL_CHAMBRES: ChambreConfig[] = [
     id: '301',
     numero: '301',
     typeId: 'type-suite-pano',
-    typeNom: 'Suite Panoramique',
+    typeNom: 'Suite Royale Panoramique VIP',
     etage: 3,
-    prixNuit: 280,
-    prixHeure: 70,
+    prixNuit: 25000,
+    prixHeure: 2500,
     statut: 'Disponible',
     disponibleHeure: true,
     disponibleNuit: true,
@@ -308,7 +320,7 @@ export const INITIAL_NOTIFICATIONS: ReservationNotification[] = [
     clientEmail: 'fatou.bamba@polyclinique.ci',
     chambreNumero: '201',
     typeReservation: 'nuit',
-    montant: 360,
+    montant: 40000,
     modePaiement: 'MTN Money',
     dateReservation: '2026-09-24 au 2026-09-26',
     lue: false
@@ -323,7 +335,7 @@ export const INITIAL_NOTIFICATIONS: ReservationNotification[] = [
     clientEmail: 'c.kouassi@abidjan-tech.com',
     chambreNumero: '102',
     typeReservation: 'heure',
-    montant: 60,
+    montant: 5000,
     modePaiement: 'MOOV Money',
     dateReservation: '2026-09-24',
     creneauHoraire: '11:00 - 13:00 (2h)',
@@ -338,7 +350,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     date: '2026-09-12',
     titre: 'Achat détergents haute désinfection & lingettes',
     categorie: 'Ménage & Produits',
-    montant: 45,
+    montant: 25000,
     chambreConcernee: 'Chambres 101, 102, 103',
     payePar: 'Aminata Koné (Chef de Réception)',
     modePaiement: 'Caisse Hôtel',
@@ -349,7 +361,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     date: '2026-09-11',
     titre: 'Remplacement mitigeur douche thermostatique',
     categorie: 'Réparation & Maintenance',
-    montant: 85,
+    montant: 45000,
     chambreConcernee: 'Chambre 201',
     payePar: 'Plombier Express Abidjan',
     modePaiement: 'Orange Money',
@@ -360,7 +372,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     date: '2026-09-10',
     titre: 'Pressing & Blanchisserie draps satin 5 étoiles',
     categorie: 'Blanchisserie',
-    montant: 120,
+    montant: 60000,
     chambreConcernee: 'Toutes chambres',
     payePar: 'Blanchisserie Centrale',
     modePaiement: 'MTN Money',
@@ -371,7 +383,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     date: '2026-09-08',
     titre: 'Changement ampoules LED spot et variateur',
     categorie: 'Réparation & Maintenance',
-    montant: 35,
+    montant: 18000,
     chambreConcernee: 'Suite 301',
     payePar: 'Électricien Bâtiment',
     modePaiement: 'Caisse Hôtel',
@@ -382,7 +394,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     date: '2026-09-05',
     titre: 'Désodorisants naturels & capsules Nespresso accueil',
     categorie: 'Ménage & Produits',
-    montant: 60,
+    montant: 30000,
     chambreConcernee: 'Général',
     payePar: 'Aminata Koné',
     modePaiement: 'MOOV Money',
@@ -393,7 +405,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     date: '2026-08-28',
     titre: 'Révision climatisation split inverter',
     categorie: 'Réparation & Maintenance',
-    montant: 150,
+    montant: 75000,
     chambreConcernee: 'Chambres 101 & 102',
     payePar: 'FrigoClim SARL',
     modePaiement: 'Orange Money',
@@ -411,7 +423,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '101',
     typeReservation: 'heure',
     modePaiement: 'Orange Money',
-    montant: 105,
+    montant: 7500,
     statut: 'paye'
   },
   {
@@ -421,7 +433,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '201',
     typeReservation: 'nuit',
     modePaiement: 'MTN Money',
-    montant: 360,
+    montant: 40000,
     statut: 'paye'
   },
   {
@@ -431,7 +443,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '102',
     typeReservation: 'heure',
     modePaiement: 'MOOV Money',
-    montant: 60,
+    montant: 5000,
     statut: 'paye'
   },
   {
@@ -441,7 +453,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '201',
     typeReservation: 'nuit',
     modePaiement: 'MTN Money',
-    montant: 180,
+    montant: 20000,
     statut: 'paye'
   },
   {
@@ -451,7 +463,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '301',
     typeReservation: 'heure',
     modePaiement: 'Orange Money',
-    montant: 210,
+    montant: 7500,
     statut: 'paye'
   },
 
@@ -463,7 +475,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '103',
     typeReservation: 'nuit',
     modePaiement: 'Orange Money',
-    montant: 140,
+    montant: 13000,
     statut: 'paye'
   },
   {
@@ -473,7 +485,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '201',
     typeReservation: 'heure',
     modePaiement: 'MTN Money',
-    montant: 180,
+    montant: 10000,
     statut: 'paye'
   },
   {
@@ -483,7 +495,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '101',
     typeReservation: 'heure',
     modePaiement: 'MOOV Money',
-    montant: 70,
+    montant: 5000,
     statut: 'paye'
   },
   {
@@ -493,7 +505,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '102',
     typeReservation: 'nuit',
     modePaiement: 'MTN Money',
-    montant: 220,
+    montant: 20000,
     statut: 'paye'
   },
   {
@@ -503,7 +515,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '301',
     typeReservation: 'nuit',
     modePaiement: 'Orange Money',
-    montant: 560,
+    montant: 50000,
     statut: 'paye'
   },
   {
@@ -513,7 +525,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '201',
     typeReservation: 'nuit',
     modePaiement: 'MTN Money',
-    montant: 360,
+    montant: 40000,
     statut: 'paye'
   },
   {
@@ -523,7 +535,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '102',
     typeReservation: 'heure',
     modePaiement: 'MOOV Money',
-    montant: 90,
+    montant: 7500,
     statut: 'paye'
   },
 
@@ -535,7 +547,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '301',
     typeReservation: 'nuit',
     modePaiement: 'Orange Money',
-    montant: 1120,
+    montant: 100000,
     statut: 'paye'
   },
   {
@@ -545,7 +557,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '201',
     typeReservation: 'nuit',
     modePaiement: 'MTN Money',
-    montant: 720,
+    montant: 80000,
     statut: 'paye'
   },
   {
@@ -555,7 +567,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '301',
     typeReservation: 'heure',
     modePaiement: 'MOOV Money',
-    montant: 350,
+    montant: 10000,
     statut: 'paye'
   },
   {
@@ -565,7 +577,7 @@ export const INITIAL_REVENUES: RevenueItem[] = [
     chambreNumero: '201',
     typeReservation: 'nuit',
     modePaiement: 'Orange Money',
-    montant: 900,
+    montant: 100000,
     statut: 'paye'
   }
 ];
@@ -589,9 +601,9 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'en_attente',
     statutPaiement: 'en_attente',
     modePaiement: 'Orange Money',
-    montantTotal: 280,
+    montantTotal: 30000, // 2 nuits x 15 000 FCFA
     acompteVerse: 0,
-    resteAPayer: 280,
+    resteAPayer: 30000,
     notes: 'Arrivée prévue vers 18h30. Acompte Orange Money en cours de validation.',
     dateCreation: '2026-09-12T08:15:00'
   },
@@ -602,7 +614,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     clientTelephone: '+225 05 12 34 56 78',
     clientEmail: 'kbrou@santeci.org',
     chambreNumero: '102',
-    chambreType: 'Confort Supérieure',
+    chambreType: 'Confort Éco Standard',
     typeReservation: 'heure',
     dateDebut: '2026-09-12',
     dateFin: '2026-09-12',
@@ -613,9 +625,9 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'en_attente',
     statutPaiement: 'en_attente',
     modePaiement: 'MTN Money',
-    montantTotal: 90,
+    montantTotal: 7500, // 3h x 2 500 FCFA
     acompteVerse: 0,
-    resteAPayer: 90,
+    resteAPayer: 7500,
     notes: 'Créneau d’après-midi pour travail calme entre deux conférences.',
     dateCreation: '2026-09-12T09:10:00'
   },
@@ -626,7 +638,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     clientTelephone: '+225 01 98 76 54 32',
     clientEmail: 'awa.diop@dakar-transit.sn',
     chambreNumero: '201',
-    chambreType: 'Suite Exécutive',
+    chambreType: 'Suite Exécutive Dekouassi',
     typeReservation: 'nuit',
     dateDebut: '2026-09-14',
     dateFin: '2026-09-18',
@@ -635,10 +647,10 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'en_attente',
     statutPaiement: 'en_attente',
     modePaiement: 'MOOV Money',
-    montantTotal: 720,
-    acompteVerse: 200,
-    resteAPayer: 520,
-    notes: 'Acompte partiel versé de 200 € reçu par MOOV Money. Solde à l’arrivée.',
+    montantTotal: 80000, // 4 nuits x 20 000 FCFA
+    acompteVerse: 25000,
+    resteAPayer: 55000,
+    notes: 'Acompte partiel versé de 25 000 FCFA reçu par MOOV Money. Solde à l’arrivée.',
     dateCreation: '2026-09-12T07:45:00'
   },
 
@@ -650,7 +662,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     clientTelephone: '+225 05 99 88 77 66',
     clientEmail: 'fatou.bamba@polyclinique.ci',
     chambreNumero: '201',
-    chambreType: 'Suite Exécutive',
+    chambreType: 'Suite Exécutive Dekouassi',
     typeReservation: 'nuit',
     dateDebut: '2026-09-12',
     dateFin: '2026-09-14',
@@ -659,8 +671,8 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'confirmee',
     statutPaiement: 'paye',
     modePaiement: 'MTN Money',
-    montantTotal: 360,
-    acompteVerse: 360,
+    montantTotal: 40000, // 2 nuits x 20 000 FCFA
+    acompteVerse: 40000,
     resteAPayer: 0,
     notes: 'Séjour VIP, machine Nespresso réapprovisionnée en capsules intensité 9.',
     dateCreation: '2026-09-11T16:20:00'
@@ -683,8 +695,8 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'en_cours',
     statutPaiement: 'paye',
     modePaiement: 'Orange Money',
-    montantTotal: 105,
-    acompteVerse: 105,
+    montantTotal: 7500, // 3h x 2 500 FCFA
+    acompteVerse: 7500,
     resteAPayer: 0,
     notes: 'Actuellement en chambre pour call investisseurs.',
     dateCreation: '2026-09-12T09:40:00'
@@ -698,7 +710,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     clientTelephone: '+225 07 88 22 33 44',
     clientEmail: 'jl.moreau@orange-ci.com',
     chambreNumero: '103',
-    chambreType: 'Deluxe Harmonie',
+    chambreType: 'Classique Supérieure',
     typeReservation: 'nuit',
     dateDebut: '2026-09-10',
     dateFin: '2026-09-11',
@@ -707,8 +719,8 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'terminee',
     statutPaiement: 'paye',
     modePaiement: 'Orange Money',
-    montantTotal: 140,
-    acompteVerse: 140,
+    montantTotal: 13000, // 1 nuit x 13 000 FCFA
+    acompteVerse: 13000,
     resteAPayer: 0,
     notes: 'Check-out effectué avec satisfaction client 5/5. Facture acquittée.',
     dateCreation: '2026-09-09T14:10:00'
@@ -720,7 +732,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     clientTelephone: '+33 6 12 34 56 78',
     clientEmail: 'e.rostova@luxury-travel.fr',
     chambreNumero: '301',
-    chambreType: 'Suite Panoramique',
+    chambreType: 'Suite Royale Panoramique VIP',
     typeReservation: 'nuit',
     dateDebut: '2026-09-08',
     dateFin: '2026-09-11',
@@ -729,8 +741,8 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'terminee',
     statutPaiement: 'paye',
     modePaiement: 'Carte Bancaire',
-    montantTotal: 840,
-    acompteVerse: 840,
+    montantTotal: 75000, // 3 nuits x 25 000 FCFA
+    acompteVerse: 75000,
     resteAPayer: 0,
     notes: 'Séjour d’affaires et terrasse privative. Clés restituées à 11h.',
     dateCreation: '2026-09-05T11:00:00'
@@ -742,7 +754,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     clientTelephone: '+225 05 55 44 33 22',
     clientEmail: 'contact@ivoire-btp.ci',
     chambreNumero: '201',
-    chambreType: 'Suite Exécutive',
+    chambreType: 'Suite Exécutive Dekouassi',
     typeReservation: 'heure',
     dateDebut: '2026-09-11',
     dateFin: '2026-09-11',
@@ -753,8 +765,8 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'terminee',
     statutPaiement: 'paye',
     modePaiement: 'MTN Money',
-    montantTotal: 180,
-    acompteVerse: 180,
+    montantTotal: 10000, // 4h x 2 500 FCFA
+    acompteVerse: 10000,
     resteAPayer: 0,
     notes: 'Location salon de réunion suite. Règlement total par MTN Money.',
     dateCreation: '2026-09-10T18:30:00'
@@ -768,7 +780,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     clientTelephone: '+225 07 11 22 33 44',
     clientEmail: 'secretariat@toure-avocats.ci',
     chambreNumero: '202',
-    chambreType: 'Confort Supérieure',
+    chambreType: 'Classique Supérieure',
     typeReservation: 'nuit',
     dateDebut: '2026-09-09',
     dateFin: '2026-09-11',
@@ -777,7 +789,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'annulee',
     statutPaiement: 'annule',
     modePaiement: 'Orange Money',
-    montantTotal: 220,
+    montantTotal: 26000, // 2 nuits x 13 000 FCFA
     acompteVerse: 0,
     resteAPayer: 0,
     motifAnnulation: 'Vol international reporté pour cause météo. Chambre remise en disponibilité.',
@@ -791,7 +803,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     clientTelephone: '+225 01 02 03 04 05',
     clientEmail: 'pekoffi@abidjan-corp.com',
     chambreNumero: '102',
-    chambreType: 'Confort Supérieure',
+    chambreType: 'Confort Éco Standard',
     typeReservation: 'heure',
     dateDebut: '2026-09-11',
     dateFin: '2026-09-11',
@@ -802,7 +814,7 @@ export const INITIAL_RESERVATIONS: ReservationItem[] = [
     statutReservation: 'annulee',
     statutPaiement: 'annule',
     modePaiement: 'MOOV Money',
-    montantTotal: 90,
+    montantTotal: 7500, // 3h x 2 500 FCFA
     acompteVerse: 0,
     resteAPayer: 0,
     motifAnnulation: 'Réunion d’affaires décalée en visioconférence.',
@@ -823,14 +835,14 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     clientTelephone: '+225 07 08 09 10 11',
     chambreNumero: '101',
     chambreType: 'Deluxe Harmonie',
-    montantTotal: 420,
+    montantTotal: 45000,
     userName: 'Aminata Koné',
     userRole: 'Chef de Réception',
     userEmail: 'reception@hotelia.dekouassiholding.com',
-    details: 'Création de la réservation Nuitée (3 nuits) pour Jean-Marc Kouamé en Chambre 101. Montant total: 420 FCFA via Orange Money.',
+    details: 'Création de la réservation Nuitée (3 nuits) pour Jean-Marc Kouamé en Chambre 101. Montant total: 45 000 FCFA via Orange Money.',
     modifications: [
       { champ: 'statutReservation', label: 'Statut', ancienneValeur: 'aucun', nouvelleValeur: 'confirmee' },
-      { champ: 'montantTotal', label: 'Montant Total', ancienneValeur: 0, nouvelleValeur: 420 },
+      { champ: 'montantTotal', label: 'Montant Total', ancienneValeur: 0, nouvelleValeur: 45000 },
       { champ: 'chambreNumero', label: 'Chambre', ancienneValeur: 'non assignée', nouvelleValeur: '101' }
     ]
   },
@@ -843,15 +855,15 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     clientNom: 'Dr. Fatou Camara',
     clientTelephone: '+225 05 12 34 56 78',
     chambreNumero: '202',
-    chambreType: 'Confort Supérieure',
-    montantTotal: 220,
+    chambreType: 'Classique Supérieure',
+    montantTotal: 26000,
     userName: 'Mariam Diallo',
     userRole: 'Caisse',
     userEmail: 'caisse@hotelia.dekouassiholding.com',
-    details: 'Enregistrement d’un versement partiel de 110 FCFA par Espèces / Caisse (Reçu de caisse généré).',
+    details: 'Enregistrement d’un versement partiel de 13 000 FCFA par Espèces / Caisse (Reçu de caisse généré).',
     modifications: [
-      { champ: 'acompteVerse', label: 'Acompte', ancienneValeur: 0, nouvelleValeur: 110 },
-      { champ: 'resteAPayer', label: 'Reste à payer', ancienneValeur: 220, nouvelleValeur: 110 }
+      { champ: 'acompteVerse', label: 'Acompte', ancienneValeur: 0, nouvelleValeur: 13000 },
+      { champ: 'resteAPayer', label: 'Reste à payer', ancienneValeur: 26000, nouvelleValeur: 13000 }
     ]
   },
   {
@@ -863,16 +875,16 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     clientNom: 'Sarah Touré',
     clientTelephone: '+225 07 44 55 66 77',
     chambreNumero: '303',
-    chambreType: 'Suite Exécutive',
-    montantTotal: 540,
+    chambreType: 'Suite Exécutive Dekouassi',
+    montantTotal: 60000,
     userName: 'Koua Dibi (Dekouassi Holding)',
     userRole: 'Directeur Général',
     userEmail: 'koua.dibi@gmail.com',
-    details: 'Surclassement client de la Chambre 203 vers la Suite Exécutive 303 avec ajustement du tarif de séjour.',
+    details: 'Surclassement client vers la Suite Exécutive Dekouassi avec ajustement du tarif de séjour.',
     modifications: [
       { champ: 'chambreNumero', label: 'Chambre', ancienneValeur: '203', nouvelleValeur: '303' },
-      { champ: 'chambreType', label: 'Catégorie', ancienneValeur: 'Confort Supérieure', nouvelleValeur: 'Suite Exécutive' },
-      { champ: 'montantTotal', label: 'Montant Total', ancienneValeur: 330, nouvelleValeur: 540 }
+      { champ: 'chambreType', label: 'Catégorie', ancienneValeur: 'Classique Supérieure', nouvelleValeur: 'Suite Exécutive Dekouassi' },
+      { champ: 'montantTotal', label: 'Montant Total', ancienneValeur: 39000, nouvelleValeur: 60000 }
     ]
   },
   {
@@ -885,7 +897,7 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     clientTelephone: '+33 6 12 34 56 78',
     chambreNumero: '101',
     chambreType: 'Deluxe Harmonie',
-    montantTotal: 280,
+    montantTotal: 30000,
     userName: 'Aminata Koné',
     userRole: 'Chef de Réception',
     userEmail: 'reception@hotelia.dekouassiholding.com',
@@ -905,12 +917,12 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     clientNom: 'Yao Kan Éric',
     clientTelephone: '+225 01 23 45 67 89',
     chambreNumero: '102',
-    chambreType: 'Confort Supérieure',
-    montantTotal: 90,
+    chambreType: 'Confort Éco Standard',
+    montantTotal: 7500,
     userName: 'Mariam Diallo',
     userRole: 'Caisse',
     userEmail: 'caisse@hotelia.dekouassiholding.com',
-    details: 'Enregistrement de l’arrivée du client en Day-Use (créneau 14:00 - 17:00). Remise de clé physique.',
+    details: 'Enregistrement de l’arrivée du client en Day-Use (créneau 14:00 - 17:00, 3h x 2 500 FCFA). Remise de clé physique.',
     modifications: [
       { champ: 'statutReservation', label: 'Statut Réservation', ancienneValeur: 'en_attente', nouvelleValeur: 'en_cours' }
     ]
@@ -924,8 +936,8 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     clientNom: 'Nathalie Mensah',
     clientTelephone: '+225 07 89 01 23 45',
     chambreNumero: '304',
-    chambreType: 'Suite Panoramique',
-    montantTotal: 560,
+    chambreType: 'Suite Royale Panoramique VIP',
+    montantTotal: 50000,
     userName: 'Aminata Koné',
     userRole: 'Chef de Réception',
     userEmail: 'reception@hotelia.dekouassiholding.com',

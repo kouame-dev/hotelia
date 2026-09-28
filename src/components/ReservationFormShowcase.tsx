@@ -360,8 +360,8 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
           {/* Form container (7 cols) */}
           <div className="lg:col-span-7">
             <ReservationForm
-              prixNuitDefaut={140}
-              prixHeureDefaut={35}
+              prixNuitDefaut={10000}
+              prixHeureDefaut={2500}
               onSubmit={(data) => setLastSubmission(data)}
             />
           </div>

@@ -292,12 +292,46 @@ interface HotelDataContextType {
 
 const HotelDataContext = createContext<HotelDataContextType | undefined>(undefined);
 
+// Clé de versionnement des données tarifaires : force le rafraîchissement des caches locaux vers les nouveaux tarifs FCFA
+const CURRENT_PRICING_DATA_VERSION = 'v5_fcfa_rates_10k_13k_15k_20k_25k_h2500';
+
+try {
+  if (typeof window !== 'undefined') {
+    const storedVersion = localStorage.getItem('hotelia_pricing_data_version');
+    if (storedVersion !== CURRENT_PRICING_DATA_VERSION) {
+      localStorage.setItem('hotelia_pricing_data_version', CURRENT_PRICING_DATA_VERSION);
+      localStorage.removeItem('hotelia_room_types');
+      localStorage.removeItem('hotelia_chambres');
+      localStorage.removeItem('hotelia_reservations');
+      localStorage.removeItem('hotelia_revenues');
+      localStorage.removeItem('hotelia_expenses');
+      localStorage.removeItem('hotelia_notifications');
+      localStorage.removeItem('hotelia_audit_logs');
+    }
+  }
+} catch (e) {
+  console.warn('LocalStorage versioning check failed:', e);
+}
+
 export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // --- A. État Types de chambres ---
   const [roomTypes, setRoomTypes] = useState<TypeChambreConfig[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_room_types');
-      return saved ? JSON.parse(saved) : INITIAL_ROOM_TYPES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Si d'anciens prix en devises basses, tarif horaire différent de 2500 ou prix non conformes (10000, 13000, 15000, 20000, 25000)
+          const needsMigration = parsed.some(
+            (t: any) =>
+              t.prixNuitDefaut < 1000 ||
+              t.prixHeureDefaut !== 2500 ||
+              ![10000, 13000, 15000, 20000, 25000].includes(t.prixNuitDefaut)
+          );
+          if (!needsMigration) return parsed;
+        }
+      }
+      return INITIAL_ROOM_TYPES;
     } catch {
       return INITIAL_ROOM_TYPES;
     }
@@ -330,7 +364,19 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [chambres, setChambres] = useState<ChambreConfig[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_chambres');
-      return saved ? JSON.parse(saved) : INITIAL_CHAMBRES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const needsMigration = parsed.some(
+            (c: any) =>
+              c.prixNuit < 1000 ||
+              c.prixHeure !== 2500 ||
+              ![10000, 13000, 15000, 20000, 25000].includes(c.prixNuit)
+          );
+          if (!needsMigration) return parsed;
+        }
+      }
+      return INITIAL_CHAMBRES;
     } catch {
       return INITIAL_CHAMBRES;
     }
@@ -554,7 +600,14 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [notifications, setNotifications] = useState<ReservationNotification[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_notifications');
-      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const needsMigration = parsed.some((n: any) => typeof n.montant === 'number' && n.montant < 1000);
+          if (!needsMigration) return parsed;
+        }
+      }
+      return INITIAL_NOTIFICATIONS;
     } catch {
       return INITIAL_NOTIFICATIONS;
     }
@@ -670,7 +723,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const selectedMethod = customData?.modePaiement || randomMethods[Math.floor(Math.random() * randomMethods.length)];
     const chosenChambre = customData?.chambreNumero || (chambres.length > 0 ? chambres[Math.floor(Math.random() * chambres.length)].numero : '101');
     const typeRes: ReservationType = customData?.typeReservation || (Math.random() > 0.5 ? 'heure' : 'nuit');
-    const amount = customData?.montant || (typeRes === 'heure' ? 105 : 140);
+    const amount = customData?.montant || (typeRes === 'heure' ? 7500 : 15000);
 
     const newNotif: ReservationNotification = {
       id: `notif-${Date.now()}`,
@@ -708,7 +761,14 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_expenses');
-      return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const needsMigration = parsed.some((e: any) => typeof e.montant === 'number' && e.montant < 1000);
+          if (!needsMigration) return parsed;
+        }
+      }
+      return INITIAL_EXPENSES;
     } catch {
       return INITIAL_EXPENSES;
     }
@@ -731,7 +791,14 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [revenues, setRevenues] = useState<RevenueItem[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_revenues');
-      return saved ? JSON.parse(saved) : INITIAL_REVENUES;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const needsMigration = parsed.some((r: any) => typeof r.montant === 'number' && r.montant < 1000);
+          if (!needsMigration) return parsed;
+        }
+      }
+      return INITIAL_REVENUES;
     } catch {
       return INITIAL_REVENUES;
     }
@@ -777,7 +844,14 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_audit_logs');
-      return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const needsMigration = parsed.some((a: any) => typeof a.montantTotal === 'number' && a.montantTotal < 1000);
+          if (!needsMigration) return parsed;
+        }
+      }
+      return INITIAL_AUDIT_LOGS;
     } catch {
       return INITIAL_AUDIT_LOGS;
     }
@@ -815,8 +889,14 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [reservations, setReservations] = useState<ReservationItem[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_reservations');
-      const base = saved ? JSON.parse(saved) : INITIAL_RESERVATIONS;
-      return ensureReservationPartialPayments(base);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const needsMigration = parsed.some((r: any) => typeof r.montantTotal === 'number' && r.montantTotal < 1000);
+          if (!needsMigration) return ensureReservationPartialPayments(parsed);
+        }
+      }
+      return ensureReservationPartialPayments(INITIAL_RESERVATIONS);
     } catch {
       return ensureReservationPartialPayments(INITIAL_RESERVATIONS);
     }
@@ -1932,7 +2012,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         items: itemsLines,
         montantTotal,
         statut: 'en_attente',
-        modePaiement: 'Virement ou Mobile Money',
+        modePaiement: 'Orange Money',
         statutPaiement: 'en_attente',
         notes: `Généré automatiquement par le module d'alertes stocks restaurant. ${itemsLines.length} article(s) à réapprovisionner d'urgence.`
       });
@@ -2393,16 +2473,21 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (saved) {
         const parsed: RestaurantMenuItem[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // S'assurer que chaque item possède une image valide
-          return parsed.map((item) => {
-            const initial = INITIAL_RESTAURANT_MENU.find((init) => init.id === item.id || init.nom.toLowerCase() === item.nom.toLowerCase());
-            return {
-              ...item,
-              imageUrl: item.imageUrl || initial?.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80',
-              tempsPreparationMin: item.tempsPreparationMin || initial?.tempsPreparationMin || 20,
-              disponible: item.disponible !== undefined ? item.disponible : true
-            };
-          });
+          // Si ancien menu avec prix bas ou non conformes à la fourchette 2000, 3000, 5000, 10000
+          const hasOldPrices = parsed.some(
+            (item) => item.prix < 2000 || item.prix > 10000 || ![2000, 3000, 5000, 10000].includes(item.prix)
+          );
+          if (!hasOldPrices) {
+            return parsed.map((item) => {
+              const initial = INITIAL_RESTAURANT_MENU.find((init) => init.id === item.id || init.nom.toLowerCase() === item.nom.toLowerCase());
+              return {
+                ...item,
+                imageUrl: item.imageUrl || initial?.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80',
+                tempsPreparationMin: item.tempsPreparationMin || initial?.tempsPreparationMin || 20,
+                disponible: item.disponible !== undefined ? item.disponible : true
+              };
+            });
+          }
         }
       }
       return INITIAL_RESTAURANT_MENU;

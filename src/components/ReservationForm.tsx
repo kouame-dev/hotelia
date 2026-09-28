@@ -47,8 +47,8 @@ export interface ReservationFormProps {
 export const ReservationForm: React.FC<ReservationFormProps> = ({
   onSubmit,
   onClose,
-  prixNuitDefaut = 140,
-  prixHeureDefaut = 35,
+  prixNuitDefaut = 10000,
+  prixHeureDefaut = 2500,
   initialMode = 'nuitee',
   roomNom
 }) => {

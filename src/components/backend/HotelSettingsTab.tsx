@@ -457,7 +457,7 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
                     </div>
 
                     <div className="text-[11px] pt-2 border-t border-stone-200 text-stone-600">
-                      Exemple : {cCode === 'XOF' ? '91 800 FCFA' : cCode === 'USD' ? '$ 151.20' : '140 €'} / nuit
+                      Exemple : {cCode === 'XOF' ? '15 000 FCFA' : cCode === 'USD' ? '$ 24.60' : '22.87 €'} / nuit
                     </div>
                   </div>
                 );
@@ -499,21 +499,21 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
                 <div className="p-3 rounded-xl bg-white border border-stone-200">
-                  <span className="text-stone-500 text-[10px] block">CHAMBRE DELUXE (140 €)</span>
+                  <span className="text-stone-500 text-[10px] block">CHAMBRE DELUXE (15 000 FCFA)</span>
                   <span className="text-base font-bold text-[#C5A880] mt-1 block">
-                    {formatPrice(140)} / nuit
+                    {formatPrice(15000)} / nuit
                   </span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-stone-200">
-                  <span className="text-stone-500 text-[10px] block">DAY-USE 3 HEURES (105 €)</span>
+                  <span className="text-stone-500 text-[10px] block">DAY-USE 3 HEURES (7 500 FCFA)</span>
                   <span className="text-base font-bold text-amber-800 mt-1 block">
-                    {formatPrice(105)}
+                    {formatPrice(7500)}
                   </span>
                 </div>
                 <div className="p-3 rounded-xl bg-white border border-stone-200">
-                  <span className="text-stone-500 text-[10px] block">SUITE PANORAMIQUE (280 €)</span>
+                  <span className="text-stone-500 text-[10px] block">SUITE PANORAMIQUE (25 000 FCFA)</span>
                   <span className="text-base font-bold text-indigo-900 mt-1 block">
-                    {formatPrice(280)} / nuit
+                    {formatPrice(25000)} / nuit
                   </span>
                 </div>
               </div>

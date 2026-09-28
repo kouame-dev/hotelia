@@ -12,14 +12,15 @@ import {
   MapPin
 } from 'lucide-react';
 import { ReservationMode } from '../ReservationForm.tsx';
+import { useHotelSettings } from '../../context/SettingsContext.tsx';
 
 export interface SlideData {
   id: number;
+  badge: string;
   title: string;
   subtitle: string;
-  badge: string;
-  image: string;
   description: string;
+  image: string;
   startingPriceNight: number;
   startingPriceHour: number;
 }
@@ -30,10 +31,10 @@ export const HOTELIA_SLIDES: SlideData[] = [
     badge: 'Hôtel & Résidence de Prestige',
     title: 'Hotelia Résidence & Suites',
     subtitle: 'L’élégance hôtelière signée Dekouassi Holding',
-    description: 'Une parenthèse d’exception au cœur de la ville. Profitez de nos suites haut de gamme réservables à la nuitée ou pour quelques heures de détente absolue.',
+    description: 'Une parenthèse d’exception au cœur de la ville. Profitez de nos suites haut de gamme réservables à la nuitée (dès 10 000 FCFA) ou pour quelques heures (2 500 FCFA/h).',
     image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1920&q=80',
-    startingPriceNight: 140,
-    startingPriceHour: 35
+    startingPriceNight: 10000,
+    startingPriceHour: 2500
   },
   {
     id: 2,
@@ -42,18 +43,18 @@ export const HOTELIA_SLIDES: SlideData[] = [
     subtitle: 'Confort absolu, literie d’art & technologies modernes',
     description: 'Des espaces pensés pour les voyageurs exigeants et les séjours d’affaires. Vue imprenable, insonorisation de pointe et service d’étage discret.',
     image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1920&q=80',
-    startingPriceNight: 180,
-    startingPriceHour: 45
+    startingPriceNight: 20000,
+    startingPriceHour: 2500
   },
   {
     id: 3,
     badge: 'Formule Day-Use & Courte Durée',
     title: 'Réservations à l’Heure',
-    subtitle: '1h, 2h, 3h ou 4h de sérénité sur-mesure',
-    description: 'Idéal pour une escale, une session de travail en toute quiétude ou un instant de déconnexion. Tarif plafonné dès 5h d’occupation.',
+    subtitle: '1h, 2h, 3h ou 4h de sérénité à tarif unique',
+    description: 'Idéal pour une escale, une session de travail en toute quiétude ou un instant de déconnexion. Tarif fixe de 2 500 FCFA par heure.',
     image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1920&q=80',
-    startingPriceNight: 140,
-    startingPriceHour: 30
+    startingPriceNight: 10000,
+    startingPriceHour: 2500
   },
   {
     id: 4,
@@ -62,8 +63,8 @@ export const HOTELIA_SLIDES: SlideData[] = [
     subtitle: 'Une oasis de fraîcheur et de volupté',
     description: 'Bénéficiez d’un accès exclusif à nos installations bien-être lors de votre séjour, de jour comme de nuit.',
     image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1920&q=80',
-    startingPriceNight: 240,
-    startingPriceHour: 60
+    startingPriceNight: 25000,
+    startingPriceHour: 2500
   }
 ];
 
@@ -72,6 +73,7 @@ interface HoteliaHeroSliderProps {
 }
 
 export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBooking }) => {
+  const { formatPrice } = useHotelSettings();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -175,7 +177,7 @@ export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBook
               className="px-6 py-3.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 shadow-lg hover:shadow-[#C5A880]/30 hover:scale-[1.02] flex items-center gap-2"
             >
               <Moon className="w-4 h-4" />
-              <span>Réserver une Nuitée (Dès {slide.startingPriceNight} €)</span>
+              <span>Réserver une Nuitée (Dès {formatPrice(slide.startingPriceNight)})</span>
             </button>
 
             <button
@@ -184,7 +186,7 @@ export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBook
               className="px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-md font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] flex items-center gap-2"
             >
               <Clock className="w-4 h-4 text-[#C5A880]" />
-              <span>À l’Heure / Day-Use (Dès {slide.startingPriceHour} €/h)</span>
+              <span>À l’Heure / Day-Use ({formatPrice(slide.startingPriceHour)} / h)</span>
             </button>
           </div>
         </div>

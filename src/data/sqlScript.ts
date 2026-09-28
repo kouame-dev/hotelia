@@ -345,34 +345,34 @@ INSERT INTO hotels (nom, adresse, telephone, email, etoiles) VALUES
 
 -- B. Insertion de chambres avec tarifs Nuit & Heure
 INSERT INTO chambres (id_hotel, numero, type, statut, prix_nuit, prix_heure, capacite, etage) VALUES
-(1, '101', 'Standard Double', 'disponible', 120.00, 30.00, 2, 1),
-(1, '102', 'Deluxe Balcon', 'disponible', 180.00, 45.00, 2, 1),
-(1, '201', 'Suite Junior Day-Use', 'disponible', 240.00, 60.00, 3, 2),
-(2, 'A10', 'Chambre Vue Mer', 'disponible', 210.00, 50.00, 2, 1),
-(2, 'A11', 'Suite Prestige', 'disponible', 380.00, 95.00, 4, 1);
+(1, '101', 'Confort Éco Standard', 'disponible', 10000.00, 2500.00, 2, 1),
+(1, '102', 'Classique Supérieure', 'disponible', 13000.00, 2500.00, 2, 1),
+(1, '103', 'Deluxe Harmonie', 'disponible', 15000.00, 2500.00, 2, 1),
+(2, '201', 'Suite Exécutive Dekouassi', 'disponible', 20000.00, 2500.00, 3, 2),
+(2, '301', 'Suite Royale Panoramique VIP', 'disponible', 25000.00, 2500.00, 4, 3);
 
 -- C. Insertion de clients
 INSERT INTO clients (nom, email, telephone) VALUES
-('Jean Dupont', 'jean.dupont@email.com', '+33 6 12 34 56 78'),
-('Sophie Martin', 'sophie.martin@pro-consulting.fr', '+33 6 98 76 54 32'),
-('Alexandre Chen', 'alex.chen@techglobal.com', '+33 7 45 67 89 01'),
-('Fatou Diop', 'fatou.diop@afrique-art.org', '+33 6 55 44 33 22');
+('Jean Dupont', 'jean.dupont@email.com', '+225 07 12 34 56 78'),
+('Sophie Martin', 'sophie.martin@pro-consulting.fr', '+225 05 98 76 54 32'),
+('Alexandre Chen', 'alex.chen@techglobal.com', '+225 07 45 67 89 01'),
+('Fatou Diop', 'fatou.diop@afrique-art.org', '+225 01 55 44 33 22');
 
 -- D. Insertion de réservations (Nuitées et À l'heure)
 INSERT INTO reservations 
 (id_client, id_chambre, type_reservation, date_debut, date_fin, heure_debut, heure_fin, statut_paiement, statut_reservation, prix_total) 
 VALUES
--- 1. Réservation classique de 2 nuitées
-(1, 1, 'nuit', CURRENT_DATE + 1, CURRENT_DATE + 3, '15:00:00', '11:00:00', 'paye', 'confirmee', 240.00),
+-- 1. Réservation classique de 2 nuitées (Chambre Confort Éco Standard)
+(1, 1, 'nuit', CURRENT_DATE + 1, CURRENT_DATE + 3, '15:00:00', '11:00:00', 'paye', 'confirmee', 20000.00),
 
--- 2. Réservation à l'heure (Day-use professionnel de 14h à 18h)
-(2, 2, 'heure', CURRENT_DATE, CURRENT_DATE, '14:00:00', '18:00:00', 'paye', 'confirmee', 180.00),
+-- 2. Réservation à l'heure (Day-use professionnel de 14h à 18h = 4h x 2 500)
+(2, 2, 'heure', CURRENT_DATE, CURRENT_DATE, '14:00:00', '18:00:00', 'paye', 'confirmee', 10000.00),
 
--- 3. Réservation à l'heure en matinée
-(3, 3, 'heure', CURRENT_DATE + 4, CURRENT_DATE + 4, '09:00:00', '12:00:00', 'en_attente', 'confirmee', 180.00),
+-- 3. Réservation à l'heure en matinée (3h x 2 500)
+(3, 3, 'heure', CURRENT_DATE + 4, CURRENT_DATE + 4, '09:00:00', '12:00:00', 'en_attente', 'confirmee', 7500.00),
 
--- 4. Réservation longue durée à la nuitée (5 nuits)
-(4, 4, 'nuit', CURRENT_DATE + 5, CURRENT_DATE + 10, '15:00:00', '11:00:00', 'paye', 'confirmee', 1050.00);
+-- 4. Réservation longue durée à la nuitée (Suite Exécutive, 4 nuits x 20 000)
+(4, 4, 'nuit', CURRENT_DATE + 5, CURRENT_DATE + 9, '15:00:00', '11:00:00', 'paye', 'confirmee', 80000.00);
 
 -- ============================================================================
 -- FIN DU SCRIPT ARCHITECTE

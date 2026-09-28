@@ -300,10 +300,10 @@ export const SAMPLE_CHAMBRES: Chambre[] = [
     id_chambre: 1,
     id_hotel: 1,
     numero: '101',
-    type: 'Standard Double',
+    type: 'Confort Éco Standard',
     statut: 'disponible',
-    prix_nuit: 120,
-    prix_heure: 30,
+    prix_nuit: 10000,
+    prix_heure: 2500,
     capacite: 2,
     etage: 1
   },
@@ -311,10 +311,10 @@ export const SAMPLE_CHAMBRES: Chambre[] = [
     id_chambre: 2,
     id_hotel: 1,
     numero: '102',
-    type: 'Deluxe Balcon',
+    type: 'Classique Supérieure',
     statut: 'occupee',
-    prix_nuit: 180,
-    prix_heure: 45,
+    prix_nuit: 13000,
+    prix_heure: 2500,
     capacite: 2,
     etage: 1
   },
@@ -322,10 +322,10 @@ export const SAMPLE_CHAMBRES: Chambre[] = [
     id_chambre: 3,
     id_hotel: 1,
     numero: '201',
-    type: 'Suite Day-Use & Nuit',
+    type: 'Deluxe Harmonie',
     statut: 'disponible',
-    prix_nuit: 240,
-    prix_heure: 60,
+    prix_nuit: 15000,
+    prix_heure: 2500,
     capacite: 3,
     etage: 2
   },
@@ -333,10 +333,10 @@ export const SAMPLE_CHAMBRES: Chambre[] = [
     id_chambre: 4,
     id_hotel: 2,
     numero: 'A10',
-    type: 'Chambre Vue Mer',
+    type: 'Suite Exécutive Dekouassi',
     statut: 'disponible',
-    prix_nuit: 210,
-    prix_heure: 50,
+    prix_nuit: 20000,
+    prix_heure: 2500,
     capacite: 2,
     etage: 1
   }
@@ -375,10 +375,10 @@ export const SAMPLE_RESERVATIONS: Reservation[] = [
     heure_fin: '11:00',
     statut_paiement: 'paye',
     statut_reservation: 'confirmee',
-    prix_total: 240,
+    prix_total: 20000, // 2 nuits x 10 000 FCFA
     client_nom: 'Jean Dupont',
     chambre_numero: '101',
-    chambre_type: 'Standard Double'
+    chambre_type: 'Confort Éco Standard'
   },
   {
     id_reservation: 2,
@@ -391,10 +391,10 @@ export const SAMPLE_RESERVATIONS: Reservation[] = [
     heure_fin: '18:00',
     statut_paiement: 'paye',
     statut_reservation: 'en_cours',
-    prix_total: 180,
+    prix_total: 10000, // 4h x 2 500 FCFA
     client_nom: 'Sophie Martin',
     chambre_numero: '102',
-    chambre_type: 'Deluxe Balcon'
+    chambre_type: 'Classique Supérieure'
   },
   {
     id_reservation: 3,
@@ -407,9 +407,9 @@ export const SAMPLE_RESERVATIONS: Reservation[] = [
     heure_fin: '12:00',
     statut_paiement: 'en_attente',
     statut_reservation: 'confirmee',
-    prix_total: 180,
+    prix_total: 7500, // 3h x 2 500 FCFA
     client_nom: 'Alexandre Chen',
     chambre_numero: '201',
-    chambre_type: 'Suite Day-Use & Nuit'
+    chambre_type: 'Deluxe Harmonie'
   }
 ];

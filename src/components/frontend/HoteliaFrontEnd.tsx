@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { HoteliaHeroSlider } from './HoteliaHeroSlider.tsx';
 import { ReservationForm, ReservationMode } from '../ReservationForm.tsx';
 import { ClientSpaceModal } from './ClientSpaceModal.tsx';
 import { useHotelSettings, CURRENCIES } from '../../context/SettingsContext.tsx';
+import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
   Sparkles,
   Bed,
@@ -29,7 +30,11 @@ import {
   ShieldAlert,
   FileText,
   Utensils,
-  Award
+  Award,
+  Eye,
+  Images,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export interface RoomItem {
@@ -37,6 +42,7 @@ export interface RoomItem {
   nom: string;
   categorie: string;
   image: string;
+  images: string[];
   description: string;
   surface: string;
   capacite: number;
@@ -53,13 +59,18 @@ export const HOTELIA_ROOMS: RoomItem[] = [
     id: 'ch-standard-102',
     nom: 'Chambre Confort Éco Standard',
     categorie: 'Éco Standard',
-    image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1000&q=80',
+    image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80'
+    ],
     description: 'Un cocon d’intimité au calme absolu, lit Queen Size, climatisation et WiFi Fibre. Parfait pour une courte escale ou un séjour économique.',
     surface: '22 m²',
     capacite: 2,
     prixNuit: 10000,
-    prixHeure: 5000,
-    equipements: ['Literie Queen Size', 'Climatisation', 'WiFi Fibre 1 Gbps', 'Smart TV HD'],
+    prixHeure: 2500,
+    equipements: ['Literie Queen Size', 'Climatisation', 'WiFi Fibre 1 Gbps', 'Smart TV HD', 'Douche rafraîchissante', 'Insonorisation'],
     disponibleHeure: true,
     disponibleNuit: true,
     etage: 1
@@ -68,13 +79,18 @@ export const HOTELIA_ROOMS: RoomItem[] = [
     id: 'ch-classique-103',
     nom: 'Chambre Classique Supérieure',
     categorie: 'Classique',
-    image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1000&q=80',
+    image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1200&q=80'
+    ],
     description: 'Chambre soignée avec bureau de travail élégant, douche à l’italienne et ambiance reposante.',
     surface: '26 m²',
     capacite: 2,
-    prixNuit: 15000,
-    prixHeure: 6000,
-    equipements: ['WiFi Fibre 1 Gbps', 'Smart TV 50"', 'Douche à l’Italienne', 'Bureau Exécutif'],
+    prixNuit: 13000,
+    prixHeure: 2500,
+    equipements: ['WiFi Fibre 1 Gbps', 'Smart TV 50"', 'Douche à l’Italienne', 'Bureau Exécutif', 'Coffre-fort', 'Miroir rétroéclairé'],
     disponibleHeure: true,
     disponibleNuit: true,
     etage: 1
@@ -83,13 +99,18 @@ export const HOTELIA_ROOMS: RoomItem[] = [
     id: 'ch-deluxe-101',
     nom: 'Chambre Deluxe Harmonie',
     categorie: 'Deluxe',
-    image: 'https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&w=1000&q=80',
+    image: 'https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=80'
+    ],
     description: 'Ambiance feutrée aux tons chauds, lit King Size ergonomique et salle de bain en marbre italien.',
     surface: '32 m²',
     capacite: 2,
-    prixNuit: 20000,
-    prixHeure: 8000,
-    equipements: ['WiFi Fibre 1 Gbps', 'Smart TV 55" 4K', 'Machine Nespresso', 'Climatisation silencieuse'],
+    prixNuit: 15000,
+    prixHeure: 2500,
+    equipements: ['WiFi Fibre 1 Gbps', 'Smart TV 55" 4K', 'Machine Nespresso', 'Climatisation silencieuse', 'Marbre italien', 'Peignoirs & Chaussons'],
     disponibleHeure: true,
     disponibleNuit: true,
     etage: 1
@@ -98,13 +119,18 @@ export const HOTELIA_ROOMS: RoomItem[] = [
     id: 'ch-executive-201',
     nom: 'Suite Exécutive Dekouassi',
     categorie: 'Suite',
-    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1000&q=80',
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1502005229762-ee1b2b8ab32f?auto=format&fit=crop&w=1200&q=80'
+    ],
     description: 'Espace bureau dédié avec salon privé. Idéale pour séjours d’affaires et rendez-vous confidentiels en journée.',
     surface: '48 m²',
     capacite: 3,
-    prixNuit: 25000,
-    prixHeure: 10000,
-    equipements: ['Salon séparé', 'Mini-bar offert', 'Enceinte Bluetooth', 'Baignoire balnéo & Douche pluie'],
+    prixNuit: 20000,
+    prixHeure: 2500,
+    equipements: ['Salon séparé', 'Mini-bar offert', 'Enceinte Bluetooth', 'Baignoire balnéo & Douche pluie', 'Service VIP', 'Espace réunion'],
     disponibleHeure: true,
     disponibleNuit: true,
     etage: 2
@@ -113,13 +139,18 @@ export const HOTELIA_ROOMS: RoomItem[] = [
     id: 'ch-panoramique-301',
     nom: 'Suite Royale Panoramique VIP',
     categorie: 'Signature',
-    image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1000&q=80',
+    image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80'
+    ],
     description: 'Dernier étage avec terrasse privative 360° et vue imprenable. L’excellence absolue du groupe Dekouassi Holding.',
     surface: '65 m²',
     capacite: 4,
-    prixNuit: 35000,
-    prixHeure: 15000,
-    equipements: ['Terrasse privée avec Jacuzzi', 'Vue 360°', 'Service majordome dédié', 'Champagne d’accueil'],
+    prixNuit: 25000,
+    prixHeure: 2500,
+    equipements: ['Terrasse privée avec Jacuzzi', 'Vue 360°', 'Service majordome dédié', 'Champagne d’accueil', 'Lit King Size 200x200', 'Salon panoramique'],
     disponibleHeure: true,
     disponibleNuit: true,
     etage: 3
@@ -133,10 +164,18 @@ interface HoteliaFrontEndProps {
 
 export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend, onGoToRestaurant }) => {
   const { settings, formatPrice, updateSettings } = useHotelSettings();
+  const { chambres } = useHotelData();
   const [filterMode, setFilterMode] = useState<'all' | 'nuitee' | 'heures'>('all');
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [activeReservationMode, setActiveReservationMode] = useState<ReservationMode>('nuitee');
   const [selectedRoom, setSelectedRoom] = useState<RoomItem | null>(null);
+
+  // Modale Détails & Galerie 3 Photos HD de la chambre
+  const [detailRoom, setDetailRoom] = useState<RoomItem | null>(null);
+  const [detailPhotoIndex, setDetailPhotoIndex] = useState<number>(0);
+
+  // Index de la photo sélectionnée pour chaque carte de chambre
+  const [cardPhotoIndex, setCardPhotoIndex] = useState<Record<string, number>>({});
 
   // Modals pour CGV / Politique d'annulation / Confidentialité
   const [activeLegalModal, setActiveLegalModal] = useState<'cancellation' | 'tos' | 'privacy' | null>(null);
@@ -156,6 +195,7 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setModalOpen(false);
+        setDetailRoom(null);
         setActiveLegalModal(null);
       }
     };
@@ -171,7 +211,33 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
     setModalOpen(true);
   };
 
-  const filteredRooms = HOTELIA_ROOMS.filter((room) => {
+  const handleOpenDetailModal = (room: RoomItem, photoIdx: number = 0) => {
+    setDetailRoom(room);
+    setDetailPhotoIndex(photoIdx);
+  };
+
+  const displayRooms = useMemo(() => {
+    return HOTELIA_ROOMS.map((r) => {
+      // Synchroniser avec les tarifs de l'inventaire en base/contexte
+      const matched = chambres.find((c) =>
+        c.typeNom.toLowerCase() === r.nom.toLowerCase() ||
+        c.typeNom.toLowerCase().includes(r.categorie.toLowerCase()) ||
+        r.id.includes(c.numero)
+      );
+      if (matched) {
+        return {
+          ...r,
+          prixNuit: matched.prixNuit || r.prixNuit,
+          prixHeure: matched.prixHeure || r.prixHeure,
+          disponibleHeure: matched.disponibleHeure !== undefined ? matched.disponibleHeure : r.disponibleHeure,
+          disponibleNuit: matched.disponibleNuit !== undefined ? matched.disponibleNuit : r.disponibleNuit
+        };
+      }
+      return r;
+    });
+  }, [chambres]);
+
+  const filteredRooms = displayRooms.filter((room) => {
     if (filterMode === 'nuitee') return room.disponibleNuit;
     if (filterMode === 'heures') return room.disponibleHeure;
     return true;
@@ -398,90 +464,149 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
 
         {/* Grille des Chambres */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {filteredRooms.map((room) => (
-            <div
-              key={room.id}
-              className="bg-white rounded-2xl border border-stone-200/90 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group"
-            >
-              {/* Image avec badges */}
-              <div className="relative h-64 overflow-hidden bg-stone-900">
-                <img
-                  src={room.image}
-                  alt={room.nom}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-95"
-                />
-                <div className="absolute top-4 left-4 flex gap-2">
-                  <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-mono font-semibold text-white border border-stone-700">
-                    {room.categorie}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full bg-[#C5A880]/90 text-slate-950 font-mono text-[10px] font-bold">
-                    Étage {room.etage}
-                  </span>
+          {filteredRooms.map((room) => {
+            const currentPhotoIdx = cardPhotoIndex[room.id] || 0;
+            const currentImg = room.images && room.images[currentPhotoIdx] ? room.images[currentPhotoIdx] : room.image;
+
+            return (
+              <div
+                key={room.id}
+                className="bg-white rounded-2xl border border-stone-200/90 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group"
+              >
+                {/* Image avec badges et carrousel 3 photos */}
+                <div className="relative h-64 overflow-hidden bg-stone-900 group/img">
+                  <img
+                    src={currentImg}
+                    alt={`${room.nom} - Photo ${currentPhotoIdx + 1}`}
+                    referrerPolicy="no-referrer"
+                    onClick={() => handleOpenDetailModal(room, currentPhotoIdx)}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-95 cursor-pointer"
+                  />
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-mono font-semibold text-white border border-stone-700">
+                      {room.categorie}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full bg-[#C5A880]/90 text-slate-950 font-mono text-[10px] font-bold">
+                      Étage {room.etage}
+                    </span>
+                  </div>
+
+                  {/* Badge 3 photos HD */}
+                  <div className="absolute top-4 right-4 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDetailModal(room, currentPhotoIdx)}
+                      className="px-2.5 py-1 rounded-full bg-black/70 hover:bg-[#C5A880] hover:text-slate-950 backdrop-blur-md text-white text-[11px] font-semibold border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                      title="Cliquer pour voir la galerie et les détails"
+                    >
+                      <Images className="w-3.5 h-3.5" />
+                      <span>{room.images?.length || 3} Photos HD</span>
+                    </button>
+                  </div>
+
+                  {/* Mini-sélecteur de 3 photos en bas à gauche */}
+                  {room.images && room.images.length > 1 && (
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md p-1 rounded-lg border border-white/20 z-10">
+                      {room.images.map((img, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCardPhotoIndex((prev) => ({ ...prev, [room.id]: idx }));
+                          }}
+                          className={`w-9 h-7 rounded overflow-hidden border transition-all cursor-pointer ${
+                            currentPhotoIdx === idx
+                              ? 'border-[#C5A880] ring-1 ring-[#C5A880] scale-105 opacity-100'
+                              : 'border-white/30 opacity-70 hover:opacity-100 hover:border-white'
+                          }`}
+                          title={`Voir la photo ${idx + 1}`}
+                        >
+                          <img src={img} alt={`Vignette ${idx + 1}`} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="absolute bottom-3 right-3 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white text-xs font-mono">
+                    {room.surface} • {room.capacite} pers. max
+                  </div>
                 </div>
 
-                <div className="absolute bottom-4 right-4 px-3 py-1 rounded-lg bg-black/70 backdrop-blur-md text-white text-xs font-mono">
-                  {room.surface} • {room.capacite} pers. max
-                </div>
-              </div>
+                {/* Contenu de la carte */}
+                <div className="p-6 flex-1 flex flex-col justify-between space-y-5">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3
+                        onClick={() => handleOpenDetailModal(room, currentPhotoIdx)}
+                        className="font-serif font-bold text-xl text-stone-900 group-hover:text-[#C5A880] transition-colors cursor-pointer"
+                      >
+                        {room.nom}
+                      </h3>
+                    </div>
 
-              {/* Contenu de la carte */}
-              <div className="p-6 flex-1 flex flex-col justify-between space-y-5">
-                <div className="space-y-2">
-                  <h3 className="font-serif font-bold text-xl text-stone-900 group-hover:text-[#C5A880] transition-colors">
-                    {room.nom}
-                  </h3>
-                  <p className="text-xs text-stone-600 leading-relaxed font-sans">
-                    {room.description}
-                  </p>
+                    <p className="text-xs text-stone-600 leading-relaxed font-sans">
+                      {room.description}
+                    </p>
 
-                  {/* Équipements */}
-                  <div className="pt-2 grid grid-cols-2 gap-2 text-[11px] text-stone-500">
-                    {room.equipements.map((eq, i) => (
-                      <div key={i} className="flex items-center gap-1.5">
-                        <Check className="w-3 h-3 text-[#C5A880] shrink-0" />
-                        <span>{eq}</span>
+                    {/* Équipements */}
+                    <div className="pt-1 grid grid-cols-2 gap-2 text-[11px] text-stone-500">
+                      {room.equipements.slice(0, 4).map((eq, i) => (
+                        <div key={i} className="flex items-center gap-1.5">
+                          <Check className="w-3 h-3 text-[#C5A880] shrink-0" />
+                          <span className="truncate">{eq}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Bouton pour ouvrir le détail et les 3 photos */}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDetailModal(room, currentPhotoIdx)}
+                      className="w-full py-2 px-3 rounded-xl bg-stone-100 hover:bg-[#C5A880]/15 hover:border-[#C5A880]/50 border border-stone-200 text-stone-800 hover:text-stone-950 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-[#C5A880]" />
+                      <span>Voir les détails complets &amp; 3 photos</span>
+                    </button>
+                  </div>
+
+                  {/* Tarifs doubles & Boutons de réservation */}
+                  <div className="pt-4 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    {/* Tarifs affichés */}
+                    <div className="space-y-0.5 text-center sm:text-left">
+                      <div className="text-stone-900 font-serif font-bold text-lg">
+                        {formatPrice(room.prixNuit)} <span className="text-xs font-sans font-normal text-stone-500">/ nuit</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tarifs doubles & Boutons de réservation */}
-                <div className="pt-4 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  {/* Tarifs affichés */}
-                  <div className="space-y-0.5 text-center sm:text-left">
-                    <div className="text-stone-900 font-serif font-bold text-lg">
-                      {formatPrice(room.prixNuit)} <span className="text-xs font-sans font-normal text-stone-500">/ nuit</span>
+                      <div className="text-xs text-stone-500 font-medium">
+                        ou <strong className="text-amber-800 font-semibold">{formatPrice(room.prixHeure)} / h</strong> (1h à 4h)
+                      </div>
                     </div>
-                    <div className="text-xs text-stone-500 font-medium">
-                      ou <strong className="text-amber-800 font-semibold">{formatPrice(room.prixHeure)} / h</strong> (1h à 4h)
+
+                    {/* CTAs */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenBooking('heures', room)}
+                        className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl border border-stone-300 hover:border-[#C5A880] text-stone-800 hover:text-stone-950 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>À l’Heure</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenBooking('nuitee', room)}
+                        className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-[#1C1B18] hover:bg-[#2C2B27] text-white font-semibold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                      >
+                        <Moon className="w-3.5 h-3.5 text-[#C5A880]" />
+                        <span>Nuitée</span>
+                      </button>
                     </div>
-                  </div>
-
-                  {/* CTAs */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenBooking('heures', room)}
-                      className="flex-1 sm:flex-initial px-3.5 py-2.5 rounded-xl border border-stone-300 hover:border-[#C5A880] text-stone-800 hover:text-stone-950 font-semibold text-xs transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <Clock className="w-3.5 h-3.5 text-amber-600" />
-                      <span>À l’Heure</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenBooking('nuitee', room)}
-                      className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-[#1C1B18] hover:bg-[#2C2B27] text-white font-semibold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                    >
-                      <Moon className="w-3.5 h-3.5 text-[#C5A880]" />
-                      <span>Nuitée</span>
-                    </button>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -554,6 +679,276 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
         </div>
       </section>
 
+      {/* 4.5. Modal Détails de la Chambre & Galerie 3 Photos HD */}
+      {detailRoom && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setDetailRoom(null);
+            }
+          }}
+        >
+          <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200 border border-stone-200">
+            {/* Header de la modale */}
+            <div className="bg-[#1C1B18] text-white px-6 py-4 flex items-center justify-between border-b border-stone-800">
+              <div className="flex items-center gap-3">
+                <span className="px-2.5 py-1 rounded-full bg-[#C5A880] text-slate-950 font-mono text-[11px] font-bold">
+                  {detailRoom.categorie}
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-stone-800 text-stone-300 font-mono text-[11px]">
+                  Étage {detailRoom.etage}
+                </span>
+                <h3 className="font-serif font-bold text-lg text-white truncate max-w-md">
+                  {detailRoom.nom}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDetailRoom(null)}
+                aria-label="Fermer"
+                className="w-9 h-9 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[85vh] overflow-y-auto p-6 space-y-6">
+              {/* Galerie Interactive de 3 Photos HD */}
+              <div className="space-y-3">
+                {/* Photo Principale Grande Vue */}
+                <div className="relative h-72 sm:h-96 w-full rounded-2xl overflow-hidden bg-stone-950 group">
+                  <img
+                    src={detailRoom.images[detailPhotoIndex] || detailRoom.image}
+                    alt={`${detailRoom.nom} - Vue ${detailPhotoIndex + 1}`}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover transition-transform duration-500"
+                  />
+
+                  {/* Boutons Suivant / Précédent */}
+                  {detailRoom.images.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDetailPhotoIndex((prev) =>
+                            prev === 0 ? detailRoom.images.length - 1 : prev - 1
+                          )
+                        }
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-all hover:scale-105 cursor-pointer"
+                        title="Photo précédente"
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDetailPhotoIndex((prev) =>
+                            (prev + 1) % detailRoom.images.length
+                          )
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-all hover:scale-105 cursor-pointer"
+                        title="Photo suivante"
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </button>
+                    </>
+                  )}
+
+                  {/* Badge indicateur photo */}
+                  <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md text-white text-xs font-mono border border-white/20 flex items-center gap-1.5">
+                    <Images className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>
+                      Photo {detailPhotoIndex + 1} / {detailRoom.images.length}
+                    </span>
+                  </div>
+
+                  {/* Titre descriptif de la vue courante */}
+                  <div className="absolute bottom-4 left-4 right-4 px-4 py-2 rounded-xl bg-black/75 backdrop-blur-md text-white text-xs sm:text-sm font-medium border border-white/10 flex items-center justify-between">
+                    <span>
+                      {detailPhotoIndex === 0 && '✨ 1. Chambre & Literie Prestige'}
+                      {detailPhotoIndex === 1 && '🚿 2. Salle d’eau & Douche / Balnéo'}
+                      {detailPhotoIndex === 2 && '🛋️ 3. Espace Lounge, Terrasse & Bureau'}
+                    </span>
+                    <span className="text-[11px] text-[#C5A880] font-mono">
+                      Haute Définition
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sélecteur de 3 vignettes interactives avec libellés */}
+                <div className="grid grid-cols-3 gap-3">
+                  {detailRoom.images.map((img, idx) => {
+                    const isSelected = detailPhotoIndex === idx;
+                    const labels = [
+                      '1. Chambre & Lit',
+                      '2. Salle de bain',
+                      '3. Salon / Vue'
+                    ];
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setDetailPhotoIndex(idx)}
+                        className={`p-1.5 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 cursor-pointer text-left ${
+                          isSelected
+                            ? 'border-[#C5A880] bg-[#C5A880]/10 shadow-md ring-2 ring-[#C5A880]/30'
+                            : 'border-stone-200 hover:border-stone-300 bg-stone-50'
+                        }`}
+                      >
+                        <div className="h-16 sm:h-20 w-full rounded-lg overflow-hidden bg-stone-200">
+                          <img
+                            src={img}
+                            alt={labels[idx] || `Photo ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span
+                          className={`text-[11px] font-semibold truncate w-full text-center ${
+                            isSelected ? 'text-[#9c7844]' : 'text-stone-600'
+                          }`}
+                        >
+                          {labels[idx] || `Photo ${idx + 1}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Bloc Tarifs & Détails essentiels */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Tarif Nuitée */}
+                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-stone-500 font-semibold flex items-center gap-1">
+                    <Moon className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>Tarif Nuitée</span>
+                  </div>
+                  <div className="text-2xl font-serif font-bold text-stone-900">
+                    {formatPrice(detailRoom.prixNuit)}
+                  </div>
+                  <p className="text-[11px] text-stone-500">
+                    Pour la nuit complète (Check-in 14h - Check-out 12h)
+                  </p>
+                </div>
+
+                {/* Tarif Horaire (2 500 FCFA/h) */}
+                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-amber-800 font-semibold flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Passage par Heure</span>
+                  </div>
+                  <div className="text-2xl font-serif font-bold text-amber-900">
+                    {formatPrice(detailRoom.prixHeure)} <span className="text-xs font-sans font-normal text-amber-700">/ h</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800">
+                    Formule courte durée (1h à 4h). Plafonné dès 5h.
+                  </p>
+                </div>
+
+                {/* Caractéristiques d'espace */}
+                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-stone-500 font-semibold flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>Espace &amp; Capacité</span>
+                  </div>
+                  <div className="text-xl font-serif font-bold text-stone-900">
+                    {detailRoom.surface} • {detailRoom.capacite} personnes
+                  </div>
+                  <p className="text-[11px] text-stone-500">
+                    Étage {detailRoom.etage} • Insonorisation supérieure &gt; 50 dB
+                  </p>
+                </div>
+              </div>
+
+              {/* Description complète */}
+              <div className="space-y-2">
+                <h4 className="font-serif font-bold text-base text-stone-900">
+                  Description de la chambre
+                </h4>
+                <p className="text-xs sm:text-sm text-stone-600 leading-relaxed font-sans">
+                  {detailRoom.description} Tous nos hébergements bénéficient d’une literie haut de gamme ergonomique, d’une climatisation réversible silencieuse et d’un accès internet haut débit par fibre optique.
+                </p>
+              </div>
+
+              {/* Équipements complets */}
+              <div className="space-y-3">
+                <h4 className="font-serif font-bold text-base text-stone-900">
+                  Équipements &amp; Confort inclus
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {detailRoom.equipements.map((eq, i) => (
+                    <div
+                      key={i}
+                      className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-2 text-xs text-stone-700"
+                    >
+                      <Check className="w-4 h-4 text-[#C5A880] shrink-0" />
+                      <span className="font-medium">{eq}</span>
+                    </div>
+                  ))}
+                  <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-2 text-xs text-stone-700">
+                    <Check className="w-4 h-4 text-[#C5A880] shrink-0" />
+                    <span className="font-medium">Service d’étage 24/7</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-2 text-xs text-stone-700">
+                    <Check className="w-4 h-4 text-[#C5A880] shrink-0" />
+                    <span className="font-medium">Ménage certifié désinfectant</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center gap-2 text-xs text-stone-700">
+                    <Check className="w-4 h-4 text-[#C5A880] shrink-0" />
+                    <span className="font-medium">Parking sécurisé gardé</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions de réservation immédiate depuis la modale */}
+              <div className="pt-4 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDetailRoom(null)}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-stone-300 text-stone-700 hover:bg-stone-100 font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Fermer
+                </button>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const roomToBook = detailRoom;
+                      setDetailRoom(null);
+                      handleOpenBooking('heures', roomToBook);
+                    }}
+                    className="flex-1 sm:flex-initial px-5 py-3 rounded-xl border-2 border-amber-600 bg-amber-50 text-amber-900 hover:bg-amber-100 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <Clock className="w-4 h-4 text-amber-700" />
+                    <span>Réserver à l’Heure ({formatPrice(detailRoom.prixHeure)}/h)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const roomToBook = detailRoom;
+                      setDetailRoom(null);
+                      handleOpenBooking('nuitee', roomToBook);
+                    }}
+                    className="flex-1 sm:flex-initial px-6 py-3 rounded-xl bg-[#1C1B18] hover:bg-[#2C2B27] text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <Moon className="w-4 h-4 text-[#C5A880]" />
+                    <span>Réserver Nuitée ({formatPrice(detailRoom.prixNuit)})</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 5. Modal de Réservation Instantanée */}
       {modalOpen && (
         <div
@@ -569,8 +964,8 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
         >
           <div className="relative w-full max-w-xl my-auto animate-in fade-in zoom-in-95 duration-200">
             <ReservationForm
-              prixNuitDefaut={selectedRoom ? selectedRoom.prixNuit : 140}
-              prixHeureDefaut={selectedRoom ? selectedRoom.prixHeure : 35}
+              prixNuitDefaut={selectedRoom ? selectedRoom.prixNuit : 10000}
+              prixHeureDefaut={selectedRoom ? selectedRoom.prixHeure : 2500}
               initialMode={activeReservationMode}
               roomNom={selectedRoom ? selectedRoom.nom : undefined}
               onClose={() => setModalOpen(false)}

@@ -326,8 +326,8 @@ interface SettingsContextType {
   testDgiConnection: () => Promise<{ success: boolean; message: string; timestamp: string }>;
   incrementFneSequence: () => number;
   resetSettings: () => void;
-  formatPrice: (amountEUR: number) => string;
-  convertPrice: (amountEUR: number) => number;
+  formatPrice: (amountFCFA: number) => string;
+  convertPrice: (amountFCFA: number) => number;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -462,22 +462,31 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setSettings(DEFAULT_HOTEL_SETTINGS);
   };
 
-  const convertPrice = (amountEUR: number): number => {
-    const cur = CURRENCIES[settings.currency];
-    const rate = settings.currency === 'XOF' ? settings.tauxCFA : cur.rateFromEUR;
-    const converted = amountEUR * rate;
-    // Si CFA, arrondir à l'entier le plus proche
+  const convertPrice = (amountFCFA: number): number => {
+    if (typeof amountFCFA !== 'number' || isNaN(amountFCFA)) return 0;
+    // Les montants de l'application sont stockés nativement en Franc CFA (XOF)
     if (settings.currency === 'XOF') {
-      return Math.round(converted);
+      return Math.round(amountFCFA);
     }
-    // Si Dollar ou Euro, arrondir à 2 décimales ou entier
-    return Math.round(converted * 100) / 100;
+    const rateCFA = settings.tauxCFA || 655.957;
+    // Conversion vers EUR
+    if (settings.currency === 'EUR') {
+      return Math.round((amountFCFA / rateCFA) * 100) / 100;
+    }
+    // Conversion vers USD
+    if (settings.currency === 'USD') {
+      return Math.round(((amountFCFA / rateCFA) * 1.08) * 100) / 100;
+    }
+    return Math.round(amountFCFA);
   };
 
-  const formatPrice = (amountEUR: number): string => {
-    const converted = convertPrice(amountEUR);
+  const formatPrice = (amountFCFA: number): string => {
+    const converted = convertPrice(amountFCFA);
     const cur = CURRENCIES[settings.currency];
-    const formattedNumber = new Intl.NumberFormat('fr-FR').format(converted);
+    const formattedNumber = new Intl.NumberFormat('fr-FR', {
+      maximumFractionDigits: settings.currency === 'XOF' ? 0 : 2,
+      minimumFractionDigits: settings.currency === 'XOF' ? 0 : 2
+    }).format(converted);
 
     if (cur.position === 'before') {
       return `${cur.symbol} ${formattedNumber}`;
