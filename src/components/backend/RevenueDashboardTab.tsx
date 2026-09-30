@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { jsPDF } from 'jspdf';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import {
@@ -23,7 +24,12 @@ import {
   CalendarDays,
   FileSpreadsheet,
   CheckCircle2,
-  Info
+  Info,
+  FileText,
+  FileDown,
+  X,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 
 export type GranularityView = 'consolidated' | 'daily' | 'monthly';
@@ -70,7 +76,8 @@ export const RevenueDashboardTab: React.FC = () => {
     revenues,
     posSales,
     restaurantOrders,
-    serviceOrders
+    serviceOrders,
+    currentUserProfile
   } = useHotelData();
   const { formatPrice, settings } = useHotelSettings();
 
@@ -85,6 +92,19 @@ export const RevenueDashboardTab: React.FC = () => {
   const [hoveredMonthData, setHoveredMonthData] = useState<MonthRevenueData | null>(null);
   const [selectedDayDetail, setSelectedDayDetail] = useState<string | null>('2026-09-12');
   const [searchTableQuery, setSearchTableQuery] = useState<string>('');
+
+  // DG Export states
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState<boolean>(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
+  const [exportToast, setExportToast] = useState<{ message: string; type: 'pdf' | 'csv' | 'success' } | null>(null);
+
+  const showToast = (message: string, type: 'pdf' | 'csv' | 'success' = 'success') => {
+    setExportToast({ message, type });
+    setTimeout(() => {
+      setExportToast(null);
+    }, 4500);
+  };
 
   // Noms des mois en français
   const MONTH_NAMES = useMemo(
@@ -437,46 +457,883 @@ export const RevenueDashboardTab: React.FC = () => {
     return dailyChartData.find((d) => d.date === selectedDayDetail) || null;
   }, [selectedDayDetail, dailyChartData]);
 
-  // Export CSV
-  const handleExportCsv = () => {
-    const headers = [
-      'Date',
-      'Jour',
-      'Revenus Hebergement (FCFA)',
-      'Nombre Reservations',
-      'Revenus Ventes POS Resto (FCFA)',
-      'Nombre Ventes',
-      'Total Consolidé (FCFA)',
-      'Mode Paiement Principal'
+  // =========================================================================
+  // 5. EXPORTATIONS OFFICIELLES DIRECTION GÉNÉRALE (PDF & CSV)
+  // =========================================================================
+
+  // A. Export PDF Officiel Mensuel (Rapport Financier DG)
+  const handleExportMonthlyPdf = () => {
+    try {
+      setIsGeneratingPdf(true);
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
+      const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
+      const margin = 12;
+      const contentWidth = pageWidth - margin * 2; // 186mm
+      const monthName = MONTH_NAMES[selectedMonth];
+
+      const drawHeader = () => {
+        // Fond sombre luxueux
+        doc.setFillColor(28, 25, 23);
+        doc.rect(0, 0, pageWidth, 24, 'F');
+
+        // Filet doré séparateur Hotelia
+        doc.setFillColor(197, 168, 128);
+        doc.rect(0, 24, pageWidth, 1.8, 'F');
+
+        // Textes gauche
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text('HOTELIA RESORT & PALACE ★★★★★', margin, 9);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(197, 168, 128);
+        doc.text('DEKOUASSI HOLDING • DIRECTION GÉNÉRALE • RAPPORT FINANCIER MENSUEL', margin, 14);
+
+        doc.setFontSize(7);
+        doc.setTextColor(215, 215, 215);
+        doc.text(`Période : ${monthName.toUpperCase()} ${selectedYear} • Abidjan, Côte d'Ivoire`, margin, 19);
+
+        // Textes droite
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+        doc.text('DOCUMENT OFFICIEL DG', pageWidth - margin, 9, { align: 'right' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(197, 168, 128);
+        const nowStr = new Date().toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        doc.text(`Émis le : ${nowStr}`, pageWidth - margin, 14, { align: 'right' });
+        doc.setTextColor(215, 215, 215);
+        doc.text(`Destinataire : ${currentUserProfile?.nom || 'Directeur Général'} (DG)`, pageWidth - margin, 19, { align: 'right' });
+      };
+
+      const drawFooter = (pageNumber: number, totalPages: number) => {
+        doc.setDrawColor(215, 215, 215);
+        doc.setLineWidth(0.3);
+        doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(130, 130, 130);
+        doc.text(
+          'HOTELIA • Document strictement confidentiel réservé à la Direction Générale et à la Direction Financière',
+          margin,
+          pageHeight - 7
+        );
+        doc.text(`Page ${pageNumber} sur ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
+      };
+
+      drawHeader();
+      let currentY = 32;
+
+      // Titre principal
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(28, 25, 23);
+      doc.text(`RAPPORT MENSUEL DES REVENUS : ${monthName.toUpperCase()} ${selectedYear}`, margin, currentY);
+
+      currentY += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(90, 90, 90);
+      doc.text(
+        'Consolidation analytique croisée des réservations de chambres (nuitées) et des ventes POS (restaurant, bar, services)',
+        margin,
+        currentY
+      );
+
+      currentY += 6;
+
+      // 3 Cartes KPIs Exécutives
+      const cardWidth = (contentWidth - 6) / 3;
+      const cardHeight = 21;
+
+      // 1. CA Consolidé
+      doc.setFillColor(28, 25, 23);
+      doc.roundedRect(margin, currentY, cardWidth, cardHeight, 1.5, 1.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(197, 168, 128);
+      doc.text("CHIFFRE D'AFFAIRES CONSOLIDÉ", margin + 3.5, currentY + 5);
+      doc.setFontSize(10.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`${kpiSummary.totalConsolidated.toLocaleString('fr-FR')} FCFA`, margin + 3.5, currentY + 11.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(200, 200, 200);
+      doc.text(
+        `Moyenne : ${(averageDailyRevenue || 0).toLocaleString('fr-FR')} FCFA/j • Record : Jour ${peakDay?.dayLabel || '-'}`,
+        margin + 3.5,
+        currentY + 17.5
+      );
+
+      // 2. Hébergement
+      const c2X = margin + cardWidth + 3;
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(c2X, currentY, cardWidth, cardHeight, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(30, 64, 175);
+      doc.text('HÉBERGEMENT & CHAMBRES', c2X + 3.5, currentY + 5);
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${kpiSummary.totalRes.toLocaleString('fr-FR')} FCFA`, c2X + 3.5, currentY + 11.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text(
+        `${kpiSummary.resPct}% du total • ${kpiSummary.countRes} séjours (panier : ${kpiSummary.avgBookingValue.toLocaleString('fr-FR')} F)`,
+        c2X + 3.5,
+        currentY + 17.5
+      );
+
+      // 3. Ventes POS
+      const c3X = margin + (cardWidth + 3) * 2;
+      doc.setFillColor(254, 252, 232);
+      doc.setDrawColor(254, 240, 138);
+      doc.roundedRect(c3X, currentY, cardWidth, cardHeight, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(161, 98, 7);
+      doc.text('VENTES POINT DE VENTE & RESTO', c3X + 3.5, currentY + 5);
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${kpiSummary.totalSales.toLocaleString('fr-FR')} FCFA`, c3X + 3.5, currentY + 11.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(113, 63, 18);
+      doc.text(
+        `${kpiSummary.salesPct}% du total • ${kpiSummary.countSales} tickets (ticket moy : ${kpiSummary.avgTicketValue.toLocaleString('fr-FR')} F)`,
+        c3X + 3.5,
+        currentY + 17.5
+      );
+
+      currentY += cardHeight + 6;
+
+      // Table Header Function
+      const tableColWidths = [20, 18, 28, 14, 28, 14, 32, 32];
+      const tableHeaders = ['Date', 'Jour', 'Chambres (FCFA)', 'Séjours', 'POS/Resto (FCFA)', 'Tickets', 'Total Consolidé', 'Mode Dominant'];
+
+      const drawTableHeader = (y: number) => {
+        doc.setFillColor(38, 35, 32);
+        doc.rect(margin, y, contentWidth, 6.5, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(255, 255, 255);
+
+        let curX = margin;
+        tableHeaders.forEach((th, idx) => {
+          const w = tableColWidths[idx];
+          const alignRight = [2, 3, 4, 5, 6].includes(idx);
+          if (alignRight) {
+            doc.text(th, curX + w - 2, y + 4.5, { align: 'right' });
+          } else {
+            doc.text(th, curX + 2, y + 4.5);
+          }
+          curX += w;
+        });
+        return y + 6.5;
+      };
+
+      currentY = drawTableHeader(currentY);
+
+      // Lignes journalières du mois
+      const rowHeight = 5.2;
+      dailyChartData.forEach((row, index) => {
+        // Pagination check
+        if (currentY + rowHeight > pageHeight - 20) {
+          doc.addPage();
+          drawHeader();
+          currentY = 32;
+          currentY = drawTableHeader(currentY);
+        }
+
+        // Background alterné
+        if (index % 2 === 0) {
+          doc.setFillColor(252, 252, 252);
+        } else {
+          doc.setFillColor(243, 244, 246);
+        }
+        doc.rect(margin, currentY, contentWidth, rowHeight, 'F');
+
+        // Textes
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(30, 30, 30);
+
+        let curX = margin;
+        // 0: Date
+        doc.text(row.date, curX + 2, currentY + 3.8);
+        curX += tableColWidths[0];
+
+        // 1: Jour
+        doc.text(row.dayOfWeek, curX + 2, currentY + 3.8);
+        curX += tableColWidths[1];
+
+        // 2: Chambres
+        doc.text(`${row.reservationRevenue.toLocaleString('fr-FR')} F`, curX + tableColWidths[2] - 2, currentY + 3.8, { align: 'right' });
+        curX += tableColWidths[2];
+
+        // 3: Nb Séjours
+        doc.text(String(row.reservationCount), curX + tableColWidths[3] - 2, currentY + 3.8, { align: 'right' });
+        curX += tableColWidths[3];
+
+        // 4: POS
+        doc.text(`${row.salesRevenue.toLocaleString('fr-FR')} F`, curX + tableColWidths[4] - 2, currentY + 3.8, { align: 'right' });
+        curX += tableColWidths[4];
+
+        // 5: Nb Tickets
+        doc.text(String(row.salesCount), curX + tableColWidths[5] - 2, currentY + 3.8, { align: 'right' });
+        curX += tableColWidths[5];
+
+        // 6: Total Consolidé (Bold)
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${row.totalRevenue.toLocaleString('fr-FR')} F`, curX + tableColWidths[6] - 2, currentY + 3.8, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        curX += tableColWidths[6];
+
+        // 7: Mode Dominant
+        doc.text(row.dominantPaymentMethod, curX + 2, currentY + 3.8);
+
+        currentY += rowHeight;
+      });
+
+      // Ligne de Totalisation Mensuelle
+      if (currentY + 18 > pageHeight - 20) {
+        doc.addPage();
+        drawHeader();
+        currentY = 32;
+      }
+
+      doc.setFillColor(197, 168, 128); // Or
+      doc.rect(margin, currentY, contentWidth, 6.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(20, 20, 20);
+
+      let curTotX = margin;
+      doc.text(`TOTAL MENSUEL (${dailyChartData.length} jrs)`, curTotX + 2, currentY + 4.5);
+      curTotX += tableColWidths[0] + tableColWidths[1];
+
+      doc.text(`${kpiSummary.totalRes.toLocaleString('fr-FR')} F`, curTotX + tableColWidths[2] - 2, currentY + 4.5, { align: 'right' });
+      curTotX += tableColWidths[2];
+
+      doc.text(String(kpiSummary.countRes), curTotX + tableColWidths[3] - 2, currentY + 4.5, { align: 'right' });
+      curTotX += tableColWidths[3];
+
+      doc.text(`${kpiSummary.totalSales.toLocaleString('fr-FR')} F`, curTotX + tableColWidths[4] - 2, currentY + 4.5, { align: 'right' });
+      curTotX += tableColWidths[4];
+
+      doc.text(String(kpiSummary.countSales), curTotX + tableColWidths[5] - 2, currentY + 4.5, { align: 'right' });
+      curTotX += tableColWidths[5];
+
+      doc.text(`${kpiSummary.totalConsolidated.toLocaleString('fr-FR')} F`, curTotX + tableColWidths[6] - 2, currentY + 4.5, { align: 'right' });
+      curTotX += tableColWidths[6];
+
+      doc.text('Consolidé 100%', curTotX + 2, currentY + 4.5);
+
+      currentY += 10;
+
+      // Bloc Visa & Signatures
+      if (currentY + 28 > pageHeight - 20) {
+        doc.addPage();
+        drawHeader();
+        currentY = 32;
+      }
+
+      const signBoxWidth = (contentWidth - 8) / 2;
+      const signBoxHeight = 22;
+
+      // Visa Contrôle de Gestion
+      doc.setDrawColor(200, 200, 200);
+      doc.setFillColor(253, 253, 253);
+      doc.roundedRect(margin, currentY, signBoxWidth, signBoxHeight, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(60, 60, 60);
+      doc.text('CONTRÔLE DE GESTION & COMPTABILITÉ', margin + 3, currentY + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(110, 110, 110);
+      doc.text('Certifié conforme aux écritures de caisses et réservations PMS', margin + 3, currentY + 10);
+      doc.text('Visa & Enregistrement : _______________________', margin + 3, currentY + 18);
+
+      // Visa DG
+      const sign2X = margin + signBoxWidth + 8;
+      doc.setFillColor(253, 253, 253);
+      doc.roundedRect(sign2X, currentY, signBoxWidth, signBoxHeight, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(28, 25, 23);
+      doc.text('DIRECTION GÉNÉRALE - APPROBATION & CLÔTURE', sign2X + 3, currentY + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(110, 110, 110);
+      doc.text(`Rapport validé par : ${currentUserProfile?.nom || 'Le Directeur Général'}`, sign2X + 3, currentY + 10);
+      doc.text('Signature & Cachet DG : _______________________', sign2X + 3, currentY + 18);
+
+      // Pieds de page sur toutes les pages
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        drawFooter(i, totalPages);
+      }
+
+      doc.save(`Hotelia_Rapport_Financier_DG_${monthName}_${selectedYear}.pdf`);
+      showToast(`Rapport Financier PDF (${monthName} ${selectedYear}) téléchargé avec succès pour le DG !`, 'pdf');
+      setIsExportModalOpen(false);
+    } catch (err) {
+      console.error('Erreur génération PDF:', err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  // B. Export CSV Mensuel DG (avec métadonnées exécutives et totaux)
+  const handleExportMonthlyCsv = () => {
+    const monthName = MONTH_NAMES[selectedMonth];
+    const nowStr = new Date().toLocaleString('fr-FR');
+
+    const lines = [
+      `# =========================================================================`,
+      `# HOTELIA RESORT & PALACE - RAPPORT FINANCIER MENSUEL DIRECTION GENERALE`,
+      `# Periode : ${monthName.toUpperCase()} ${selectedYear}`,
+      `# Date d extraction : ${nowStr}`,
+      `# Editeur : ${currentUserProfile?.nom || 'Directeur Général'} (${currentUserProfile?.role || 'DG'})`,
+      `# Etablissement : Hotelia Resort & Palace (Dekouassi Holding, Abidjan)`,
+      `# -------------------------------------------------------------------------`,
+      `# CHIFFRE D AFFAIRES CONSOLIDE TOTAL : ${kpiSummary.totalConsolidated} FCFA`,
+      `# - Part Hebergement & Nuitées       : ${kpiSummary.totalRes} FCFA (${kpiSummary.resPct}%) [${kpiSummary.countRes} séjours - Panier moy : ${kpiSummary.avgBookingValue} FCFA]`,
+      `# - Part Ventes POS & Restauration  : ${kpiSummary.totalSales} FCFA (${kpiSummary.salesPct}%) [${kpiSummary.countSales} tickets - Ticket moy : ${kpiSummary.avgTicketValue} FCFA]`,
+      `# - Revenu Quotidien Moyen          : ${averageDailyRevenue} FCFA/jour`,
+      `# - Jour Record de la Periode       : Jour ${peakDay?.dayLabel || '-'} (${peakDay?.totalRevenue || 0} FCFA)`,
+      `# =========================================================================`,
+      ``,
+      [
+        'Date',
+        'Jour de la semaine',
+        'Revenus Chambres Hebergement (FCFA)',
+        'Nombre Sejours Reservations',
+        'Revenus Ventes POS Restaurant (FCFA)',
+        'Nombre Ventes POS Tickets',
+        'Total Journalier Consolide (FCFA)',
+        'Part Hebergement (%)',
+        'Part Ventes POS (%)',
+        'Mode de Paiement Principal'
+      ].join(';')
     ];
 
-    const csvRows = [headers.join(';')];
-
     dailyChartData.forEach((row) => {
-      csvRows.push([
+      const dayTotal = row.totalRevenue;
+      const resShare = dayTotal > 0 ? Math.round((row.reservationRevenue / dayTotal) * 100) : 0;
+      const salesShare = dayTotal > 0 ? 100 - resShare : 0;
+
+      lines.push([
         row.date,
-        `"${row.fullFormattedDate}"`,
+        `"${row.dayOfWeek}"`,
         row.reservationRevenue,
         row.reservationCount,
         row.salesRevenue,
         row.salesCount,
         row.totalRevenue,
+        `${resShare}%`,
+        `${salesShare}%`,
         `"${row.dominantPaymentMethod}"`
       ].join(';'));
     });
 
-    const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    // Ligne Totaux
+    lines.push([
+      'TOTAL MENSUEL',
+      `"${dailyChartData.length} jours"`,
+      kpiSummary.totalRes,
+      kpiSummary.countRes,
+      kpiSummary.totalSales,
+      kpiSummary.countSales,
+      kpiSummary.totalConsolidated,
+      `${kpiSummary.resPct}%`,
+      `${kpiSummary.salesPct}%`,
+      `"Tous modes"`
+    ].join(';'));
+
+    // Tableau Annuel Récapitulatif en fin de fichier CSV
+    lines.push('');
+    lines.push('# -------------------------------------------------------------------------');
+    lines.push(`# HISTORIQUE MENSUEL CONSOLIDE ${selectedYear} (12 MOIS)`);
+    lines.push('# -------------------------------------------------------------------------');
+    lines.push(['Mois', 'Chambres (FCFA)', 'POS & Resto (FCFA)', 'Total Mensuel (FCFA)', 'Evolution vs M-1'].join(';'));
+
+    monthlyChartData.forEach((m) => {
+      lines.push([
+        m.monthName,
+        m.reservationRevenue,
+        m.salesRevenue,
+        m.totalRevenue,
+        m.growthRatePct !== null ? `${m.growthRatePct > 0 ? '+' : ''}${m.growthRatePct}%` : 'N/A'
+      ].join(';'));
+    });
+
+    lines.push([
+      'TOTAL CUMUL ANNUEL',
+      kpiSummary.annualRes,
+      kpiSummary.annualSales,
+      kpiSummary.annualConsolidated,
+      '-'
+    ].join(';'));
+
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Hotelia_Revenus_${MONTH_NAMES[selectedMonth]}_${selectedYear}.csv`);
+    link.setAttribute('download', `Hotelia_Rapport_Financier_DG_${monthName}_${selectedYear}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    showToast(`Rapport Financier CSV (${monthName} ${selectedYear}) exporté avec succès pour le DG !`, 'csv');
+    setIsExportModalOpen(false);
+  };
+
+  // C. Export Bilan Annuel Consolidé 12 Mois en PDF
+  const handleExportAnnualPdf = () => {
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 12;
+      const contentWidth = pageWidth - margin * 2;
+
+      // Header
+      doc.setFillColor(28, 25, 23);
+      doc.rect(0, 0, pageWidth, 24, 'F');
+      doc.setFillColor(197, 168, 128);
+      doc.rect(0, 24, pageWidth, 1.8, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text('HOTELIA RESORT & PALACE ★★★★★', margin, 9);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(197, 168, 128);
+      doc.text(`BILAN FINANCIER ANNUEL CONSOLIDÉ ${selectedYear} • DIRECTION GÉNÉRALE`, margin, 14);
+
+      doc.setFontSize(7);
+      doc.setTextColor(215, 215, 215);
+      doc.text(`Exercice fiscal : ${selectedYear} • Édité par : ${currentUserProfile?.nom || 'Directeur Général'}`, margin, 19);
+
+      let currentY = 32;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(28, 25, 23);
+      doc.text(`SYNTHÈSE ANNUELLE CONSOLIDÉE : EXERCICE ${selectedYear}`, margin, currentY);
+
+      currentY += 6;
+
+      const cardWidth = (contentWidth - 6) / 3;
+      const cardHeight = 22;
+
+      // 1. CA Annuel
+      doc.setFillColor(28, 25, 23);
+      doc.roundedRect(margin, currentY, cardWidth, cardHeight, 1.5, 1.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(197, 168, 128);
+      doc.text('TOTAL CUMUL ANNUEL', margin + 3.5, currentY + 5);
+      doc.setFontSize(10.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text(`${kpiSummary.annualConsolidated.toLocaleString('fr-FR')} FCFA`, margin + 3.5, currentY + 12);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(200, 200, 200);
+      doc.text(`Meilleur mois : ${kpiSummary.bestMonth?.monthName || '-'}`, margin + 3.5, currentY + 18);
+
+      // 2. Chambres
+      const c2X = margin + cardWidth + 3;
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(c2X, currentY, cardWidth, cardHeight, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(30, 64, 175);
+      doc.text('TOTAL HÉBERGEMENT ANNUEL', c2X + 3.5, currentY + 5);
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${kpiSummary.annualRes.toLocaleString('fr-FR')} FCFA`, c2X + 3.5, currentY + 12);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(71, 85, 105);
+      const annResPct = kpiSummary.annualConsolidated > 0 ? Math.round((kpiSummary.annualRes / kpiSummary.annualConsolidated) * 100) : 0;
+      doc.text(`${annResPct}% du chiffre d'affaires global`, c2X + 3.5, currentY + 18);
+
+      // 3. POS
+      const c3X = margin + (cardWidth + 3) * 2;
+      doc.setFillColor(254, 252, 232);
+      doc.setDrawColor(254, 240, 138);
+      doc.roundedRect(c3X, currentY, cardWidth, cardHeight, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(161, 98, 7);
+      doc.text('TOTAL RESTAURATION & POS', c3X + 3.5, currentY + 5);
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${kpiSummary.annualSales.toLocaleString('fr-FR')} FCFA`, c3X + 3.5, currentY + 12);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(113, 63, 18);
+      const annSalesPct = 100 - annResPct;
+      doc.text(`${annSalesPct}% du chiffre d'affaires global`, c3X + 3.5, currentY + 18);
+
+      currentY += cardHeight + 8;
+
+      // Table 12 mois
+      doc.setFillColor(38, 35, 32);
+      doc.rect(margin, currentY, contentWidth, 7, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(255, 255, 255);
+
+      const annualCols = [30, 36, 36, 42, 42];
+      doc.text('Mois', margin + 3, currentY + 5);
+      doc.text('Hébergement (FCFA)', margin + annualCols[0] + annualCols[1] - 3, currentY + 5, { align: 'right' });
+      doc.text('Ventes POS (FCFA)', margin + annualCols[0] + annualCols[1] + annualCols[2] - 3, currentY + 5, { align: 'right' });
+      doc.text('Total Mensuel (FCFA)', margin + annualCols[0] + annualCols[1] + annualCols[2] + annualCols[3] - 3, currentY + 5, { align: 'right' });
+      doc.text('Évolution M/M-1', margin + contentWidth - 3, currentY + 5, { align: 'right' });
+
+      currentY += 7;
+
+      monthlyChartData.forEach((m, idx) => {
+        const isCurrent = m.monthIndex === selectedMonth;
+        if (isCurrent) {
+          doc.setFillColor(254, 249, 195);
+        } else if (idx % 2 === 0) {
+          doc.setFillColor(250, 250, 250);
+        } else {
+          doc.setFillColor(243, 244, 246);
+        }
+        doc.rect(margin, currentY, contentWidth, 6, 'F');
+
+        doc.setFont('helvetica', isCurrent ? 'bold' : 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(isCurrent ? 120 : 30, isCurrent ? 53 : 30, isCurrent ? 15 : 30);
+
+        doc.text(isCurrent ? `★ ${m.monthName} (Sélectionné)` : m.monthName, margin + 3, currentY + 4.2);
+        doc.text(`${m.reservationRevenue.toLocaleString('fr-FR')} F`, margin + annualCols[0] + annualCols[1] - 3, currentY + 4.2, { align: 'right' });
+        doc.text(`${m.salesRevenue.toLocaleString('fr-FR')} F`, margin + annualCols[0] + annualCols[1] + annualCols[2] - 3, currentY + 4.2, { align: 'right' });
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${m.totalRevenue.toLocaleString('fr-FR')} F`, margin + annualCols[0] + annualCols[1] + annualCols[2] + annualCols[3] - 3, currentY + 4.2, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+
+        const evoText = m.growthRatePct !== null ? `${m.growthRatePct > 0 ? '+' : ''}${m.growthRatePct}%` : '-';
+        doc.text(evoText, margin + contentWidth - 3, currentY + 4.2, { align: 'right' });
+
+        currentY += 6;
+      });
+
+      // Total row
+      doc.setFillColor(197, 168, 128);
+      doc.rect(margin, currentY, contentWidth, 7, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(20, 20, 20);
+      doc.text('TOTAL ANNUEL', margin + 3, currentY + 5);
+      doc.text(`${kpiSummary.annualRes.toLocaleString('fr-FR')} F`, margin + annualCols[0] + annualCols[1] - 3, currentY + 5, { align: 'right' });
+      doc.text(`${kpiSummary.annualSales.toLocaleString('fr-FR')} F`, margin + annualCols[0] + annualCols[1] + annualCols[2] - 3, currentY + 5, { align: 'right' });
+      doc.text(`${kpiSummary.annualConsolidated.toLocaleString('fr-FR')} F`, margin + annualCols[0] + annualCols[1] + annualCols[2] + annualCols[3] - 3, currentY + 5, { align: 'right' });
+      doc.text('100%', margin + contentWidth - 3, currentY + 5, { align: 'right' });
+
+      currentY += 15;
+
+      // Visa
+      const signBoxWidth = (contentWidth - 8) / 2;
+      const signBoxHeight = 22;
+      doc.setDrawColor(200, 200, 200);
+      doc.setFillColor(253, 253, 253);
+      doc.roundedRect(margin, currentY, signBoxWidth, signBoxHeight, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(60, 60, 60);
+      doc.text('DIRECTION FINANCIÈRE & COMPTABILITÉ', margin + 3, currentY + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(110, 110, 110);
+      doc.text('Bilan annuel certifié sincère et régulier', margin + 3, currentY + 10);
+      doc.text('Visa : _______________________', margin + 3, currentY + 18);
+
+      const sign2X = margin + signBoxWidth + 8;
+      doc.setFillColor(253, 253, 253);
+      doc.roundedRect(sign2X, currentY, signBoxWidth, signBoxHeight, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(28, 25, 23);
+      doc.text('DIRECTION GÉNÉRALE - APPROBATION ANNUELLE', sign2X + 3, currentY + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(110, 110, 110);
+      doc.text(`Approuvé par : ${currentUserProfile?.nom || 'Le Directeur Général'}`, sign2X + 3, currentY + 10);
+      doc.text('Signature & Cachet : _______________________', sign2X + 3, currentY + 18);
+
+      // Footer
+      doc.setDrawColor(215, 215, 215);
+      doc.setLineWidth(0.3);
+      doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(130, 130, 130);
+      doc.text('HOTELIA • Bilan Financier Annuel Consolidé - Usage exclusif Direction Générale', margin, pageHeight - 7);
+      doc.text('Page 1 sur 1', pageWidth - margin, pageHeight - 7, { align: 'right' });
+
+      doc.save(`Hotelia_Bilan_Annuel_DG_${selectedYear}.pdf`);
+      showToast(`Bilan Annuel PDF (${selectedYear}) téléchargé avec succès pour le DG !`, 'pdf');
+      setIsExportModalOpen(false);
+    } catch (err) {
+      console.error('Erreur génération PDF Annuel:', err);
+    }
+  };
+
+  // D. Export Bilan Annuel Consolidé en CSV
+  const handleExportAnnualCsv = () => {
+    const lines = [
+      `# =========================================================================`,
+      `# HOTELIA RESORT & PALACE - BILAN FINANCIER ANNUEL DIRECTION GENERALE`,
+      `# Exercice : ${selectedYear} (12 Mois)`,
+      `# Editeur : ${currentUserProfile?.nom || 'Directeur Général'} (DG)`,
+      `# Total Chiffre d Affaires Annuel : ${kpiSummary.annualConsolidated} FCFA`,
+      `# - Total Hébergement            : ${kpiSummary.annualRes} FCFA`,
+      `# - Total Restauration & POS     : ${kpiSummary.annualSales} FCFA`,
+      `# =========================================================================`,
+      ``,
+      ['Mois', 'Chambres Hebergement (FCFA)', 'Ventes POS Resto (FCFA)', 'Total Mensuel Consolide (FCFA)', 'Part Hebergement (%)', 'Evolution vs M-1'].join(';')
+    ];
+
+    monthlyChartData.forEach((m) => {
+      const tot = m.totalRevenue;
+      const resPct = tot > 0 ? Math.round((m.reservationRevenue / tot) * 100) : 0;
+      lines.push([
+        `"${m.monthName}"`,
+        m.reservationRevenue,
+        m.salesRevenue,
+        m.totalRevenue,
+        `${resPct}%`,
+        m.growthRatePct !== null ? `${m.growthRatePct > 0 ? '+' : ''}${m.growthRatePct}%` : 'N/A'
+      ].join(';'));
+    });
+
+    lines.push([
+      'TOTAL ANNUEL',
+      kpiSummary.annualRes,
+      kpiSummary.annualSales,
+      kpiSummary.annualConsolidated,
+      '100%',
+      '-'
+    ].join(';'));
+
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Hotelia_Bilan_Annuel_DG_${selectedYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Bilan Annuel CSV (${selectedYear}) exporté avec succès pour le DG !`, 'csv');
+    setIsExportModalOpen(false);
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6 font-sans relative">
+      {/* Toast de Notification Export */}
+      {exportToast && (
+        <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-stone-900 text-white border border-[#C5A880]/60 shadow-2xl backdrop-blur-md">
+            <div className="w-8 h-8 rounded-xl bg-[#C5A880]/20 text-[#C5A880] flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">{exportToast.message}</p>
+              <p className="text-[10px] text-stone-400">Document généré et téléchargé sur votre appareil pour la Direction Générale.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExportToast(null)}
+              className="ml-2 p-1 text-stone-400 hover:text-white rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Centre d'Exportation DG */}
+      {isExportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-2xl w-full overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-[#1C1B18] text-white p-6 relative overflow-hidden border-b border-stone-800">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#C5A880]/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-start justify-between relative z-10">
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2 text-xs font-mono text-[#C5A880] uppercase tracking-wider">
+                    <ShieldCheck className="w-4 h-4 text-[#C5A880]" />
+                    <span>ESPACE DIRECTION GÉNÉRALE • EXPORTATIONS FINANCIÈRES</span>
+                  </div>
+                  <h3 className="font-serif font-bold text-xl text-white">
+                    Téléchargement des Rapports Financiers ({MONTH_NAMES[selectedMonth]} {selectedYear})
+                  </h3>
+                  <p className="text-xs text-stone-300 max-w-lg">
+                    Téléchargez les états financiers consolidés au format <strong>PDF officiel</strong> (prêt pour signature &amp; archivage) ou <strong>CSV compatible Excel</strong> (pour analyse et intégration comptable).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsExportModalOpen(false)}
+                  className="p-2 text-stone-400 hover:text-white rounded-xl hover:bg-stone-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Carte 1 : Rapport Mensuel PDF (Recommandé DG) */}
+              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 hover:border-[#C5A880] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start space-x-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-[#C5A880] text-slate-950 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-sm text-stone-900">Rapport Financier Mensuel Complet (PDF)</h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C5A880]/20 text-[#8a6e45] uppercase tracking-wider">
+                        Recommandé DG
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                      Mise en page officielle A4, synthèse exécutive, KPIs (CA {kpiSummary.totalConsolidated.toLocaleString('fr-FR')} FCFA), tableau détaillé de tous les jours du mois, ventilations Hébergement/POS et bloc de visa DG.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportMonthlyPdf}
+                  disabled={isGeneratingPdf}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C5A880] to-[#b59870] hover:brightness-105 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-sm transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isGeneratingPdf ? 'Génération...' : 'Télécharger PDF'}</span>
+                </button>
+              </div>
+
+              {/* Carte 2 : Données Mensuelles CSV (Excel) */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 hover:border-stone-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start space-x-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                    <FileSpreadsheet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-stone-900">Données Mensuelles Détaillées (CSV Excel)</h4>
+                    <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                      Fichier tabulaire UTF-8 avec métadonnées DG, ligne par ligne pour chaque date du mois, montants exacts en FCFA, volumes de séjours/tickets et récapitulatif annuel 12 mois.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportMonthlyCsv}
+                  className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-bold text-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-sm transition-all"
+                >
+                  <Download className="w-4 h-4 text-[#C5A880]" />
+                  <span>Télécharger CSV</span>
+                </button>
+              </div>
+
+              {/* Carte 3 : Bilan Annuel Consolidé 12 Mois (PDF) */}
+              <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-200/80 hover:border-blue-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start space-x-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-stone-900">Bilan Annuel Consolidé {selectedYear} (PDF)</h4>
+                    <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                      Synthèse sur les 12 mois de l'année ({kpiSummary.annualConsolidated.toLocaleString('fr-FR')} FCFA), comparatif mois par mois, taux de croissance et répartition Hébergement vs POS.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportAnnualPdf}
+                  className="px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-sm transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Télécharger PDF Annuel</span>
+                </button>
+              </div>
+
+              {/* Carte 4 : Bilan Annuel CSV */}
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 hover:border-stone-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start space-x-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-stone-700 text-stone-200 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                    <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-stone-900">Bilan Annuel 12 Mois (CSV Excel)</h4>
+                    <p className="text-xs text-stone-600 mt-0.5 leading-relaxed">
+                      Export tabulaire des 12 mois de l'exercice fiscal {selectedYear} avec ratios et évolutions mensuelles.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportAnnualCsv}
+                  className="px-4 py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-xs flex items-center justify-center gap-2 shrink-0 cursor-pointer shadow-sm transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Télécharger CSV Annuel</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between">
+              <span className="text-xs text-stone-500 flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-emerald-600" />
+                Format haute précision certifié pour le Directeur Général
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. Header du Tableau de Bord */}
       <div className="bg-[#1C1B18] text-white rounded-3xl border border-stone-800 p-6 shadow-xl relative overflow-hidden">
         {/* Éléments de texture & halo d'ambiance */}
@@ -505,26 +1362,51 @@ export const RevenueDashboardTab: React.FC = () => {
             </p>
           </div>
 
-          {/* Actions & Export */}
+          {/* Actions & Exportations DG (PDF & CSV) */}
           <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            {/* Bouton Export PDF DG Officiel */}
             <button
               type="button"
-              onClick={handleExportCsv}
-              className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white border border-stone-700 text-xs font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-all"
-              title="Télécharger l'état des revenus au format CSV"
+              onClick={handleExportMonthlyPdf}
+              disabled={isGeneratingPdf}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#C5A880] to-[#b59870] hover:brightness-105 text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md transition-all"
+              title="Télécharger le rapport financier mensuel officiel en PDF pour le DG"
             >
-              <Download className="w-4 h-4 text-[#C5A880]" />
-              <span>Exporter CSV</span>
+              <FileText className="w-4 h-4 text-slate-950" />
+              <span>{isGeneratingPdf ? 'Génération...' : 'Exporter PDF (DG)'}</span>
             </button>
 
+            {/* Bouton Export CSV DG */}
+            <button
+              type="button"
+              onClick={handleExportMonthlyCsv}
+              className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white border border-stone-700 text-xs font-semibold flex items-center gap-2 cursor-pointer shadow-sm transition-all"
+              title="Télécharger les données financières mensuelles au format CSV (Excel)"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-[#C5A880]" />
+              <span>Exporter CSV (DG)</span>
+            </button>
+
+            {/* Bouton Centre d'Exportation DG */}
+            <button
+              type="button"
+              onClick={() => setIsExportModalOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-stone-900/90 hover:bg-stone-800 text-stone-300 hover:text-white border border-stone-700/80 text-xs font-medium flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+              title="Options avancées d'exportation pour le Directeur Général (Mensuel & Annuel)"
+            >
+              <Download className="w-3.5 h-3.5 text-[#C5A880]" />
+              <span>Options DG</span>
+            </button>
+
+            {/* Impression Bilan */}
             <button
               type="button"
               onClick={() => window.print()}
-              className="px-4 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md transition-all"
-              title="Imprimer le tableau de bord ou enregistrer en PDF"
+              className="px-3 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-white border border-stone-800 text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-all"
+              title="Imprimer directement le tableau de bord"
             >
-              <Printer className="w-4 h-4" />
-              <span>Imprimer Bilan</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Imprimer</span>
             </button>
           </div>
         </div>
@@ -1279,15 +2161,36 @@ export const RevenueDashboardTab: React.FC = () => {
             </p>
           </div>
 
-          {/* Recherche dans le tableau */}
-          <div className="flex items-center gap-2">
+          {/* Actions & Recherche dans le tableau */}
+          <div className="flex items-center gap-2.5 flex-wrap">
             <input
               type="text"
               value={searchTableQuery}
               onChange={(e) => setSearchTableQuery(e.target.value)}
               placeholder="Filtrer par date ou paiement..."
-              className="text-xs px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 focus:outline-none focus:border-[#C5A880] w-56"
+              className="text-xs px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 focus:outline-none focus:border-[#C5A880] w-48 sm:w-56"
             />
+
+            <button
+              type="button"
+              onClick={handleExportMonthlyPdf}
+              disabled={isGeneratingPdf}
+              className="px-3 py-2 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+              title="Exporter le rapport mensuel PDF pour le DG"
+            >
+              <FileText className="w-3.5 h-3.5 text-slate-950" />
+              <span>PDF DG</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportMonthlyCsv}
+              className="px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+              title="Exporter le tableau en CSV Excel"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-[#C5A880]" />
+              <span>CSV DG</span>
+            </button>
           </div>
         </div>
 
