@@ -20,7 +20,11 @@ import {
 
 export type ReportPeriod = 'jour' | 'semaine' | 'annee' | 'personnalise';
 
-export const FinancialReportTab: React.FC = () => {
+interface FinancialReportTabProps {
+  onGoToRevenueDashboard?: () => void;
+}
+
+export const FinancialReportTab: React.FC<FinancialReportTabProps> = ({ onGoToRevenueDashboard }) => {
   const { revenues, expenses } = useHotelData();
   const { formatPrice } = useHotelSettings();
 
@@ -151,6 +155,33 @@ export const FinancialReportTab: React.FC = () => {
 
   return (
     <div className="space-y-6 font-sans">
+      {/* Bannière d'accès direct au Tableau de Bord des Revenus */}
+      {onGoToRevenueDashboard && (
+        <div className="bg-gradient-to-r from-emerald-950 via-stone-900 to-emerald-950 text-white p-4 rounded-2xl border border-emerald-700/60 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <BarChart3 className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 font-bold block">
+                NOUVEAU MODULE DÉCISIONNEL
+              </span>
+              <p className="text-xs text-stone-200">
+                Visualisez les <strong>revenus quotidiens et mensuels</strong> via les nouveaux <strong>graphiques en barres</strong> consolidant les ventes et les réservations.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onGoToRevenueDashboard}
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
+          >
+            <span>Ouvrir Dashboard Revenus</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* En-tête */}
       <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

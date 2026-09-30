@@ -20,10 +20,12 @@ import { LoyaltyAndMarketingTab } from './LoyaltyAndMarketingTab.tsx';
 import { RestaurantStockAlertBanner } from './RestaurantStockAlertBanner.tsx';
 import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 import { DevToolsModal } from './DevToolsModal.tsx';
+import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
   LayoutDashboard,
+  BarChart3,
   Calendar,
   Bed,
   ShieldCheck,
@@ -71,6 +73,7 @@ import {
 } from 'lucide-react';
 
 export type BackOfficeTab =
+  | 'dashboard'
   | 'gantt'
   | 'reservations'
   | 'restaurant'
@@ -134,7 +137,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     if (currentUserProfile.role === 'Caisse') {
       return 'reservations';
     }
-    return 'gantt';
+    return 'dashboard';
   });
   const [reservationSubTab, setReservationSubTab] = useState<ReservationSubTab>('toutes');
   const [restaurantSubTab, setRestaurantSubTab] = useState<'pos' | 'tables' | 'commandes' | 'reservations' | 'menu' | 'caisse'>(
@@ -179,6 +182,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   // Libellé et métadonnées de la vue courante
   const currentViewInfo = useMemo(() => {
     switch (activeTab) {
+      case 'dashboard':
+        return { pole: 'Administration', title: 'Tableau de Bord des Revenus & Ventes', icon: <BarChart3 className="w-4 h-4 text-emerald-400" /> };
       case 'gantt':
         return { pole: 'Hébergement', title: 'Tableau de Bord & Gantt', icon: <Calendar className="w-4 h-4 text-blue-400" /> };
       case 'reservations':
@@ -281,9 +286,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     );
 
   // Guard de routage : Si un utilisateur restreint tente d'accéder à un onglet interdit,
-  // Facture Globale, Journal d'Audit, Alertes Stocks et Profil restent 100% ACCESSIBLES ET GARANTIS POUR TOUS LES RÔLES.
+  // Dashboard Revenus, Facture Globale, Journal d'Audit, Alertes Stocks et Profil restent 100% ACCESSIBLES ET GARANTIS POUR TOUS LES RÔLES.
   useEffect(() => {
-    if (activeTab === 'facture_globale' || activeTab === 'profile' || activeTab === 'audit' || activeTab === 'stock_alerts') {
+    if (activeTab === 'dashboard' || activeTab === 'facture_globale' || activeTab === 'profile' || activeTab === 'audit' || activeTab === 'stock_alerts') {
       return;
     }
     if (isCaisseRestaurant && activeTab !== 'restaurant' && activeTab !== 'cuisine' && activeTab !== 'pos') {
@@ -303,8 +308,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   }, [isCaisseRestaurant, isDirecteurRestaurant, isCaisse, activeTab]);
 
   const handleTabClick = (tab: BackOfficeTab) => {
-    // 1. Facture Globale & FNE, Journal d'Audit, Alertes Stocks et Profil sont TOUJOURS ACCESSIBLES À 100% SANS RESTRICTION
-    if (tab === 'facture_globale' || tab === 'profile' || tab === 'audit' || tab === 'stock_alerts') {
+    // 1. Dashboard Revenus, Facture Globale & FNE, Journal d'Audit, Alertes Stocks et Profil sont TOUJOURS ACCESSIBLES À 100% SANS RESTRICTION
+    if (tab === 'dashboard' || tab === 'facture_globale' || tab === 'profile' || tab === 'audit' || tab === 'stock_alerts') {
       setActiveTab(tab);
       return;
     }
@@ -628,7 +633,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               type="button"
               onClick={() => setIsAdministrationModalOpen(true)}
               className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                currentPole === 'administration'
+                currentPole === 'administration' && activeTab !== 'dashboard'
                   ? 'bg-[#92400E] text-amber-100 border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/30'
                   : 'bg-[#92400E]/60 text-amber-200 border border-amber-900/80 hover:bg-[#92400E] hover:text-white'
               }`}
@@ -639,6 +644,24 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 Direction &amp; FNE
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-amber-300 opacity-80" />
+            </button>
+
+            {/* Onglet Direct : Tableau de Bord des Revenus & Ventes (Quotidien & Mensuel) */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('dashboard')}
+              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                activeTab === 'dashboard'
+                  ? 'bg-emerald-700 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
+                  : 'bg-emerald-950/40 text-emerald-200 border border-emerald-800/80 hover:bg-emerald-900/60 hover:text-white'
+              }`}
+              title="Tableau de bord visuel des revenus quotidiens et mensuels (Ventes & Réservations)"
+            >
+              <BarChart3 className="w-4 h-4 text-emerald-400" />
+              <span>Dashboard Revenus</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                Graphiques Barres
+              </span>
             </button>
 
             {/* Séparateur discret */}
@@ -840,6 +863,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </div>
         )}
 
+        {/* Tab 0 : Tableau de Bord des Revenus & Ventes (Quotidien & Mensuel) */}
+        {activeTab === 'dashboard' && <RevenueDashboardTab />}
+
         {/* Tab 1 : Planning Gantt */}
         {activeTab === 'gantt' && !isCaisse && !isCaisseRestaurant && <AdminGanttDashboard />}
 
@@ -905,7 +931,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {activeTab === 'chambres' && !isCaisse && <RoomManagementTab />}
 
         {/* Tab 3 : Rapports Financiers */}
-        {activeTab === 'finance' && isDG && <FinancialReportTab />}
+        {activeTab === 'finance' && isDG && (
+          <FinancialReportTab onGoToRevenueDashboard={() => handleTabClick('dashboard')} />
+        )}
 
         {/* Tab 4 : Module Dépenses */}
         {activeTab === 'expenses' && isDG && <ExpensesTab />}
@@ -1551,6 +1579,40 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
             {/* Grille des modules du Pôle Administration */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[75vh] overflow-y-auto">
+              {/* Module 0 : Tableau de Bord des Revenus (Quotidien & Mensuel) */}
+              <div
+                onClick={() => {
+                  handleTabClick('dashboard');
+                  setIsAdministrationModalOpen(false);
+                }}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between md:col-span-2 ${
+                  activeTab === 'dashboard'
+                    ? 'bg-emerald-950/40 border-emerald-400 shadow-md ring-2 ring-emerald-500/30'
+                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                      <BarChart3 className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      Graphiques Barres Quotidien &amp; Mensuel
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white mb-1">
+                    Tableau de Bord des Revenus &amp; Ventes
+                  </h4>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Pilotage visuel du chiffre d'affaires consolidé : graphiques en barres des revenus journaliers et mensuels, ventilation réservations d'hébergement vs ventes POS / restaurant.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                  <span>Ouvrir le tableau de bord des revenus</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+
               {/* Module 1 : Facture Globale Consolidée & FNE DGI */}
               <div
                 onClick={() => {

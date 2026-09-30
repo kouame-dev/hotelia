@@ -415,171 +415,79 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
 
 // 6. Entrées Financières réparties par modes de paiement (MTN, Orange, MOOV, Caisse)
 export const INITIAL_REVENUES: RevenueItem[] = [
-  // Aujourd'hui (2026-09-12)
-  {
-    id: 'rev-1',
-    date: '2026-09-12',
-    clientNom: 'Marc-Antoine Giraud',
-    chambreNumero: '101',
-    typeReservation: 'heure',
-    modePaiement: 'Orange Money',
-    montant: 7500,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-2',
-    date: '2026-09-12',
-    clientNom: 'Dr. Fatou Bamba',
-    chambreNumero: '201',
-    typeReservation: 'nuit',
-    modePaiement: 'MTN Money',
-    montant: 40000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-3',
-    date: '2026-09-12',
-    clientNom: 'Christian Kouassi',
-    chambreNumero: '102',
-    typeReservation: 'heure',
-    modePaiement: 'MOOV Money',
-    montant: 5000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-4',
-    date: '2026-09-12',
-    clientNom: 'Elena Rostova (VIP)',
-    chambreNumero: '201',
-    typeReservation: 'nuit',
-    modePaiement: 'MTN Money',
-    montant: 20000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-5',
-    date: '2026-09-12',
-    clientNom: 'Studio Photo Vogue',
-    chambreNumero: '301',
-    typeReservation: 'heure',
-    modePaiement: 'Orange Money',
-    montant: 7500,
-    statut: 'paye'
-  },
+  // --- SEPTEMBRE 2026 : REVENUS QUOTIDIENS DÉTAILLÉS (Du 01 au 30 Septembre) ---
+  { id: 'rev-sep-01', date: '2026-09-01', clientNom: 'Société Ivoire Hydrocarbures', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 125000, statut: 'paye' },
+  { id: 'rev-sep-02', date: '2026-09-02', clientNom: 'M. Koffi Sylvain', chambreNumero: '101', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 45000, statut: 'paye' },
+  { id: 'rev-sep-03', date: '2026-09-03', clientNom: 'Mme Yao Affoué', chambreNumero: '102', typeReservation: 'heure', modePaiement: 'MOOV Money', montant: 15000, statut: 'paye' },
+  { id: 'rev-sep-04', date: '2026-09-04', clientNom: 'Délégation Bourse BRVM', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 160000, statut: 'paye' },
+  { id: 'rev-sep-05', date: '2026-09-05', clientNom: 'Dr. Kouamé Patrice', chambreNumero: '202', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 85000, statut: 'paye' },
+  { id: 'rev-sep-06', date: '2026-09-06', clientNom: 'Cabinet Conseil Audit', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 110000, statut: 'paye' },
+  { id: 'rev-sep-07', date: '2026-09-07', clientNom: 'Aïcha Traoré', chambreNumero: '102', typeReservation: 'heure', modePaiement: 'MOOV Money', montant: 35000, statut: 'paye' },
+  { id: 'rev-sep-08', date: '2026-09-08', clientNom: 'Didier Drogba Foundation', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 140000, statut: 'paye' },
+  { id: 'rev-sep-09', date: '2026-09-09', clientNom: 'Cabinet Avocats Toure', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 150000, statut: 'paye' },
+  { id: 'rev-sep-10-1', date: '2026-09-10', clientNom: 'Koffi Assoumou', chambreNumero: '101', typeReservation: 'heure', modePaiement: 'MOOV Money', montant: 25000, statut: 'paye' },
+  { id: 'rev-sep-10-2', date: '2026-09-10', clientNom: 'Claire Deschamps', chambreNumero: '102', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 60000, statut: 'paye' },
+  { id: 'rev-sep-11-1', date: '2026-09-11', clientNom: 'Jean-Luc Moreau', chambreNumero: '103', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 75000, statut: 'paye' },
+  { id: 'rev-sep-11-2', date: '2026-09-11', clientNom: 'Société Ivoire BTP', chambreNumero: '201', typeReservation: 'heure', modePaiement: 'MTN Money', montant: 50000, statut: 'paye' },
+  { id: 'rev-sep-12-1', date: '2026-09-12', clientNom: 'Marc-Antoine Giraud', chambreNumero: '101', typeReservation: 'heure', modePaiement: 'Orange Money', montant: 37500, statut: 'paye' },
+  { id: 'rev-sep-12-2', date: '2026-09-12', clientNom: 'Dr. Fatou Bamba', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 120000, statut: 'paye' },
+  { id: 'rev-sep-12-3', date: '2026-09-12', clientNom: 'Christian Kouassi', chambreNumero: '102', typeReservation: 'heure', modePaiement: 'MOOV Money', montant: 25000, statut: 'paye' },
+  { id: 'rev-sep-12-4', date: '2026-09-12', clientNom: 'Elena Rostova (VIP)', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 95000, statut: 'paye' },
+  { id: 'rev-sep-12-5', date: '2026-09-12', clientNom: 'Studio Photo Vogue', chambreNumero: '301', typeReservation: 'heure', modePaiement: 'Orange Money', montant: 47500, statut: 'paye' },
+  { id: 'rev-sep-13', date: '2026-09-13', clientNom: 'M. Diallo Ousmane', chambreNumero: '103', typeReservation: 'nuit', modePaiement: 'Espèces / Caisse', montant: 90000, statut: 'paye' },
+  { id: 'rev-sep-14', date: '2026-09-14', clientNom: 'Mme Koné Salimata', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 135000, statut: 'paye' },
+  { id: 'rev-sep-15', date: '2026-09-15', clientNom: 'Air Côte d’Ivoire Équipage', chambreNumero: '101', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 180000, statut: 'paye' },
+  { id: 'rev-sep-16', date: '2026-09-16', clientNom: 'M. Bamba Souleymane', chambreNumero: '102', typeReservation: 'heure', modePaiement: 'MTN Money', montant: 30000, statut: 'paye' },
+  { id: 'rev-sep-17', date: '2026-09-17', clientNom: 'Société Bolloré Transport', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 145000, statut: 'paye' },
+  { id: 'rev-sep-18', date: '2026-09-18', clientNom: 'Mme Touré Mariam', chambreNumero: '202', typeReservation: 'nuit', modePaiement: 'MOOV Money', montant: 80000, statut: 'paye' },
+  { id: 'rev-sep-19', date: '2026-09-19', clientNom: 'Dr. Gnahoré Eric', chambreNumero: '101', typeReservation: 'heure', modePaiement: 'Espèces / Caisse', montant: 40000, statut: 'paye' },
+  { id: 'rev-sep-20', date: '2026-09-20', clientNom: 'Séminaire Finance Ouest', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 220000, statut: 'paye' },
+  { id: 'rev-sep-21', date: '2026-09-21', clientNom: 'M. N’Dri Philippe', chambreNumero: '103', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 65000, statut: 'paye' },
+  { id: 'rev-sep-22', date: '2026-09-22', clientNom: 'Mme Cissé Fatoumata', chambreNumero: '102', typeReservation: 'heure', modePaiement: 'Orange Money', montant: 35000, statut: 'paye' },
+  { id: 'rev-sep-23', date: '2026-09-23', clientNom: 'Groupe Agro-Pastoral CI', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 195000, statut: 'paye' },
+  { id: 'rev-sep-24', date: '2026-09-24', clientNom: 'Directeur Jean-Philippe Konan', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 185000, statut: 'paye' },
+  { id: 'rev-sep-25', date: '2026-09-25', clientNom: 'M. Traoré Abdoulaye', chambreNumero: '101', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 70000, statut: 'paye' },
+  { id: 'rev-sep-26', date: '2026-09-26', clientNom: 'Mme Bakayoko Amina', chambreNumero: '102', typeReservation: 'heure', modePaiement: 'MOOV Money', montant: 45000, statut: 'paye' },
+  { id: 'rev-sep-27', date: '2026-09-27', clientNom: 'Société Énergie Pro CI', chambreNumero: '202', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 115000, statut: 'paye' },
+  { id: 'rev-sep-28', date: '2026-09-28', clientNom: 'M. Soro Guillaume', chambreNumero: '103', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 85000, statut: 'paye' },
+  { id: 'rev-sep-29', date: '2026-09-29', clientNom: 'Mme Diabaté Rokia', chambreNumero: '101', typeReservation: 'heure', modePaiement: 'Espèces / Caisse', montant: 35000, statut: 'paye' },
+  { id: 'rev-sep-30', date: '2026-09-30', clientNom: 'Chambre de Commerce Abidjan', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 240000, statut: 'paye' },
 
-  // Semaine en cours (2026-09-06 à 2026-09-11)
-  {
-    id: 'rev-6',
-    date: '2026-09-11',
-    clientNom: 'Jean-Luc Moreau',
-    chambreNumero: '103',
-    typeReservation: 'nuit',
-    modePaiement: 'Orange Money',
-    montant: 13000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-7',
-    date: '2026-09-11',
-    clientNom: 'Société Ivoire BTP',
-    chambreNumero: '201',
-    typeReservation: 'heure',
-    modePaiement: 'MTN Money',
-    montant: 10000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-8',
-    date: '2026-09-10',
-    clientNom: 'Koffi Assoumou',
-    chambreNumero: '101',
-    typeReservation: 'heure',
-    modePaiement: 'MOOV Money',
-    montant: 5000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-9',
-    date: '2026-09-10',
-    clientNom: 'Claire Deschamps',
-    chambreNumero: '102',
-    typeReservation: 'nuit',
-    modePaiement: 'MTN Money',
-    montant: 20000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-10',
-    date: '2026-09-09',
-    clientNom: 'Cabinet Avocats Toure',
-    chambreNumero: '301',
-    typeReservation: 'nuit',
-    modePaiement: 'Orange Money',
-    montant: 50000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-11',
-    date: '2026-09-08',
-    clientNom: 'Didier Drogba Foundation',
-    chambreNumero: '201',
-    typeReservation: 'nuit',
-    modePaiement: 'MTN Money',
-    montant: 40000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-12',
-    date: '2026-09-07',
-    clientNom: 'Aïcha Traoré',
-    chambreNumero: '102',
-    typeReservation: 'heure',
-    modePaiement: 'MOOV Money',
-    montant: 7500,
-    statut: 'paye'
-  },
+  // --- HISTORIQUE MENSUEL 2026 (De Janvier à Août 2026) ---
+  // Août 2026
+  { id: 'rev-aug-01', date: '2026-08-05', clientNom: 'Délégation Francophonie', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 620000, statut: 'paye' },
+  { id: 'rev-aug-02', date: '2026-08-15', clientNom: 'Groupe SIFCA Agro', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 880000, statut: 'paye' },
+  { id: 'rev-aug-03', date: '2026-08-25', clientNom: 'BCEAO Mission Économique', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 950000, statut: 'paye' },
+  { id: 'rev-aug-04', date: '2026-08-28', clientNom: 'Touristes Prestige Abidjan', chambreNumero: '102', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 450000, statut: 'paye' },
 
-  // Mois précédents / Année 2026
-  {
-    id: 'rev-13',
-    date: '2026-08-25',
-    clientNom: 'BCEAO Mission Économique',
-    chambreNumero: '301',
-    typeReservation: 'nuit',
-    modePaiement: 'Orange Money',
-    montant: 100000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-14',
-    date: '2026-08-15',
-    clientNom: 'Groupe SIFCA',
-    chambreNumero: '201',
-    typeReservation: 'nuit',
-    modePaiement: 'MTN Money',
-    montant: 80000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-15',
-    date: '2026-07-20',
-    clientNom: 'Tournage Clip Vidéo',
-    chambreNumero: '301',
-    typeReservation: 'heure',
-    modePaiement: 'MOOV Money',
-    montant: 10000,
-    statut: 'paye'
-  },
-  {
-    id: 'rev-16',
-    date: '2026-06-12',
-    clientNom: 'Séminaire Stratégique Dekouassi',
-    chambreNumero: '201',
-    typeReservation: 'nuit',
-    modePaiement: 'Orange Money',
-    montant: 100000,
-    statut: 'paye'
-  }
+  // Juillet 2026
+  { id: 'rev-jul-01', date: '2026-07-08', clientNom: 'Festival Jazz & Arts Abidjan', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 720000, statut: 'paye' },
+  { id: 'rev-jul-02', date: '2026-07-20', clientNom: 'Tournage Studio International', chambreNumero: '301', typeReservation: 'heure', modePaiement: 'Carte Bancaire', montant: 580000, statut: 'paye' },
+  { id: 'rev-jul-03', date: '2026-07-28', clientNom: 'Société Générale CI', chambreNumero: '202', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 640000, statut: 'paye' },
+
+  // Juin 2026
+  { id: 'rev-jun-01', date: '2026-06-12', clientNom: 'Séminaire Stratégique Dekouassi', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 780000, statut: 'paye' },
+  { id: 'rev-jun-02', date: '2026-06-24', clientNom: 'Mission Diplomatique CEDEAO', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 920000, statut: 'paye' },
+
+  // Mai 2026
+  { id: 'rev-may-01', date: '2026-05-10', clientNom: 'Sommet Télécom Afrique', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 650000, statut: 'paye' },
+  { id: 'rev-may-02', date: '2026-05-22', clientNom: 'Cabinet Conseil KPMG', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 710000, statut: 'paye' },
+
+  // Avril 2026
+  { id: 'rev-apr-01', date: '2026-04-14', clientNom: 'Vacances Fêtes de Pâques Assinie', chambreNumero: '101', typeReservation: 'nuit', modePaiement: 'MOOV Money', montant: 540000, statut: 'paye' },
+  { id: 'rev-apr-02', date: '2026-04-26', clientNom: 'Groupe Cacao CI', chambreNumero: '202', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 680000, statut: 'paye' },
+
+  // Mars 2026
+  { id: 'rev-mar-01', date: '2026-03-09', clientNom: 'Forum Énergies Renouvelables', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 590000, statut: 'paye' },
+  { id: 'rev-mar-02', date: '2026-03-21', clientNom: 'Investisseurs Hôteliers Sud', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 640000, statut: 'paye' },
+
+  // Février 2026
+  { id: 'rev-feb-01', date: '2026-02-14', clientNom: 'Séjours Saint-Valentin Deluxe', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Carte Bancaire', montant: 780000, statut: 'paye' },
+  { id: 'rev-feb-02', date: '2026-02-24', clientNom: 'Conférence Médicale Abidjan', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 520000, statut: 'paye' },
+
+  // Janvier 2026
+  { id: 'rev-jan-01', date: '2026-01-05', clientNom: 'Cérémonie Vœux & Rentrée Dekouassi', chambreNumero: '301', typeReservation: 'nuit', modePaiement: 'Orange Money', montant: 820000, statut: 'paye' },
+  { id: 'rev-jan-02', date: '2026-01-18', clientNom: 'Délégation Bourse Régionale', chambreNumero: '201', typeReservation: 'nuit', modePaiement: 'MTN Money', montant: 630000, statut: 'paye' }
 ];
 
 // 7. Réservations initiales complètes pour le menu Réservations de Chambres
