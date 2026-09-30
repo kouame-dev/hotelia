@@ -20,7 +20,7 @@ export const INITIAL_PAID_SERVICES: PaidService[] = [
     categorie: 'Restauration & Boissons',
     description: 'Viennoiseries chaudes, fruits tropicaux frais découpés, œufs au choix, café Nespresso & jus frais.',
     unite: 'par personne',
-    imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=800&auto=format&fit=crop&q=80',
     actif: true
   },
   {
@@ -30,7 +30,7 @@ export const INITIAL_PAID_SERVICES: PaidService[] = [
     categorie: 'Transport & Navette',
     description: 'Véhicule climatisé avec chauffeur privé dédié, bouteilles d’eau et rafraîchissements offerts.',
     unite: 'par trajet',
-    imageUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&auto=format&fit=crop&q=80',
     actif: true
   },
   {
@@ -40,7 +40,7 @@ export const INITIAL_PAID_SERVICES: PaidService[] = [
     categorie: 'Blanchisserie & Pressing',
     description: 'Lavage délicat, détachage professionnel et repassage sur cintre rendu sous 4 heures.',
     unite: 'par pièce / ensemble',
-    imageUrl: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=800&auto=format&fit=crop&q=80',
     actif: true
   },
   {
@@ -50,7 +50,7 @@ export const INITIAL_PAID_SERVICES: PaidService[] = [
     categorie: 'Bien-être & Spa',
     description: 'Massage californien 50 minutes en cabine privée avec aromathérapie et tisane détox.',
     unite: 'par séance (50 min)',
-    imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&auto=format&fit=crop&q=80',
     actif: true
   },
   {
@@ -60,7 +60,7 @@ export const INITIAL_PAID_SERVICES: PaidService[] = [
     categorie: 'VIP & Événements',
     description: 'Ruinart Blanc de Blancs servi dans un seau à glace argenté avec coupes en cristal et macarons.',
     unite: 'par bouteille',
-    imageUrl: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&auto=format&fit=crop&q=80',
     actif: true
   },
   {
@@ -70,7 +70,7 @@ export const INITIAL_PAID_SERVICES: PaidService[] = [
     categorie: 'VIP & Événements',
     description: 'Lit habillé de pétales de roses fraîches, ambiance tamisée, cygnes de bain et coffret senteurs.',
     unite: 'forfait mise en place',
-    imageUrl: 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=800&auto=format&fit=crop&q=80',
     actif: true
   },
   {
@@ -80,7 +80,7 @@ export const INITIAL_PAID_SERVICES: PaidService[] = [
     categorie: 'Services Chambre',
     description: 'Conservez l’accès complet à votre chambre et aux équipements de l’hôtel jusqu’à 18h00.',
     unite: 'par chambre',
-    imageUrl: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&auto=format&fit=crop&q=80',
     actif: true
   },
   {
@@ -90,7 +90,67 @@ export const INITIAL_PAID_SERVICES: PaidService[] = [
     categorie: 'Services Chambre',
     description: 'Accès fibre dédiée 1 Gbps, écran 65", système pieuvre micro Logitech et café illimité.',
     unite: 'par demi-journée',
-    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&auto=format&fit=crop&q=80',
+    actif: true
+  },
+  {
+    id: 'srv-9',
+    nom: 'Dîner Gastronomique aux Chandelles en Suite',
+    prix: 85,
+    categorie: 'Restauration & Boissons',
+    description: 'Menu 4 services servi en suite privée avec dressage nappe blanche, bougies et service dédié.',
+    unite: 'par personne',
+    imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop&q=80',
+    actif: true
+  },
+  {
+    id: 'srv-10',
+    nom: 'Soin du Visage Hydratant & Masque Régénérant Spa',
+    prix: 60,
+    categorie: 'Bien-être & Spa',
+    description: 'Protocole complet éclat du teint aux actifs naturels marins et masque revitalisant à l’or.',
+    unite: 'par séance (45 min)',
+    imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&auto=format&fit=crop&q=80',
+    actif: true
+  },
+  {
+    id: 'srv-11',
+    nom: 'Location Berline VIP avec Chauffeur Dédié (Journée)',
+    prix: 180,
+    categorie: 'Transport & Navette',
+    description: 'Mise à disposition berline grand confort avec chauffeur bilingue pour vos déplacements d’affaires.',
+    unite: 'par journée (8h)',
+    imageUrl: 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=800&auto=format&fit=crop&q=80',
+    actif: true
+  },
+  {
+    id: 'srv-12',
+    nom: 'Plateau de Fruits Exotiques & Douceurs Chocolatées',
+    prix: 25,
+    categorie: 'Restauration & Boissons',
+    description: 'Assortiment d’ananas victoria, mangues kent, fruits de la passion et mignardises au chocolat pur cacao.',
+    unite: 'par plateau',
+    imageUrl: 'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=800&auto=format&fit=crop&q=80',
+    actif: true
+  },
+  {
+    id: 'srv-13',
+    nom: 'Accès Daybed VIP Piscine Resort & Cocktails',
+    prix: 40,
+    categorie: 'VIP & Événements',
+    description: 'Lit balinais réservé au bord de la piscine avec serviettes fraîches et deux cocktails signature offerts.',
+    unite: 'par journée',
+    imageUrl: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&auto=format&fit=crop&q=80',
+    actif: true
+  },
+  {
+    id: 'srv-14',
+    nom: 'Service Majordome & Conciergerie Privée (24h/24)',
+    prix: 100,
+    categorie: 'Autre',
+    description: 'Majordome dédié : défaisage et emballage des bagages, réservations prioritaires et attentions personnalisées.',
+    unite: 'forfait séjour',
+    imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80',
     actif: true
   }
 ];
@@ -384,12 +444,12 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     sousCategorie: 'Spécialités Ivoiriennes',
     prixVente: 3000,
     prixAchat: 1200,
-    stockActuel: 0,
+    stockActuel: 15,
     stockAlerte: 10,
     unite: 'assiette',
     description: 'Morceau noble de thon braisé aux oignons doux, piment frais et semoule fine.',
-    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80',
-    disponible: false
+    imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80',
+    disponible: true
   },
   {
     id: 'pos-food-2',
@@ -398,11 +458,11 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     sousCategorie: 'Spécialités Ivoiriennes',
     prixVente: 5000,
     prixAchat: 2000,
-    stockActuel: 4,
+    stockActuel: 14,
     stockAlerte: 12,
     unite: 'portion',
     description: 'Poulet fermier mariné aux épices locales, alloco doré et sauce tomate pimentée.',
-    imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -416,7 +476,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 8,
     unite: 'assiette',
     description: 'Filet de poisson blanc noble grillé à la plancha, sauce moyo aux herbes fraîches.',
-    imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -430,7 +490,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 10,
     unite: 'assiette',
     description: 'Pain de mie toasté, émincé de poulet fumé maison, œuf dur, tomate, laitue et frites croustillantes.',
-    imageUrl: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -444,7 +504,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 6,
     unite: 'assiette',
     description: 'Pièce de bœuf tendre 280g saisie minute, réduction poivre vert de Madagascar.',
-    imageUrl: 'https://images.unsplash.com/photo-1558030006-450675393462?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1558030006-450675393462?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -458,7 +518,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 8,
     unite: 'assiette',
     description: 'Cœur coulant au chocolat 70% origine Côte d’Ivoire avec boule de glace artisanale.',
-    imageUrl: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
 
@@ -474,7 +534,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 20,
     unite: 'bouteille',
     description: 'Eau minérale naturelle servie fraîche en bouteille verre.',
-    imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -488,7 +548,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 15,
     unite: 'verre 33cl',
     description: 'Infusion de fleurs d’hibiscus bio, zeste d’ananas et feuilles de menthe pilées.',
-    imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -502,7 +562,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 10,
     unite: 'verre cocktail',
     description: 'Rhum ambré d’exception, purée de mangue, fruit de la passion et pointe de gingembre.',
-    imageUrl: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -516,7 +576,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 6,
     unite: 'coupe',
     description: '100% Chardonnay de la célèbre maison Ruinart, élégance et fraîcheur absolue.',
-    imageUrl: 'https://images.unsplash.com/photo-1560512823-829485b8bf24?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1560512823-829485b8bf24?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -530,7 +590,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 8,
     unite: 'coupe',
     description: 'Cuvée iconique aux notes de pomme verte et brioche fraîche.',
-    imageUrl: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -544,7 +604,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 10,
     unite: 'verre',
     description: 'Vin rouge structuré aux tanins soyeux et arômes de mûre sauvage.',
-    imageUrl: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -558,7 +618,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 15,
     unite: 'bouteille 50cl',
     description: 'Bière blonde fraîche brassée avec finesse et maîtrise.',
-    imageUrl: 'https://images.unsplash.com/photo-1608270114097-094396b27072?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1608270114097-094396b27072?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -572,7 +632,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 30,
     unite: 'canette',
     description: 'Boisson rafraîchissante gazeuse servie avec glaçons et rondelle de citron.',
-    imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
 
@@ -587,7 +647,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 0,
     unite: 'personne',
     description: 'Accès au buffet chaud et froid du restaurant de l’hôtel.',
-    imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -600,7 +660,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 0,
     unite: 'séance',
     description: 'Accès privatisé à l’espace bien-être, sauna sec et hammam.',
-    imageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -613,7 +673,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 0,
     unite: 'pièce',
     description: 'Repassage soigné d’une chemise ou d’un pantalon rendu sous 1 heure.',
-    imageUrl: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=800&auto=format&fit=crop&q=80',
     disponible: true
   },
   {
@@ -626,7 +686,7 @@ export const INITIAL_POS_PRODUCTS: PosProduct[] = [
     stockAlerte: 0,
     unite: 'course',
     description: 'Transfert direct hôtel - aéroport en berline climatisée.',
-    imageUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&auto=format&fit=crop&q=80',
     disponible: true
   }
 ];

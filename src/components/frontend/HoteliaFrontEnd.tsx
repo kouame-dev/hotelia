@@ -173,6 +173,7 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
   // Modale Détails & Galerie 3 Photos HD de la chambre
   const [detailRoom, setDetailRoom] = useState<RoomItem | null>(null);
   const [detailPhotoIndex, setDetailPhotoIndex] = useState<number>(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   // Index de la photo sélectionnée pour chaque carte de chambre
   const [cardPhotoIndex, setCardPhotoIndex] = useState<Record<string, number>>({});
@@ -190,18 +191,26 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
     reference?: string;
   } | null>(null);
 
-  // Fermeture des modales avec la touche Échap
+  // Fermeture des modales avec la touche Échap et navigation clavier gauche/droite dans la galerie
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setModalOpen(false);
         setDetailRoom(null);
         setActiveLegalModal(null);
+      } else if (detailRoom && detailRoom.images && detailRoom.images.length > 1) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          setDetailPhotoIndex((prev) => (prev === 0 ? detailRoom.images.length - 1 : prev - 1));
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          setDetailPhotoIndex((prev) => (prev + 1) % detailRoom.images.length);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [detailRoom]);
 
   const handleOpenBooking = (mode: ReservationMode, room?: RoomItem) => {
     setActiveReservationMode(mode);
@@ -719,48 +728,104 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
             <div className="max-h-[85vh] overflow-y-auto p-6 space-y-6">
               {/* Galerie Interactive de 3 Photos HD */}
               <div className="space-y-3">
-                {/* Photo Principale Grande Vue */}
-                <div className="relative h-72 sm:h-96 w-full rounded-2xl overflow-hidden bg-stone-950 group">
+                {/* Photo Principale Grande Vue avec support swipe tactile et navigation infaillible */}
+                <div
+                  className="relative h-72 sm:h-96 w-full rounded-2xl overflow-hidden bg-stone-950 select-none touch-pan-y"
+                  onTouchStart={(e) => {
+                    if (e.touches.length === 1) {
+                      setTouchStartX(e.touches[0].clientX);
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (touchStartX !== null && e.changedTouches.length === 1 && detailRoom.images.length > 1) {
+                      const touchEndX = e.changedTouches[0].clientX;
+                      const diffX = touchEndX - touchStartX;
+                      if (diffX > 40) {
+                        // Swipe vers la droite -> photo précédente
+                        setDetailPhotoIndex((prev) => (prev === 0 ? detailRoom.images.length - 1 : prev - 1));
+                      } else if (diffX < -40) {
+                        // Swipe vers la gauche -> photo suivante
+                        setDetailPhotoIndex((prev) => (prev + 1) % detailRoom.images.length);
+                      }
+                      setTouchStartX(null);
+                    }
+                  }}
+                >
                   <img
                     src={detailRoom.images[detailPhotoIndex] || detailRoom.image}
                     alt={`${detailRoom.nom} - Vue ${detailPhotoIndex + 1}`}
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-transform duration-500"
+                    className="w-full h-full object-cover transition-all duration-300 pointer-events-none"
+                    onError={(e) => {
+                      // Fallback si l'image distante échoue sur hébergeur externe (Hostinger)
+                      if (detailRoom.image && (e.currentTarget.src !== detailRoom.image)) {
+                        e.currentTarget.src = detailRoom.image;
+                      }
+                    }}
                   />
 
-                  {/* Boutons Suivant / Précédent */}
+                  {/* Boutons Suivant / Précédent avec z-index élevé z-30 et stopPropagation */}
                   {detailRoom.images.length > 1 && (
                     <>
                       <button
                         type="button"
-                        onClick={() =>
+                        aria-label="Photo précédente"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
                           setDetailPhotoIndex((prev) =>
                             prev === 0 ? detailRoom.images.length - 1 : prev - 1
-                          )
-                        }
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-all hover:scale-105 cursor-pointer"
-                        title="Photo précédente"
+                          );
+                        }}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/70 hover:bg-black/90 active:scale-90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 transition-all hover:scale-105 cursor-pointer shadow-lg"
+                        title="Photo précédente (Flèche gauche)"
                       >
                         <ChevronLeft className="w-6 h-6" />
                       </button>
 
                       <button
                         type="button"
-                        onClick={() =>
+                        aria-label="Photo suivante"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
                           setDetailPhotoIndex((prev) =>
                             (prev + 1) % detailRoom.images.length
-                          )
-                        }
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center backdrop-blur-md border border-white/20 transition-all hover:scale-105 cursor-pointer"
-                        title="Photo suivante"
+                          );
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/70 hover:bg-black/90 active:scale-90 text-white flex items-center justify-center backdrop-blur-md border border-white/30 transition-all hover:scale-105 cursor-pointer shadow-lg"
+                        title="Photo suivante (Flèche droite)"
                       >
                         <ChevronRight className="w-6 h-6" />
                       </button>
                     </>
                   )}
 
+                  {/* Points indicateurs interactifs au centre bas */}
+                  {detailRoom.images.length > 1 && (
+                    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20">
+                      {detailRoom.images.map((_, dotIdx) => (
+                        <button
+                          key={dotIdx}
+                          type="button"
+                          aria-label={`Aller à la photo ${dotIdx + 1}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setDetailPhotoIndex(dotIdx);
+                          }}
+                          className={`rounded-full transition-all cursor-pointer ${
+                            detailPhotoIndex === dotIdx
+                              ? 'w-6 h-2 bg-[#C5A880]'
+                              : 'w-2 h-2 bg-white/60 hover:bg-white'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   {/* Badge indicateur photo */}
-                  <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md text-white text-xs font-mono border border-white/20 flex items-center gap-1.5">
+                  <div className="absolute top-4 left-4 z-20 px-3 py-1.5 rounded-full bg-black/75 backdrop-blur-md text-white text-xs font-mono border border-white/20 flex items-center gap-1.5 shadow-md">
                     <Images className="w-3.5 h-3.5 text-[#C5A880]" />
                     <span>
                       Photo {detailPhotoIndex + 1} / {detailRoom.images.length}
@@ -768,7 +833,7 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
                   </div>
 
                   {/* Titre descriptif de la vue courante */}
-                  <div className="absolute bottom-4 left-4 right-4 px-4 py-2 rounded-xl bg-black/75 backdrop-blur-md text-white text-xs sm:text-sm font-medium border border-white/10 flex items-center justify-between">
+                  <div className="absolute bottom-3 left-3 right-3 z-20 px-4 py-2 rounded-xl bg-black/80 backdrop-blur-md text-white text-xs sm:text-sm font-medium border border-white/10 flex items-center justify-between shadow-md">
                     <span>
                       {detailPhotoIndex === 0 && '✨ 1. Chambre & Literie Prestige'}
                       {detailPhotoIndex === 1 && '🚿 2. Salle d’eau & Douche / Balnéo'}
@@ -794,23 +859,32 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => setDetailPhotoIndex(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setDetailPhotoIndex(idx);
+                        }}
                         className={`p-1.5 rounded-xl border-2 transition-all flex flex-col items-center gap-1.5 cursor-pointer text-left ${
                           isSelected
-                            ? 'border-[#C5A880] bg-[#C5A880]/10 shadow-md ring-2 ring-[#C5A880]/30'
+                            ? 'border-[#C5A880] bg-[#C5A880]/15 shadow-md ring-2 ring-[#C5A880]/40'
                             : 'border-stone-200 hover:border-stone-300 bg-stone-50'
                         }`}
                       >
-                        <div className="h-16 sm:h-20 w-full rounded-lg overflow-hidden bg-stone-200">
+                        <div className="h-16 sm:h-20 w-full rounded-lg overflow-hidden bg-stone-200 pointer-events-none">
                           <img
                             src={img}
                             alt={labels[idx] || `Photo ${idx + 1}`}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              if (detailRoom.image && e.currentTarget.src !== detailRoom.image) {
+                                e.currentTarget.src = detailRoom.image;
+                              }
+                            }}
                           />
                         </div>
                         <span
                           className={`text-[11px] font-semibold truncate w-full text-center ${
-                            isSelected ? 'text-[#9c7844]' : 'text-stone-600'
+                            isSelected ? 'text-[#9c7844] font-bold' : 'text-stone-600'
                           }`}
                         >
                           {labels[idx] || `Photo ${idx + 1}`}

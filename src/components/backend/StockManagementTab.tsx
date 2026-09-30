@@ -36,11 +36,16 @@ import {
 import { ImageUploadField } from '../common/ImageUploadField.tsx';
 import { TableExportToolbar } from '../common/TableExportToolbar.tsx';
 import { ExportColumn } from '../../utils/exportUtils.ts';
+import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 
-type StockSubTab = 'articles' | 'entrepots' | 'fournisseurs' | 'achats' | 'rapports';
+type StockSubTab = 'articles' | 'entrepots' | 'fournisseurs' | 'achats' | 'alertes' | 'rapports';
 
-export const StockManagementTab: React.FC<{ onGoToStockAlerts?: () => void }> = ({
-  onGoToStockAlerts
+export const StockManagementTab: React.FC<{
+  onGoToStockAlerts?: () => void;
+  initialSubTab?: StockSubTab;
+}> = ({
+  onGoToStockAlerts,
+  initialSubTab = 'articles'
 }) => {
   const {
     stockItems,
@@ -66,7 +71,13 @@ export const StockManagementTab: React.FC<{ onGoToStockAlerts?: () => void }> = 
   } = useHotelData();
   const { formatPrice, settings } = useHotelSettings();
 
-  const [activeSubTab, setActiveSubTab] = useState<StockSubTab>('articles');
+  const [activeSubTab, setActiveSubTab] = useState<StockSubTab>(initialSubTab);
+
+  React.useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -541,6 +552,26 @@ export const StockManagementTab: React.FC<{ onGoToStockAlerts?: () => void }> = 
         >
           <PackagePlus className="w-3.5 h-3.5" />
           <span>Bons d'Achat &amp; Réassort ({bonsAchat.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('alertes')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all cursor-pointer ${
+            activeSubTab === 'alertes'
+              ? 'bg-rose-600 text-white shadow-md font-bold ring-2 ring-rose-400/40'
+              : unreadStockAlertsCount > 0
+              ? 'bg-rose-950/60 text-rose-300 hover:bg-rose-900 border border-rose-800/60'
+              : 'bg-stone-900 text-stone-400 hover:bg-stone-800'
+          }`}
+        >
+          <AlertTriangle className={`w-3.5 h-3.5 ${unreadStockAlertsCount > 0 ? 'text-rose-300 animate-pulse' : 'text-amber-400'}`} />
+          <span>Alertes &amp; Ruptures</span>
+          {unreadStockAlertsCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold font-mono bg-rose-500 text-white animate-pulse">
+              {unreadStockAlertsCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -1180,6 +1211,15 @@ export const StockManagementTab: React.FC<{ onGoToStockAlerts?: () => void }> = 
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* 6. TAB ALERTES & RUPTURES RESTAURANT */}
+      {activeSubTab === 'alertes' && (
+        <div className="space-y-4">
+          <RestaurantStockAlertsTab
+            onGoToStockModule={() => setActiveSubTab('articles')}
+          />
         </div>
       )}
 

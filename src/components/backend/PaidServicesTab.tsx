@@ -20,13 +20,16 @@ import {
   Check,
   AlertCircle,
   Clock,
-  CreditCard
+  CreditCard,
+  Receipt
 } from 'lucide-react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { PaidService, ServiceCategory, ServiceOrder, PaymentMethod } from '../../types.ts';
 import { ServiceOrderModal } from './ServiceOrderModal.tsx';
 import { ImageUploadField } from '../common/ImageUploadField.tsx';
+import { playPosBeep } from '../../utils/soundEffects.ts';
+import { getServiceImageUrl, SERVICE_IMAGE_PRESETS } from '../../utils/serviceImages.ts';
 
 export const PaidServicesTab: React.FC = () => {
   const {
@@ -136,6 +139,11 @@ export const PaidServicesTab: React.FC = () => {
   };
 
   const handleOpenOrderModal = (service?: PaidService) => {
+    try {
+      playPosBeep('beep');
+    } catch {
+      // ignore
+    }
     setPreselectedService(service || null);
     setIsOrderModalOpen(true);
   };
@@ -201,9 +209,10 @@ export const PaidServicesTab: React.FC = () => {
               type="button"
               onClick={() => handleOpenOrderModal()}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-900/30 transition-all cursor-pointer"
+              title="Ouvrir le Point de Vente (POS) tactile avec effets sonores"
             >
               <ShoppingBag className="w-4 h-4" />
-              <span>Commander un Service</span>
+              <span>Commander un Service (POS &amp; Son)</span>
             </button>
             <button
               type="button"
@@ -258,8 +267,17 @@ export const PaidServicesTab: React.FC = () => {
       </div>
 
       {/* Sub-view Navigation Switcher */}
-      <div className="flex items-center justify-between border-b border-stone-800 pb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between border-b border-stone-800 pb-3 gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleOpenOrderModal()}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-md ring-2 ring-amber-400/40"
+            title="Ouvrir le terminal tactile Point de Vente avec bips sonores"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Point de Vente (POS Caisse &amp; Son)</span>
+          </button>
           <button
             type="button"
             onClick={() => setActiveSubView('catalogue')}
@@ -281,7 +299,7 @@ export const PaidServicesTab: React.FC = () => {
                 : 'bg-stone-900 text-stone-300 hover:bg-stone-800'
             }`}
           >
-            <ShoppingBag className="w-3.5 h-3.5" />
+            <Receipt className="w-3.5 h-3.5" />
             <span>Historique des Commandes ({serviceOrders.length})</span>
           </button>
         </div>
@@ -341,39 +359,47 @@ export const PaidServicesTab: React.FC = () => {
           </div>
 
           {/* Services Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredServices.map((srv) => (
-              <div
-                key={srv.id}
-                className={`group rounded-2xl border overflow-hidden transition-all flex flex-col justify-between ${
-                  srv.actif
-                    ? 'bg-stone-900/70 border-stone-800 hover:border-[#C5A880]/60 hover:shadow-xl'
-                    : 'bg-stone-950/40 border-stone-900 opacity-60'
-                }`}
-              >
-                <div>
-                  {/* Service Image Illustration */}
-                  {srv.imageUrl ? (
-                    <div className="relative w-full h-40 overflow-hidden bg-stone-950">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredServices.map((srv) => {
+              const serviceImg = getServiceImageUrl(srv);
+
+              return (
+                <div
+                  key={srv.id}
+                  className={`group rounded-2xl border overflow-hidden transition-all flex flex-col justify-between ${
+                    srv.actif
+                      ? 'bg-stone-900/80 border-stone-800 hover:border-[#C5A880]/70 hover:shadow-2xl hover:shadow-black/60'
+                      : 'bg-stone-950/40 border-stone-900 opacity-60'
+                  }`}
+                >
+                  <div>
+                    {/* Service Image Illustration */}
+                    <div className="relative w-full h-44 sm:h-48 overflow-hidden bg-stone-950">
                       <img
-                        src={srv.imageUrl}
+                        src={serviceImg}
                         alt={srv.nom}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700"
                         referrerPolicy="no-referrer"
                         loading="lazy"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80';
+                        }}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-black/30" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/30 to-black/30" />
+                      
                       <div className="absolute top-3 left-3">
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-950/80 backdrop-blur-xs border border-stone-700/60 text-[11px] font-semibold text-stone-200">
+                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-stone-950/85 backdrop-blur-md border border-stone-700/60 text-[11px] font-semibold text-stone-200 shadow-md">
                           {getCategoryIcon(srv.categorie)}
                           <span>{srv.categorie}</span>
                         </span>
                       </div>
+                      
                       <div className="absolute top-3 right-3">
                         <button
                           type="button"
                           onClick={() => togglePaidServiceStatus(srv.id)}
-                          className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider cursor-pointer backdrop-blur-xs transition-all shadow-xs ${
+                          className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider cursor-pointer backdrop-blur-md transition-all shadow-md ${
                             srv.actif
                               ? 'bg-emerald-500/90 text-stone-950 hover:bg-emerald-400'
                               : 'bg-rose-500/90 text-white hover:bg-rose-400'
@@ -383,66 +409,45 @@ export const PaidServicesTab: React.FC = () => {
                           {srv.actif ? 'Actif' : 'Inactif'}
                         </button>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="p-5 pb-0 flex items-start justify-between gap-3 mb-2">
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-stone-800 border border-stone-700/60 text-[11px] font-semibold text-stone-300">
-                        {getCategoryIcon(srv.categorie)}
-                        <span>{srv.categorie}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => togglePaidServiceStatus(srv.id)}
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider cursor-pointer transition-all ${
-                          srv.actif
-                            ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-                            : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
-                        }`}
-                        title={srv.actif ? 'Désactiver ce service' : 'Activer ce service'}
-                      >
-                        {srv.actif ? 'Actif' : 'Inactif'}
-                      </button>
-                    </div>
-                  )}
 
-                  <div className="p-5 pt-3">
-                    <h3 className="text-base font-bold text-white group-hover:text-[#C5A880] transition-colors leading-snug">
-                      {srv.nom}
-                    </h3>
-
-                    {srv.description && (
-                      <p className="text-xs text-stone-400 mt-2 line-clamp-2 leading-relaxed">
-                        {srv.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="px-5 pb-5">
-                  <div className="pt-4 border-t border-stone-800/80">
-                    <div className="flex items-baseline justify-between mb-3">
-                      <div>
-                        <span className="text-xl font-mono font-bold text-amber-400">
+                      {/* Price Tag Badge on Image */}
+                      <div className="absolute bottom-2.5 right-3">
+                        <span className="px-2.5 py-1 rounded-lg bg-stone-950/90 backdrop-blur-md border border-stone-800 font-mono font-bold text-amber-300 text-sm shadow-md">
                           {formatPrice(srv.prix)}
+                          {srv.unite && (
+                            <span className="text-[10px] font-sans font-normal text-stone-400 ml-1">
+                              / {srv.unite}
+                            </span>
+                          )}
                         </span>
-                        {srv.unite && (
-                          <span className="text-xs text-stone-500 ml-1 font-sans">
-                            / {srv.unite}
-                          </span>
-                        )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="p-5 pt-4">
+                      <h3 className="text-base font-bold text-white group-hover:text-[#C5A880] transition-colors leading-snug">
+                        {srv.nom}
+                      </h3>
+
+                      {srv.description && (
+                        <p className="text-xs text-stone-400 mt-2 line-clamp-2 leading-relaxed">
+                          {srv.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="px-5 pb-5">
+                    <div className="pt-3.5 border-t border-stone-800/80">
+                      <div className="grid grid-cols-3 gap-2">
                       <button
                         type="button"
                         onClick={() => handleOpenOrderModal(srv)}
                         disabled={!srv.actif}
                         className="col-span-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-stone-950 font-bold text-[11px] transition-all cursor-pointer"
-                        title="Commander ce service pour un résident"
+                        title="Commander ce service dans le Point de Vente avec bips sonores"
                       >
                         <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>Commander</span>
+                        <span>Commander (POS)</span>
                       </button>
                       <button
                         type="button"
@@ -466,7 +471,8 @@ export const PaidServicesTab: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
 
           {filteredServices.length === 0 && (
@@ -729,6 +735,43 @@ export const PaidServicesTab: React.FC = () => {
                   onChange={setFormImageUrl}
                   placeholderText="Téléversez un visuel pour la carte du service (PNG, JPG, WebP)"
                 />
+
+                {/* Galerie de suggestions visuelles d'exception en 1 clic */}
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[11px] text-stone-400 font-medium block">
+                    Ou sélectionnez une photo d’exception prête à l’emploi (1 clic) :
+                  </span>
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                    {SERVICE_IMAGE_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => setFormImageUrl(preset.url)}
+                        className={`group relative rounded-xl overflow-hidden aspect-video border transition-all cursor-pointer ${
+                          formImageUrl === preset.url
+                            ? 'ring-2 ring-amber-400 border-amber-400 scale-105 shadow-md shadow-amber-950'
+                            : 'border-stone-800 hover:border-stone-600 opacity-75 hover:opacity-100 hover:scale-102'
+                        }`}
+                        title={preset.label}
+                      >
+                        <img
+                          src={preset.thumbnail}
+                          alt={preset.label}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute inset-0 bg-black/25 group-hover:bg-transparent transition-colors" />
+                        {formImageUrl === preset.url && (
+                          <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
+                            <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center font-bold text-[10px]">
+                              ✓
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-stone-300 mb-1">

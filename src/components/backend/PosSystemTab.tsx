@@ -32,6 +32,7 @@ import { PosCategory, PosProduct, PosCartItem, PaymentMethod, PosSale } from '..
 import { PosInvoiceModal } from './PosInvoiceModal.tsx';
 import { ImageUploadField } from '../common/ImageUploadField.tsx';
 import { playPosBeep } from '../../utils/soundEffects.ts';
+import { getPosProductImageUrl, POS_IMAGE_PRESETS } from '../../utils/serviceImages.ts';
 
 export const PosSystemTab: React.FC = () => {
   const {
@@ -502,94 +503,72 @@ export const PosSystemTab: React.FC = () => {
                 >
                   <div>
                     {/* Product Image */}
-                    {prod.imageUrl ? (
-                      <div className="relative w-full h-32 overflow-hidden bg-stone-950">
-                        <img
-                          src={prod.imageUrl}
-                          alt={prod.nom}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-black/20" />
-                        <div className="absolute top-2 left-2">
-                          <span
-                            className={`text-[9px] font-mono px-2 py-0.5 rounded-full uppercase tracking-wider font-bold shadow-xs backdrop-blur-xs ${
-                              prod.categorie === 'nourriture'
-                                ? 'bg-amber-500 text-stone-950'
-                                : prod.categorie === 'boisson'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-emerald-500 text-stone-950'
-                            }`}
-                          >
-                            {prod.categorie}
-                          </span>
-                        </div>
-
-                        {/* Edit Button with stopPropagation */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleOpenEditProduct(prod, e)}
-                          className="absolute top-2 right-2 p-1.5 rounded-lg bg-stone-900/80 hover:bg-[#C5A880] text-stone-300 hover:text-stone-950 transition-colors z-10 shadow-xs cursor-pointer"
-                          title="Modifier l'article & son image"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
-
-                        {prod.categorie !== 'service' && (
-                          <div className="absolute bottom-1.5 right-2">
+                    {(() => {
+                      const prodImg = getPosProductImageUrl(prod);
+                      return (
+                        <div className="relative w-full h-32 sm:h-36 overflow-hidden bg-stone-950">
+                          <img
+                            src={prodImg}
+                            alt={prod.nom}
+                            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src =
+                                prod.categorie === 'boisson'
+                                  ? 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800&auto=format&fit=crop&q=80'
+                                  : prod.categorie === 'service'
+                                  ? 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&auto=format&fit=crop&q=80'
+                                  : 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-black/30" />
+                          <div className="absolute top-2 left-2">
                             <span
-                              className={`text-[9px] font-mono px-1.5 py-0.5 rounded-md backdrop-blur-xs font-bold ${
-                                prod.stockActuel <= prod.stockAlerte
-                                  ? 'bg-rose-900/90 text-rose-200'
-                                  : 'bg-stone-900/80 text-stone-300'
+                              className={`text-[9px] font-mono px-2 py-0.5 rounded-full uppercase tracking-wider font-bold shadow-xs backdrop-blur-xs ${
+                                prod.categorie === 'nourriture'
+                                  ? 'bg-amber-500 text-stone-950'
+                                  : prod.categorie === 'boisson'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-emerald-500 text-stone-950'
                               }`}
                             >
-                              Qté: {prod.stockActuel}
+                              {prod.categorie}
                             </span>
                           </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="p-3 pb-0 flex items-center justify-between mb-1.5">
-                        <span
-                          className={`text-[9px] font-mono px-2 py-0.5 rounded-full uppercase tracking-wider font-bold ${
-                            prod.categorie === 'nourriture'
-                              ? 'bg-amber-500/20 text-amber-400'
-                              : prod.categorie === 'boisson'
-                              ? 'bg-blue-500/20 text-blue-400'
-                              : 'bg-emerald-500/20 text-emerald-400'
-                          }`}
-                        >
-                          {prod.categorie}
-                        </span>
 
-                        <div className="flex items-center gap-1.5">
+                          {/* Edit Button with stopPropagation */}
                           <button
                             type="button"
                             onClick={(e) => handleOpenEditProduct(prod, e)}
-                            className="p-1 rounded-lg hover:bg-stone-800 text-stone-400 hover:text-[#C5A880] transition-colors cursor-pointer"
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-stone-900/80 hover:bg-[#C5A880] text-stone-300 hover:text-stone-950 transition-colors z-10 shadow-xs cursor-pointer"
                             title="Modifier l'article & son image"
                           >
                             <Edit2 className="w-3 h-3" />
                           </button>
 
                           {prod.categorie !== 'service' ? (
-                            <span
-                              className={`text-[10px] font-mono ${
-                                prod.stockActuel <= prod.stockAlerte
-                                  ? 'text-rose-400 font-bold'
-                                  : 'text-stone-400'
-                              }`}
-                            >
-                              Stock: {prod.stockActuel}
-                            </span>
+                            <div className="absolute bottom-1.5 right-2">
+                              <span
+                                className={`text-[9px] font-mono px-1.5 py-0.5 rounded-md backdrop-blur-xs font-bold ${
+                                  prod.stockActuel <= prod.stockAlerte
+                                    ? 'bg-rose-900/90 text-rose-200'
+                                    : 'bg-stone-900/80 text-stone-300'
+                                }`}
+                              >
+                                Qté: {prod.stockActuel}
+                              </span>
+                            </div>
                           ) : (
-                            <span className="text-[10px] font-mono text-emerald-400">Prestation</span>
+                            <div className="absolute bottom-1.5 right-2">
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md backdrop-blur-xs font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-800/40">
+                                Prestation
+                              </span>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     <div className="p-3 pt-2">
                       {/* Ligne de Titre alignée horizontalement sous l'image pour toutes les catégories */}
@@ -706,14 +685,16 @@ export const PosSystemTab: React.FC = () => {
                 key={item.product.id}
                 className="flex items-center justify-between p-2 rounded-xl bg-stone-950/70 border border-stone-800 text-xs gap-2"
               >
-                {item.product.imageUrl && (
-                  <img
-                    src={item.product.imageUrl}
-                    alt={item.product.nom}
-                    className="w-9 h-9 rounded-lg object-cover shrink-0 border border-stone-800"
-                    referrerPolicy="no-referrer"
-                  />
-                )}
+                <img
+                  src={getPosProductImageUrl(item.product)}
+                  alt={item.product.nom}
+                  className="w-10 h-10 rounded-lg object-cover shrink-0 border border-stone-800"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop&q=80';
+                  }}
+                />
                 <div className="flex-1 min-w-0 mr-1">
                   <div className="font-semibold text-white truncate">{item.product.nom}</div>
                   <div className="text-[10px] text-stone-400 font-mono">
@@ -1238,6 +1219,43 @@ export const PosSystemTab: React.FC = () => {
                 label="Image de l'article / plat / boisson"
                 placeholder="https://images.unsplash.com/... ou fichier local"
               />
+
+              {/* Suggestions photos 1-clic */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[11px] text-stone-400 font-medium block">
+                  Ou choisissez un visuel prêt à l'emploi (1 clic) :
+                </span>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {POS_IMAGE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setNewProdImage(preset.url)}
+                      className={`group relative rounded-xl overflow-hidden aspect-video border transition-all cursor-pointer ${
+                        newProdImage === preset.url
+                          ? 'ring-2 ring-amber-400 border-amber-400 scale-105 shadow-md shadow-amber-950'
+                          : 'border-stone-800 hover:border-stone-600 opacity-75 hover:opacity-100 hover:scale-102'
+                      }`}
+                      title={preset.label}
+                    >
+                      <img
+                        src={preset.thumbnail}
+                        alt={preset.label}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute inset-0 bg-black/25 group-hover:bg-transparent transition-colors" />
+                      {newProdImage === preset.url && (
+                        <div className="absolute inset-0 bg-amber-500/20 flex items-center justify-center">
+                          <span className="w-4 h-4 rounded-full bg-amber-400 text-stone-950 flex items-center justify-center font-bold text-[10px]">
+                            ✓
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div>
                 <label className="block text-xs font-semibold text-stone-300 mb-1">

@@ -68,6 +68,7 @@ import {
   INITIAL_POS_SALES,
   INITIAL_RESTAURANT_STOCK_ALERTS
 } from '../data/mockServicesAndStockData.ts';
+import { getServiceImageUrl, getPosProductImageUrl } from '../utils/serviceImages.ts';
 import {
   INITIAL_RESTAURANT_TABLES,
   INITIAL_RESTAURANT_MENU,
@@ -1327,7 +1328,20 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [paidServices, setPaidServices] = useState<PaidService[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_paid_services');
-      return saved ? JSON.parse(saved) : INITIAL_PAID_SERVICES;
+      if (!saved) return INITIAL_PAID_SERVICES;
+      const parsed: PaidService[] = JSON.parse(saved);
+      // Ensure all services have high-res image and merge any missing initial services
+      const enriched: PaidService[] = parsed.map((s) => ({
+        ...s,
+        imageUrl: s.imageUrl && s.imageUrl.trim() ? s.imageUrl : getServiceImageUrl(s)
+      }));
+      const existingIds = new Set(enriched.map((s) => s.id));
+      for (const initSrv of INITIAL_PAID_SERVICES) {
+        if (!existingIds.has(initSrv.id)) {
+          enriched.push(initSrv);
+        }
+      }
+      return enriched;
     } catch {
       return INITIAL_PAID_SERVICES;
     }
@@ -1435,7 +1449,19 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [posProducts, setPosProducts] = useState<PosProduct[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_pos_products');
-      return saved ? JSON.parse(saved) : INITIAL_POS_PRODUCTS;
+      if (!saved) return INITIAL_POS_PRODUCTS;
+      const parsed: PosProduct[] = JSON.parse(saved);
+      const enriched: PosProduct[] = parsed.map((p) => ({
+        ...p,
+        imageUrl: p.imageUrl && p.imageUrl.trim() ? p.imageUrl : getPosProductImageUrl(p)
+      }));
+      const existingIds = new Set(enriched.map((p) => p.id));
+      for (const initProd of INITIAL_POS_PRODUCTS) {
+        if (!existingIds.has(initProd.id)) {
+          enriched.push(initProd);
+        }
+      }
+      return enriched;
     } catch {
       return INITIAL_POS_PRODUCTS;
     }
