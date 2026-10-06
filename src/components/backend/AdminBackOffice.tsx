@@ -21,6 +21,7 @@ import { RestaurantStockAlertBanner } from './RestaurantStockAlertBanner.tsx';
 import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 import { DevToolsModal } from './DevToolsModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
+import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
@@ -128,6 +129,13 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     unreadStockAlertsCount,
     switchUserRole
   } = useHotelData();
+
+  // Nombre de commandes restaurant actives en cuisine (En cours / Prêt) pour le badge KDS
+  const activeKdsOrdersCount = useMemo(() => {
+    return restaurantOrders.filter(
+      (o) => !o.statutCuisine || o.statutCuisine === 'en_preparation' || o.statutCuisine === 'en_attente' || o.statutCuisine === 'pret'
+    ).length;
+  }, [restaurantOrders]);
 
   const [activeTab, setActiveTab] = useState<BackOfficeTab>(() => {
     if (initialTab) return initialTab;
@@ -664,6 +672,24 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               </span>
             </button>
 
+            {/* Onglet Direct : KDS Cuisine (Kitchen Display System en temps réel) */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('cuisine')}
+              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                activeTab === 'cuisine'
+                  ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
+                  : 'bg-amber-950/40 text-amber-200 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
+              }`}
+              title="Ouvrir l'écran de production cuisine KDS en temps réel (En cours, Prêt, Servi)"
+            >
+              <ChefHat className="w-4 h-4 text-amber-400" />
+              <span>KDS Cuisine</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                {activeKdsOrdersCount > 0 ? `${activeKdsOrdersCount} actif${activeKdsOrdersCount > 1 ? 's' : ''}` : 'Direct Chef'}
+              </span>
+            </button>
+
             {/* Séparateur discret */}
             <div className="h-6 w-px bg-stone-800 shrink-0 hidden sm:block" />
 
@@ -882,24 +908,12 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             onSubTabChange={(tab) => setRestaurantSubTab(tab)}
             onGoToFactureGlobale={() => setActiveTab('facture_globale')}
             onGoToStockAlerts={() => handleTabClick('stock_alerts')}
+            onGoToKds={() => handleTabClick('cuisine')}
           />
         )}
 
-        {/* Tab Dédié Cuisine et Suivi KDS (Accès direct garanti sans blocage) */}
-        {activeTab === 'cuisine' && (
-          <RestaurantManagementTab
-            key="kds-cuisine-view"
-            initialSubTab="commandes"
-            onSubTabChange={(tab) => {
-              if (tab !== 'commandes') {
-                setActiveTab('restaurant');
-                setRestaurantSubTab(tab);
-              }
-            }}
-            onGoToFactureGlobale={() => setActiveTab('facture_globale')}
-            onGoToStockAlerts={() => handleTabClick('stock_alerts')}
-          />
-        )}
+        {/* Tab Dédié Cuisine et Suivi KDS (Kitchen Display System en temps réel) */}
+        {activeTab === 'cuisine' && <KitchenDisplaySystemTab />}
 
         {/* Tab Point de Vente (POS) */}
         {activeTab === 'pos' && <PosSystemTab />}

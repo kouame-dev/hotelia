@@ -101,13 +101,15 @@ interface RestaurantManagementTabProps {
   onSubTabChange?: (tab: RestSubTab) => void;
   onGoToFactureGlobale?: () => void;
   onGoToStockAlerts?: () => void;
+  onGoToKds?: () => void;
 }
 
 export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = ({
   initialSubTab = 'pos',
   onSubTabChange,
   onGoToFactureGlobale,
-  onGoToStockAlerts
+  onGoToStockAlerts,
+  onGoToKds
 }) => {
   const {
     restaurantTables,
@@ -2539,7 +2541,17 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {onGoToKds && (
+                <button
+                  type="button"
+                  onClick={onGoToKds}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                >
+                  <ChefHat className="w-4 h-4" />
+                  <span>Ouvrir Module KDS Plein Écran (En cours, Prêt, Servi)</span>
+                </button>
+              )}
               <span className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 font-mono font-bold text-xs border border-amber-200">
                 {restaurantOrders.filter((o) => o.statutAddition === 'en_cours').length} commandes actives
               </span>

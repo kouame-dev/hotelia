@@ -634,5 +634,192 @@ export const INITIAL_RESTAURANT_ORDERS: RestaurantOrder[] = [
     statutAddition: 'addition_imprimee',
     typeService: 'sur_place',
     notes: 'Addition demandée - Règlement par Mobile Money Orange ou Note Chambre'
+  },
+  {
+    id: 'cmd-rest-4',
+    numeroCommande: 'CMD-REST-204',
+    tableNumero: 'Table 04',
+    serveurNom: 'Marius K.',
+    clientNom: 'Dr. Émile Akoto',
+    chambreNumero: '304',
+    date: '2026-09-20',
+    heure: '20:12',
+    items: [
+      {
+        id: 'li-9',
+        menuItemId: 'menu-7',
+        nom: 'Capitaine Braisé Entier aux Herbes & Alloco Doré',
+        categorie: 'Spécialités Africaines',
+        prixUnitaire: 28,
+        quantite: 1,
+        totalLigne: 28,
+        cuissonOuNote: 'Sauce piment à part, bien croustillant',
+        notesCuisson: 'Sauce piment à part, bien croustillant'
+      },
+      {
+        id: 'li-10',
+        menuItemId: 'menu-1',
+        nom: 'Salade de Poulpe Mariné aux Agrumes & Épices Douces',
+        categorie: 'Entrées',
+        prixUnitaire: 14,
+        quantite: 1,
+        totalLigne: 14,
+        cuissonOuNote: 'Sans oignons crus'
+      }
+    ],
+    articles: [
+      {
+        id: 'li-9',
+        menuItemId: 'menu-7',
+        nom: 'Capitaine Braisé Entier aux Herbes & Alloco Doré',
+        categorie: 'Spécialités Africaines',
+        prixUnitaire: 28,
+        quantite: 1,
+        totalLigne: 28,
+        cuissonOuNote: 'Sauce piment à part, bien croustillant',
+        notesCuisson: 'Sauce piment à part, bien croustillant'
+      },
+      {
+        id: 'li-10',
+        menuItemId: 'menu-1',
+        nom: 'Salade de Poulpe Mariné aux Agrumes & Épices Douces',
+        categorie: 'Entrées',
+        prixUnitaire: 14,
+        quantite: 1,
+        totalLigne: 14,
+        cuissonOuNote: 'Sans oignons crus'
+      }
+    ],
+    totalBrut: 42,
+    remise: 0,
+    totalNet: 42,
+    statutPaiement: 'en_attente',
+    statutCuisine: 'en_preparation',
+    statutAddition: 'en_cours',
+    typeService: 'sur_place',
+    notes: 'Priorité cuisson : le convive a un rendez-vous à 21h'
+  },
+  {
+    id: 'cmd-rest-5',
+    numeroCommande: 'CMD-REST-205',
+    tableNumero: 'Room Service',
+    serveurNom: 'Mariam Diallo',
+    clientNom: 'Mme Sophie Van Der Berg',
+    chambreNumero: '205',
+    date: '2026-09-20',
+    heure: '20:18',
+    items: [
+      {
+        id: 'li-11',
+        menuItemId: 'menu-9',
+        nom: 'Filet de Bœuf Rossini & Purée Mousseline à la Truffe',
+        categorie: 'Plats Principaux',
+        prixUnitaire: 34,
+        quantite: 2,
+        totalLigne: 68,
+        cuissonOuNote: '1x À point / 1x Bien cuit, sans sel ajouté',
+        notesCuisson: '1x À point / 1x Bien cuit, sans sel ajouté'
+      },
+      {
+        id: 'li-12',
+        menuItemId: 'menu-13',
+        nom: 'Moelleux au Chocolat Pur Origine Côte d’Ivoire (72%)',
+        categorie: 'Desserts',
+        prixUnitaire: 12,
+        quantite: 2,
+        totalLigne: 24
+      }
+    ],
+    articles: [
+      {
+        id: 'li-11',
+        menuItemId: 'menu-9',
+        nom: 'Filet de Bœuf Rossini & Purée Mousseline à la Truffe',
+        categorie: 'Plats Principaux',
+        prixUnitaire: 34,
+        quantite: 2,
+        totalLigne: 68,
+        cuissonOuNote: '1x À point / 1x Bien cuit, sans sel ajouté',
+        notesCuisson: '1x À point / 1x Bien cuit, sans sel ajouté'
+      },
+      {
+        id: 'li-12',
+        menuItemId: 'menu-13',
+        nom: 'Moelleux au Chocolat Pur Origine Côte d’Ivoire (72%)',
+        categorie: 'Desserts',
+        prixUnitaire: 12,
+        quantite: 2,
+        totalLigne: 24
+      }
+    ],
+    totalBrut: 92,
+    remise: 0,
+    totalNet: 92,
+    statutPaiement: 'en_attente',
+    statutCuisine: 'pret',
+    statutAddition: 'en_cours',
+    typeService: 'room_service',
+    notes: 'Livraison sur plateau d’argent avec cloches chaudes - Ch. 205'
+  },
+  {
+    id: 'cmd-rest-6',
+    numeroCommande: 'CMD-REST-206',
+    tableNumero: 'Salon VIP 01',
+    serveurNom: 'Chef Jean-Luc Gnahoua',
+    clientNom: 'Délégation Ministère Économie',
+    date: '2026-09-20',
+    heure: '19:40',
+    items: [
+      {
+        id: 'li-13',
+        menuItemId: 'menu-5',
+        nom: 'Kédjénou de Pintade Fermière en Canari de Terre Cuite',
+        categorie: 'Spécialités Africaines',
+        prixUnitaire: 26,
+        quantite: 4,
+        totalLigne: 104,
+        cuissonOuNote: 'Très épicé traditionnel avec attiéké frais',
+        notesCuisson: 'Très épicé traditionnel avec attiéké frais'
+      },
+      {
+        id: 'li-14',
+        menuItemId: 'menu-18',
+        nom: 'Champagne Ruinart Blanc de Blancs (Coupe)',
+        categorie: 'Vins & Champagnes',
+        prixUnitaire: 22,
+        quantite: 4,
+        totalLigne: 88
+      }
+    ],
+    articles: [
+      {
+        id: 'li-13',
+        menuItemId: 'menu-5',
+        nom: 'Kédjénou de Pintade Fermière en Canari de Terre Cuite',
+        categorie: 'Spécialités Africaines',
+        prixUnitaire: 26,
+        quantite: 4,
+        totalLigne: 104,
+        cuissonOuNote: 'Très épicé traditionnel avec attiéké frais',
+        notesCuisson: 'Très épicé traditionnel avec attiéké frais'
+      },
+      {
+        id: 'li-14',
+        menuItemId: 'menu-18',
+        nom: 'Champagne Ruinart Blanc de Blancs (Coupe)',
+        categorie: 'Vins & Champagnes',
+        prixUnitaire: 22,
+        quantite: 4,
+        totalLigne: 88
+      }
+    ],
+    totalBrut: 192,
+    remise: 0,
+    totalNet: 192,
+    statutPaiement: 'en_attente',
+    statutCuisine: 'pret',
+    statutAddition: 'en_cours',
+    typeService: 'sur_place',
+    notes: 'Service VIP soigné au canari de terre cuite à table'
   }
 ];
