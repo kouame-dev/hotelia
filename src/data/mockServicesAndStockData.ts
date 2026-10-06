@@ -8,7 +8,8 @@ import {
   BonAchat,
   ServiceOrder,
   PosSale,
-  RestaurantStockAlert
+  RestaurantStockAlert,
+  ConsumableStockAlert
 } from '../types.ts';
 
 // 1. Catalogue initial des Services Payants
@@ -235,10 +236,21 @@ export const INITIAL_FOURNISSEURS: Fournisseur[] = [
     contactNom: 'Dr. Gnahoré',
     telephone: '+225 05 11 22 33 00',
     email: 'commandes@hygienepro.ci',
-    adresse: 'Yopougon Zone Industrielle',
-    specialite: 'Désinfectants virucides, lessives industrielles, pastilles lave-vaisselle',
+    adresse: 'Yopougon Zone Industrielle, Abidjan',
+    specialite: 'Désinfectants virucides, détergents sols, dégraissants sanitaires & lessives',
     delaiLivraisonJours: 2,
     conditionsPaiement: 'Virement ou Mobile Money'
+  },
+  {
+    id: 'fourn-6',
+    nom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    contactNom: 'Mme Fatou Bamba',
+    telephone: '+225 07 23 45 67 89',
+    email: 'contact@accueil-hotelier.ci',
+    adresse: 'Cocody Riviera 3, Abidjan',
+    specialite: 'Savonnettes végétales au karité, flacons gel douche & shampoing, kits d’accueil',
+    delaiLivraisonJours: 1,
+    conditionsPaiement: 'Paiement à livraison par Mobile Money ou Virement'
   }
 ];
 
@@ -431,6 +443,237 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
     fournisseurId: 'fourn-1',
     fournisseurNom: 'Ivoire Boissons & Brasseries SA',
     dernierReassort: '2026-09-08'
+  },
+
+  // --- CONSOMMABLES D'HÔTEL : 1. SAVONS & PRODUITS D'ACCUEIL ---
+  {
+    id: 'stk-sav-1',
+    code: 'SAV-ACC-01',
+    designation: 'Savonnette Végétale d’Accueil 30g au Beurre de Karité & Verveine',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 8, // SOUS LE SEUIL MINIMAL (Seuil = 50) -> CRITIQUE
+    seuilAlerte: 50,
+    prixAchatUnitaire: 180,
+    unite: 'savonnette',
+    fournisseurId: 'fourn-6',
+    fournisseurNom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    dernierReassort: '2026-09-01'
+  },
+  {
+    id: 'stk-sav-2',
+    code: 'SAV-GEL-01',
+    designation: 'Flacon Gel Douche & Shampoing Revitalisant 40ml Hotelia Prestige',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 14, // SOUS LE SEUIL MINIMAL (Seuil = 60) -> CRITIQUE
+    seuilAlerte: 60,
+    prixAchatUnitaire: 350,
+    unite: 'flacon 40ml',
+    fournisseurId: 'fourn-6',
+    fournisseurNom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    dernierReassort: '2026-09-02'
+  },
+  {
+    id: 'stk-sav-3',
+    code: 'SAV-LAI-01',
+    designation: 'Lait Corporel Nourrissant Karité & Argan 40ml',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 52, // Conforme au seuil (Seuil = 30)
+    seuilAlerte: 30,
+    prixAchatUnitaire: 400,
+    unite: 'flacon 40ml',
+    fournisseurId: 'fourn-6',
+    fournisseurNom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    dernierReassort: '2026-09-12'
+  },
+  {
+    id: 'stk-sav-4',
+    code: 'SAV-DEN-01',
+    designation: 'Kit Brosse à Dents Bambou & Dentifrice Écologique d’Accueil',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 5, // SOUS LE SEUIL MINIMAL (Seuil = 40) -> RUPTURE IMMINENTE
+    seuilAlerte: 40,
+    prixAchatUnitaire: 320,
+    unite: 'kit',
+    fournisseurId: 'fourn-6',
+    fournisseurNom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    dernierReassort: '2026-08-28'
+  },
+  {
+    id: 'stk-sav-5',
+    code: 'SAV-BON-01',
+    designation: 'Bonnets de Douche & Set Coton Hygiène Féminine d’Accueil',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 18, // Proche seuil (Seuil = 25) -> FAIBLE
+    seuilAlerte: 25,
+    prixAchatUnitaire: 220,
+    unite: 'set',
+    fournisseurId: 'fourn-6',
+    fournisseurNom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    dernierReassort: '2026-09-05'
+  },
+
+  // --- CONSOMMABLES D'HÔTEL : 2. SERVIETTES & LINGE DE BAIN ---
+  {
+    id: 'stk-srv-1',
+    code: 'SRV-BAI-01',
+    designation: 'Draps de Bain & Grandes Serviettes 70x140cm 600g Blanc Pur Éponge',
+    categorie: 'Lingerie & Blanchisserie',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 11, // SOUS LE SEUIL MINIMAL (Seuil = 45) -> CRITIQUE POUR ARRIVÉES
+    seuilAlerte: 45,
+    prixAchatUnitaire: 6500,
+    unite: 'pièce',
+    fournisseurId: 'fourn-4',
+    fournisseurNom: 'Ivoire Textile & Équipements Hôteliers',
+    dernierReassort: '2026-08-20'
+  },
+  {
+    id: 'stk-srv-2',
+    code: 'SRV-TOI-01',
+    designation: 'Serviettes de Toilette Éponge 50x100cm Coton Peigné Égypte',
+    categorie: 'Lingerie & Blanchisserie',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 16, // SOUS LE SEUIL MINIMAL (Seuil = 35) -> CRITIQUE
+    seuilAlerte: 35,
+    prixAchatUnitaire: 3800,
+    unite: 'pièce',
+    fournisseurId: 'fourn-4',
+    fournisseurNom: 'Ivoire Textile & Équipements Hôteliers',
+    dernierReassort: '2026-08-22'
+  },
+  {
+    id: 'stk-srv-3',
+    code: 'SRV-TAP-01',
+    designation: 'Tapis de Bain Éponge 800g Blanc Brodé Hotelia Palace',
+    categorie: 'Lingerie & Blanchisserie',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 7, // SOUS LE SEUIL MINIMAL (Seuil = 20) -> CRITIQUE
+    seuilAlerte: 20,
+    prixAchatUnitaire: 4500,
+    unite: 'pièce',
+    fournisseurId: 'fourn-4',
+    fournisseurNom: 'Ivoire Textile & Équipements Hôteliers',
+    dernierReassort: '2026-08-25'
+  },
+  {
+    id: 'stk-srv-4',
+    code: 'SRV-VIS-01',
+    designation: 'Débarbouillettes & Serviettes Visage 30x30cm Coton Velours',
+    categorie: 'Lingerie & Blanchisserie',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 64, // Conforme au seuil (Seuil = 30)
+    seuilAlerte: 30,
+    prixAchatUnitaire: 1200,
+    unite: 'pièce',
+    fournisseurId: 'fourn-4',
+    fournisseurNom: 'Ivoire Textile & Équipements Hôteliers',
+    dernierReassort: '2026-09-10'
+  },
+
+  // --- CONSOMMABLES D'HÔTEL : 3. PRODUITS D'ENTRETIEN & MÉNAGE ---
+  {
+    id: 'stk-ent-1',
+    code: 'ENT-SOL-01',
+    designation: 'Détergent Désinfectant Sols & Parquets Parfumé Agrumes (Bidon 5L)',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 1, // SOUS LE SEUIL MINIMAL (Seuil = 4) -> RUPTURE IMMINENTE
+    seuilAlerte: 4,
+    prixAchatUnitaire: 12500,
+    unite: 'bidon 5L',
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    dernierReassort: '2026-08-15'
+  },
+  {
+    id: 'stk-ent-2',
+    code: 'ENT-VIT-01',
+    designation: 'Spray Nettoyant Vitres, Miroirs & Parois de Douche Anti-Traces (750ml)',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 2, // SOUS LE SEUIL MINIMAL (Seuil = 6) -> CRITIQUE
+    seuilAlerte: 6,
+    prixAchatUnitaire: 2800,
+    unite: 'flacon spray',
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    dernierReassort: '2026-08-18'
+  },
+  {
+    id: 'stk-ent-3',
+    code: 'ENT-SAN-01',
+    designation: 'Détartrant Dégraissant Sanitaires & Robinetterie Chrome (Flacon 1L)',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 1, // SOUS LE SEUIL MINIMAL (Seuil = 5) -> CRITIQUE
+    seuilAlerte: 5,
+    prixAchatUnitaire: 3200,
+    unite: 'flacon 1L',
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    dernierReassort: '2026-08-20'
+  },
+  {
+    id: 'stk-ent-4',
+    code: 'ENT-JAV-01',
+    designation: 'Eau de Javel Désinfectante Bactéricide Concentrée Norme Hôtelière (Bidon 5L)',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 8, // Conforme au seuil (Seuil = 4)
+    seuilAlerte: 4,
+    prixAchatUnitaire: 4500,
+    unite: 'bidon 5L',
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    dernierReassort: '2026-09-08'
+  },
+  {
+    id: 'stk-ent-5',
+    code: 'ENT-SAC-01',
+    designation: 'Sacs Poubelle Chambres & Salles de Bain 30L Biodégradables (Rouleaux 50)',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 3, // SOUS LE SEUIL MINIMAL (Seuil = 10) -> CRITIQUE
+    seuilAlerte: 10,
+    prixAchatUnitaire: 2500,
+    unite: 'rouleau de 50',
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    dernierReassort: '2026-08-24'
+  },
+  {
+    id: 'stk-ent-6',
+    code: 'ENT-LES-01',
+    designation: 'Lessive Liquide Blanchisserie Professionnelle Linge Blanc & Couleurs (10L)',
+    categorie: 'Ménage & Produits',
+    entrepotId: 'ent-3',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    quantite: 1, // SOUS LE SEUIL MINIMAL (Seuil = 3) -> RUPTURE IMMINENTE
+    seuilAlerte: 3,
+    prixAchatUnitaire: 28000,
+    unite: 'bidon 10L',
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    dernierReassort: '2026-08-10'
   }
 ];
 
@@ -1799,6 +2042,234 @@ export const INITIAL_RESTAURANT_STOCK_ALERTS: RestaurantStockAlert[] = [
     statut: 'actif',
     acquittee: false,
     notes: 'Seulement 2 bouteilles en cave. Réassort impératif avant les réservations VIP du week-end.'
+  }
+];
+
+// =========================================================================
+// 12. Alertes initiales Consommables d'Hôtel (Savons, Serviettes, Produits d'Entretien)
+// Destinées au Tableau de Bord du Chef de Réception & à la Gouvernante
+// =========================================================================
+export const INITIAL_CONSUMABLE_STOCK_ALERTS: ConsumableStockAlert[] = [
+  // A. Savons & Produits d'Accueil
+  {
+    id: 'alt-cns-sav-1',
+    articleId: 'stk-sav-1',
+    articleCode: 'SAV-ACC-01',
+    articleDesignation: 'Savonnette Végétale d’Accueil 30g au Beurre de Karité & Verveine',
+    categorie: 'Savons & Accueil',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 8,
+    seuilAlerte: 50,
+    unite: 'savonnette',
+    quantiteSuggeree: 92,
+    prixAchatUnitaire: 180,
+    coutEstimeReassort: 16560,
+    fournisseurId: 'fourn-6',
+    fournisseurNom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    fournisseurTelephone: '+225 07 88 44 22 10',
+    severite: 'rupture',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:00:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:00',
+    impactChambre: 'Stock insuffisant pour les 12 arrivées et départs prévus aujourd’hui. 8 savonnettes restantes sur 50 requises.',
+    acquittee: false,
+    notes: 'Dotation d’accueil en risque de rupture immédiate pour les chambres Deluxe et Standard.'
+  },
+  {
+    id: 'alt-cns-sav-2',
+    articleId: 'stk-sav-2',
+    articleCode: 'SAV-GEL-01',
+    articleDesignation: 'Flacon Gel Douche & Shampoing Revitalisant 40ml Hotelia Prestige',
+    categorie: 'Savons & Accueil',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 14,
+    seuilAlerte: 60,
+    unite: 'flacon 40ml',
+    quantiteSuggeree: 106,
+    prixAchatUnitaire: 350,
+    coutEstimeReassort: 37100,
+    fournisseurId: 'fourn-6',
+    fournisseurNom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    fournisseurTelephone: '+225 07 88 44 22 10',
+    severite: 'critique',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:10:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:10',
+    impactChambre: 'Seulement 14 flacons disponibles pour le réassort des suites VIP et de l’étage Exécutif.',
+    acquittee: false,
+    notes: 'Seuil critique franchi. Réassort urgent de 100 flacons recommandé auprès du fournisseur.'
+  },
+  {
+    id: 'alt-cns-sav-4',
+    articleId: 'stk-sav-4',
+    articleCode: 'SAV-DEN-01',
+    articleDesignation: 'Kit Brosse à Dents Bambou & Dentifrice Écologique d’Accueil',
+    categorie: 'Savons & Accueil',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 5,
+    seuilAlerte: 40,
+    unite: 'kit',
+    quantiteSuggeree: 75,
+    prixAchatUnitaire: 320,
+    coutEstimeReassort: 24000,
+    fournisseurId: 'fourn-6',
+    fournisseurNom: 'Laboratoires Cosmétiques & Accueil Hôtelier CI',
+    fournisseurTelephone: '+225 07 88 44 22 10',
+    severite: 'rupture',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:15:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:15',
+    impactChambre: 'Kits d’accueil VIP quasiment épuisés (5 restants sur un seuil de 40).',
+    acquittee: false,
+    notes: 'Rupture imminente pour les kits d’hygiène buccale de courtoisie.'
+  },
+
+  // B. Serviettes & Linge de Bain
+  {
+    id: 'alt-cns-srv-1',
+    articleId: 'stk-srv-1',
+    articleCode: 'SRV-BAI-01',
+    articleDesignation: 'Draps de Bain & Grandes Serviettes 70x140cm 600g Blanc Pur Éponge',
+    categorie: 'Serviettes & Linge',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 11,
+    seuilAlerte: 45,
+    unite: 'pièce',
+    quantiteSuggeree: 79,
+    prixAchatUnitaire: 6500,
+    coutEstimeReassort: 513500,
+    fournisseurId: 'fourn-4',
+    fournisseurNom: 'Ivoire Textile & Équipements Hôteliers',
+    fournisseurTelephone: '+225 01 23 45 67 89',
+    severite: 'critique',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:20:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:20',
+    impactChambre: 'Rotation critique du linge : seulement 11 draps disponibles pour 8 départs et remises à blanc.',
+    acquittee: false,
+    notes: 'Risque de blocage du ménage des chambres si le blanchissage n’est pas livré dans l’après-midi.'
+  },
+  {
+    id: 'alt-cns-srv-2',
+    articleId: 'stk-srv-2',
+    articleCode: 'SRV-TOI-01',
+    articleDesignation: 'Serviettes de Toilette Éponge 50x100cm Coton Peigné Égypte',
+    categorie: 'Serviettes & Linge',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 16,
+    seuilAlerte: 35,
+    unite: 'pièce',
+    quantiteSuggeree: 54,
+    prixAchatUnitaire: 3800,
+    coutEstimeReassort: 205200,
+    fournisseurId: 'fourn-4',
+    fournisseurNom: 'Ivoire Textile & Équipements Hôteliers',
+    fournisseurTelephone: '+225 01 23 45 67 89',
+    severite: 'critique',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:25:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:25',
+    impactChambre: 'Stock insuffisant pour doter 2 serviettes par voyageur sur les 10 chambres occupées.',
+    acquittee: false,
+    notes: 'Réserve tampon de la lingerie en dessous du seuil minimal.'
+  },
+  {
+    id: 'alt-cns-srv-3',
+    articleId: 'stk-srv-3',
+    articleCode: 'SRV-TAP-01',
+    articleDesignation: 'Tapis de Bain Éponge 800g Blanc Brodé Hotelia Palace',
+    categorie: 'Serviettes & Linge',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 7,
+    seuilAlerte: 20,
+    unite: 'pièce',
+    quantiteSuggeree: 33,
+    prixAchatUnitaire: 4500,
+    coutEstimeReassort: 148500,
+    fournisseurId: 'fourn-4',
+    fournisseurNom: 'Ivoire Textile & Équipements Hôteliers',
+    fournisseurTelephone: '+225 01 23 45 67 89',
+    severite: 'critique',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:30:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:30',
+    impactChambre: 'Seulement 7 tapis disponibles pour équiper les salles d’eau des nouvelles arrivées.',
+    acquittee: false,
+    notes: 'Commande fournisseur à relancer pour garantir le standard 5 étoiles.'
+  },
+
+  // C. Produits d'Entretien & Ménage
+  {
+    id: 'alt-cns-ent-1',
+    articleId: 'stk-ent-1',
+    articleCode: 'ENT-SOL-01',
+    articleDesignation: 'Détergent Désinfectant Sols & Parquets Parfumé Agrumes (Bidon 5L)',
+    categorie: 'Produits d’Entretien',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 1,
+    seuilAlerte: 4,
+    unite: 'bidon 5L',
+    quantiteSuggeree: 7,
+    prixAchatUnitaire: 12500,
+    coutEstimeReassort: 87500,
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    fournisseurTelephone: '+225 27 22 55 66 77',
+    severite: 'rupture',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:35:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:35',
+    impactChambre: 'Un seul bidon restant. Nettoyage des couloirs et chambres compromis d’ici 48 heures.',
+    acquittee: false,
+    notes: 'Produit essentiel pour l’équipe de ménage. Commande prioritaire.'
+  },
+  {
+    id: 'alt-cns-ent-2',
+    articleId: 'stk-ent-2',
+    articleCode: 'ENT-VIT-01',
+    articleDesignation: 'Spray Nettoyant Vitres, Miroirs & Parois de Douche Anti-Traces (750ml)',
+    categorie: 'Produits d’Entretien',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 2,
+    seuilAlerte: 6,
+    unite: 'flacon spray',
+    quantiteSuggeree: 10,
+    prixAchatUnitaire: 2800,
+    coutEstimeReassort: 28000,
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    fournisseurTelephone: '+225 27 22 55 66 77',
+    severite: 'critique',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:40:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:40',
+    impactChambre: '2 sprays restants pour les 3 chariots d’étage des femmes de chambre.',
+    acquittee: false,
+    notes: 'Équipement partiel des chariots d’étage. Risque de retard sur la remise en état des vitres et miroirs.'
+  },
+  {
+    id: 'alt-cns-ent-3',
+    articleId: 'stk-ent-3',
+    articleCode: 'ENT-SAN-01',
+    articleDesignation: 'Détartrant Dégraissant Sanitaires & Robinetterie Chrome (Flacon 1L)',
+    categorie: 'Produits d’Entretien',
+    entrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    stockActuel: 1,
+    seuilAlerte: 5,
+    unite: 'flacon 1L',
+    quantiteSuggeree: 9,
+    prixAchatUnitaire: 3200,
+    coutEstimeReassort: 28800,
+    fournisseurId: 'fourn-5',
+    fournisseurNom: 'Hygiène Pro & Chimie Sanitaire CI',
+    fournisseurTelephone: '+225 27 22 55 66 77',
+    severite: 'critique',
+    statut: 'actif',
+    dateDetection: '2026-09-28T09:45:00.000Z',
+    dateDetectionFormatted: 'Aujourd\'hui à 09:45',
+    impactChambre: 'Dernier flacon entamé à l’économat. Ravitaillement nécessaire avant vendredi.',
+    acquittee: false,
+    notes: 'Produit indispensable pour la désinfection et la brillance de la robinetterie des suites.'
   }
 ];
 

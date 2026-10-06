@@ -18,6 +18,7 @@ import { ReservationAuditLogTab } from './ReservationAuditLogTab.tsx';
 import { RestaurantManagementTab } from './RestaurantManagementTab.tsx';
 import { LoyaltyAndMarketingTab } from './LoyaltyAndMarketingTab.tsx';
 import { RestaurantStockAlertBanner } from './RestaurantStockAlertBanner.tsx';
+import { HotelConsumablesAlertBanner } from './HotelConsumablesAlertBanner.tsx';
 import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 import { DevToolsModal } from './DevToolsModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
@@ -127,6 +128,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     auditLogs,
     restaurantStockAlerts,
     unreadStockAlertsCount,
+    consumableStockAlerts,
+    unreadConsumableAlertsCount,
     switchUserRole
   } = useHotelData();
 
@@ -437,34 +440,38 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
             {/* Profile & Navigation Actions */}
             <div className="flex items-center space-x-3">
-              {/* Onglet Unifié : Alertes & Stocks Restaurant (Regroupement en 1 seul onglet) */}
+              {/* Onglet Unifié : Alertes & Stocks Restaurant / Consommables Hôtel */}
               <button
                 type="button"
                 onClick={() => setIsNotifModalOpen(true)}
                 className={`relative px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs ${
-                  unreadCount > 0 || unreadStockAlertsCount > 0
+                  unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0
                     ? 'bg-amber-950/60 hover:bg-amber-900/80 text-amber-200 border-amber-600/50 ring-1 ring-amber-500/30'
                     : 'bg-[#2A2925] hover:bg-[#383631] text-stone-300 hover:text-white border-stone-700'
                 }`}
-                title="Centre unifié d'alertes sonores, réservations & stocks restaurant critiques"
+                title="Centre unifié d'alertes sonores, réservations, stocks restaurant & consommables hôtel"
               >
                 <div className="relative">
                   {unreadCount > 0 ? (
                     <BellRing className="w-4 h-4 text-amber-400 animate-bounce" />
+                  ) : unreadConsumableAlertsCount > 0 ? (
+                    <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse" />
                   ) : unreadStockAlertsCount > 0 ? (
                     <AlertTriangle className="w-4 h-4 text-rose-400 animate-pulse" />
                   ) : (
                     <Bell className="w-4 h-4 text-stone-300" />
                   )}
-                  {(unreadCount > 0 || unreadStockAlertsCount > 0) && (
+                  {(unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) && (
                     <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-white">Alertes &amp; Stocks Restaurant</span>
-                  {(unreadCount > 0 || unreadStockAlertsCount > 0) && (
+                  <span className="text-xs font-bold text-white">
+                    {isChefReception ? 'Alertes & Consommables' : 'Alertes & Stocks'}
+                  </span>
+                  {(unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) && (
                     <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px]">
-                      {unreadCount + unreadStockAlertsCount}
+                      {unreadCount + unreadStockAlertsCount + unreadConsumableAlertsCount}
                     </span>
                   )}
                 </div>
@@ -773,6 +780,11 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {/* Bandeau d'Alerte Proactif : Surveillance des Stocks Critiques Restaurant */}
         <RestaurantStockAlertBanner
           onNavigateToStockAlerts={() => handleTabClick('stock_alerts')}
+        />
+
+        {/* Bandeau d'Alerte Proactif : Surveillance des Consommables d'Hôtel (Chef de Réception & Direction) */}
+        <HotelConsumablesAlertBanner
+          onNavigateToStockManagement={() => handleTabClick('stock')}
         />
 
         {/* Bannière de Session Caisse : Confirmation du périmètre exclusif réservations */}

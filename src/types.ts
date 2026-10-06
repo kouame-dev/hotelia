@@ -850,4 +850,37 @@ export interface RestaurantStockAlert {
   bonAchatNumero?: string;
 }
 
+// =========================================================================
+// 17. MODULE D'ALERTES AUTOMATIQUES CONSOMMABLES D'HÔTEL (CHEF DE RÉCEPTION)
+// =========================================================================
+export type ConsumableCategory = 'Savons & Accueil' | 'Serviettes & Linge' | 'Produits d’Entretien';
+
+export interface ConsumableStockAlert {
+  id: string;
+  articleId: string;
+  articleCode: string;
+  articleDesignation: string;
+  categorie: ConsumableCategory;
+  entrepotNom: string;
+  stockActuel: number;
+  seuilAlerte: number; // Seuil minimal paramétré
+  unite: string;
+  quantiteSuggeree: number;
+  prixAchatUnitaire: number;
+  coutEstimeReassort: number;
+  fournisseurId?: string;
+  fournisseurNom: string;
+  fournisseurTelephone?: string;
+  severite: StockAlertLevel;
+  statut: 'actif' | 'commande_en_cours' | 'reapprovisionne' | 'ignore';
+  dateDetection: string;
+  dateDetectionFormatted: string;
+  impactChambre: string;
+  acquittee: boolean;
+  acquitteePar?: string;
+  dateAcquittement?: string;
+  notes?: string;
+}
+
+
 

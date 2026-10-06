@@ -43,7 +43,9 @@ import {
   AuditActionType,
   AuditFieldDiff,
   RestaurantStockAlert,
-  StockAlertLevel
+  StockAlertLevel,
+  ConsumableStockAlert,
+  ConsumableCategory
 } from '../types.ts';
 import {
   INITIAL_ROOM_TYPES,
@@ -66,7 +68,8 @@ import {
   INITIAL_BONS_ACHAT,
   INITIAL_SERVICE_ORDERS,
   INITIAL_POS_SALES,
-  INITIAL_RESTAURANT_STOCK_ALERTS
+  INITIAL_RESTAURANT_STOCK_ALERTS,
+  INITIAL_CONSUMABLE_STOCK_ALERTS
 } from '../data/mockServicesAndStockData.ts';
 import { getServiceImageUrl, getPosProductImageUrl } from '../utils/serviceImages.ts';
 import {
@@ -211,6 +214,16 @@ interface HotelDataContextType {
   genererBonsAchatAutoPourStocksCritiques: (articleIds?: string[]) => BonAchat[];
   simulerAlerteStockRestaurant: (articleId?: string) => void;
   updateArticleSeuilAlerte: (articleId: string, nouveauSeuil: number) => void;
+
+  // 11c. Alertes & Notifications Automatiques Consommables d'Hôtel (Chef de Réception & Gouvernante)
+  consumableStockAlerts: ConsumableStockAlert[];
+  unreadConsumableAlertsCount: number;
+  acquitterConsumableAlert: (alertId: string) => void;
+  acquitterAllConsumableAlerts: () => void;
+  mettreAJourSeuilConsommable: (articleId: string, nouveauSeuil: number) => void;
+  ajusterStockConsommable: (articleId: string, nouvelleQuantite: number, raison?: string) => void;
+  genererBonCommandeConsommables: (alertIds: string[]) => { bonNumero: string; articlesCount: number; montantTotal: number };
+  simulerAlerteConsommables: (targetArticleId?: string) => void;
 
   // 12. Facture Globale Consolidée
   generateGlobalInvoice: (reservationId?: string, chambreNumero?: string) => FactureGlobaleData | null;
@@ -2116,6 +2129,326 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     );
   };
 
+  // =========================================================================
+  // 11c. MODULE D'ALERTES AUTOMATIQUES CONSOMMABLES D'HÔTEL (CHEF DE RÉCEPTION)
+  // Surveillance des Savons & Accueil, Serviettes & Linge, Produits d'Entretien
+  // =========================================================================
+  const [consumableStockAlerts, setConsumableStockAlerts] = useState<ConsumableStockAlert[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_consumable_stock_alerts');
+      return saved ? JSON.parse(saved) : INITIAL_CONSUMABLE_STOCK_ALERTS;
+    } catch {
+      return INITIAL_CONSUMABLE_STOCK_ALERTS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_consumable_stock_alerts', JSON.stringify(consumableStockAlerts));
+  }, [consumableStockAlerts]);
+
+  // Surveillance automatique des stocks consommables hôtel en temps réel
+  useEffect(() => {
+    const consumableItems = stockItems.filter((item) => {
+      const cat = (item.categorie || '').toLowerCase();
+      const ent = (item.entrepotNom || '').toLowerCase();
+      const code = (item.code || '').toLowerCase();
+      const des = (item.designation || '').toLowerCase();
+      return (
+        code.startsWith('sav-') ||
+        code.startsWith('srv-') ||
+        code.startsWith('ent-') ||
+        cat.includes('ménage') ||
+        cat.includes('menage') ||
+        cat.includes('lingerie') ||
+        cat.includes('blanchisserie') ||
+        ent.includes('lingerie') ||
+        des.includes('savon') ||
+        des.includes('serviette') ||
+        des.includes('drap') ||
+        des.includes('tapis de bain') ||
+        des.includes('peignoir') ||
+        des.includes('détergent') ||
+        des.includes('detergent') ||
+        des.includes('gel douche') ||
+        des.includes('shampoing') ||
+        des.includes('brosse à dents') ||
+        des.includes('produit d’entretien') ||
+        des.includes('produit d\'entretien') ||
+        des.includes('javel') ||
+        des.includes('détartrant') ||
+        des.includes('désinfectant')
+      );
+    });
+
+    let newAlertTriggered = false;
+
+    setConsumableStockAlerts((prevAlerts) => {
+      let updated = [...prevAlerts];
+
+      consumableItems.forEach((item) => {
+        const isCritical = item.quantite <= item.seuilAlerte;
+        const existingAlertIndex = updated.findIndex((a) => a.articleId === item.id);
+        const severite: StockAlertLevel =
+          item.quantite === 0 ? 'rupture' : item.quantite <= Math.ceil(item.seuilAlerte * 0.4) ? 'critique' : 'faible';
+        const quantiteSuggeree = Math.max(1, item.seuilAlerte * 2 - item.quantite);
+        const coutEstime = quantiteSuggeree * item.prixAchatUnitaire;
+
+        const catNorm: ConsumableCategory =
+          (item.code || '').startsWith('sav-') ||
+          (item.designation || '').toLowerCase().includes('savon') ||
+          (item.designation || '').toLowerCase().includes('shampoing') ||
+          (item.designation || '').toLowerCase().includes('gel') ||
+          (item.designation || '').toLowerCase().includes('brosse')
+            ? 'Savons & Accueil'
+            : (item.code || '').startsWith('srv-') ||
+              (item.designation || '').toLowerCase().includes('serviette') ||
+              (item.designation || '').toLowerCase().includes('drap') ||
+              (item.designation || '').toLowerCase().includes('tapis')
+            ? 'Serviettes & Linge'
+            : 'Produits d’Entretien';
+
+        const impactChambre =
+          catNorm === 'Savons & Accueil'
+            ? `Stock critique (${item.quantite} ${item.unite} restants). Risque d'indisponibilité pour les arrivées et le renouvellement des chambres.`
+            : catNorm === 'Serviettes & Linge'
+            ? `Rotation critique du linge (${item.quantite} restants sur un seuil de ${item.seuilAlerte}). Risque de blocage du ménage des chambres.`
+            : `Nettoyage et désinfection des sanitaires/chambres compromis (${item.quantite} ${item.unite} restants).`;
+
+        if (isCritical) {
+          if (existingAlertIndex >= 0) {
+            const currentAlert = updated[existingAlertIndex];
+            const worsened = item.quantite < currentAlert.stockActuel;
+            if (worsened && currentAlert.acquittee) {
+              newAlertTriggered = true;
+            }
+            updated[existingAlertIndex] = {
+              ...currentAlert,
+              stockActuel: item.quantite,
+              seuilAlerte: item.seuilAlerte,
+              severite,
+              quantiteSuggeree,
+              coutEstimeReassort: coutEstime,
+              impactChambre,
+              statut: currentAlert.statut === 'reapprovisionne' ? 'actif' : currentAlert.statut,
+              acquittee: worsened ? false : currentAlert.acquittee
+            };
+          } else {
+            // Nouvelle alerte détectée
+            newAlertTriggered = true;
+            const newAlert: ConsumableStockAlert = {
+              id: `alt-cns-${item.id}-${Date.now()}`,
+              articleId: item.id,
+              articleCode: item.code,
+              articleDesignation: item.designation,
+              categorie: catNorm,
+              entrepotNom: item.entrepotNom || 'Lingerie Centrale & Produits d’Entretien',
+              stockActuel: item.quantite,
+              seuilAlerte: item.seuilAlerte,
+              unite: item.unite,
+              quantiteSuggeree,
+              fournisseurId: item.fournisseurId,
+              fournisseurNom: item.fournisseurNom || 'Fournisseur Agréé Lingerie & Entretien',
+              fournisseurTelephone: '+225 07 88 44 22 10',
+              prixAchatUnitaire: item.prixAchatUnitaire,
+              coutEstimeReassort: coutEstime,
+              dateDetection: new Date().toISOString(),
+              dateDetectionFormatted: `Aujourd'hui à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+              severite,
+              statut: 'actif',
+              acquittee: false,
+              impactChambre,
+              notes:
+                item.quantite === 0
+                  ? `Rupture totale : ${item.designation}. Réapprovisionnement urgent requis pour la réception.`
+                  : `Seuil minimal franchi (${item.quantite}/${item.seuilAlerte} ${item.unite}).`
+            };
+            updated = [newAlert, ...updated];
+
+            // Alerte ajoutée avec source: 'hotel' pour le Chef de Réception
+            setNotifications((prevNotifs) => [
+              {
+                id: `notif-cns-${Date.now()}-${item.id}`,
+                timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                source: 'hotel',
+                typeNotification: item.quantite === 0 ? 'rupture_stock' : 'stock_critique',
+                titre:
+                  item.quantite === 0
+                    ? `🚨 RUPTURE CONSOMMABLE HÔTEL : ${item.designation}`
+                    : `⚠️ SEUIL CRITIQUE HÔTEL : ${item.designation} (${item.quantite}/${item.seuilAlerte} ${item.unite})`,
+                message: `${impactChambre} Réassort suggéré : +${quantiteSuggeree} ${item.unite} auprès de ${item.fournisseurNom || 'Fournisseur'}.`,
+                clientNom: 'Gouvernante / Lingerie Hôtel',
+                clientTelephone: item.fournisseurNom || 'Lingerie Centrale',
+                montant: coutEstime,
+                modePaiement: 'Réassort Chambres',
+                dateReservation: new Date().toISOString().split('T')[0],
+                lue: false,
+                articleId: item.id,
+                articleCode: item.code,
+                articleDesignation: item.designation,
+                stockActuel: item.quantite,
+                seuilAlerte: item.seuilAlerte,
+                unite: item.unite,
+                fournisseurNom: item.fournisseurNom,
+                quantiteSuggeree
+              },
+              ...prevNotifs
+            ]);
+          }
+        } else {
+          if (existingAlertIndex >= 0 && updated[existingAlertIndex].statut !== 'reapprovisionne') {
+            updated[existingAlertIndex] = {
+              ...updated[existingAlertIndex],
+              stockActuel: item.quantite,
+              statut: 'reapprovisionne',
+              acquittee: true
+            };
+          }
+        }
+      });
+
+      return updated;
+    });
+
+    if (newAlertTriggered && soundEnabled) {
+      playStockAlertChime();
+    }
+  }, [stockItems, soundEnabled]);
+
+  const unreadConsumableAlertsCount = consumableStockAlerts.filter(
+    (a) => !a.acquittee && (a.statut === 'actif' || a.statut === 'commande_en_cours')
+  ).length;
+
+  const acquitterConsumableAlert = (alertId: string) => {
+    setConsumableStockAlerts((prev) =>
+      prev.map((a) =>
+        a.id === alertId
+          ? {
+              ...a,
+              acquittee: true,
+              acquitteePar: currentUserProfile.nom,
+              dateAcquittement: new Date().toLocaleString('fr-FR')
+            }
+          : a
+      )
+    );
+  };
+
+  const acquitterAllConsumableAlerts = () => {
+    setConsumableStockAlerts((prev) =>
+      prev.map((a) => ({
+        ...a,
+        acquittee: true,
+        acquitteePar: currentUserProfile.nom,
+        dateAcquittement: new Date().toLocaleString('fr-FR')
+      }))
+    );
+  };
+
+  const mettreAJourSeuilConsommable = (articleId: string, nouveauSeuil: number) => {
+    if (nouveauSeuil < 0) return;
+    setStockItems((prev) =>
+      prev.map((item) => (item.id === articleId ? { ...item, seuilAlerte: nouveauSeuil } : item))
+    );
+    setConsumableStockAlerts((prev) =>
+      prev.map((a) => (a.articleId === articleId ? { ...a, seuilAlerte: nouveauSeuil } : a))
+    );
+  };
+
+  const ajusterStockConsommable = (articleId: string, nouvelleQuantite: number, raison?: string) => {
+    if (nouvelleQuantite < 0) return;
+    const item = stockItems.find((s) => s.id === articleId);
+    if (!item) return;
+
+    const diff = nouvelleQuantite - item.quantite;
+
+    setStockItems((prev) =>
+      prev.map((s) =>
+        s.id === articleId
+          ? {
+              ...s,
+              quantite: nouvelleQuantite,
+              dernierReassort: diff > 0 ? new Date().toISOString().split('T')[0] : s.dernierReassort
+            }
+          : s
+      )
+    );
+
+    if (diff !== 0) {
+      addMouvementStock({
+        date: new Date().toISOString().split('T')[0],
+        heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        articleId: item.id,
+        articleDesignation: item.designation,
+        entrepotId: item.entrepotId,
+        entrepotNom: item.entrepotNom,
+        type: diff > 0 ? 'entree_achat' : 'sortie_consommation_interne',
+        quantite: Math.abs(diff),
+        prixUnitaire: item.prixAchatUnitaire,
+        valeurTotale: Math.abs(diff) * item.prixAchatUnitaire,
+        referenceDoc: `AJUST-CHEFREC-${Date.now().toString().slice(-4)}`,
+        responsable: `${currentUserProfile.nom} (${currentUserProfile.role})`,
+        motif:
+          raison ||
+          (diff > 0
+            ? 'Réassort réceptionné par le Chef de Réception'
+            : 'Ajustement inventaire physique lingerie/accueil')
+      });
+    }
+
+    if (nouvelleQuantite > item.seuilAlerte) {
+      setConsumableStockAlerts((prev) =>
+        prev.map((a) =>
+          a.articleId === articleId
+            ? { ...a, stockActuel: nouvelleQuantite, statut: 'reapprovisionne', acquittee: true }
+            : a
+        )
+      );
+    } else {
+      setConsumableStockAlerts((prev) =>
+        prev.map((a) =>
+          a.articleId === articleId
+            ? { ...a, stockActuel: nouvelleQuantite }
+            : a
+        )
+      );
+    }
+  };
+
+  const genererBonCommandeConsommables = (alertIds: string[]) => {
+    const alerts = consumableStockAlerts.filter((a) => alertIds.length === 0 || alertIds.includes(a.id));
+    const bonNum = `BC-LINGERIE-${Date.now().toString().slice(-4)}`;
+    const articlesCount = alerts.length;
+    const montantTotal = alerts.reduce((sum, a) => sum + a.coutEstimeReassort, 0);
+
+    setConsumableStockAlerts((prev) =>
+      prev.map((a) =>
+        alerts.some((target) => target.id === a.id)
+          ? {
+              ...a,
+              statut: 'commande_en_cours',
+              notes: `Bon de commande ${bonNum} transmis (${montantTotal.toLocaleString('fr-FR')} FCFA). En attente livraison.`
+            }
+          : a
+      )
+    );
+
+    if (soundEnabled) {
+      playLuxuryBellSound();
+    }
+
+    return { bonNumero: bonNum, articlesCount, montantTotal };
+  };
+
+  const simulerAlerteConsommables = (targetArticleId?: string) => {
+    const targetId = targetArticleId || 'stk-sav-1';
+    setStockItems((prev) =>
+      prev.map((s) => (s.id === targetId ? { ...s, quantite: 0 } : s))
+    );
+    if (soundEnabled) {
+      playStockAlertChime();
+    }
+  };
+
 
   // Ajout d'une vente POS avec décrémentation de stock et flux financier
   const addPosSale = (newSale: Omit<PosSale, 'id' | 'numeroTicket'>): PosSale => {
@@ -3475,6 +3808,15 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         genererBonsAchatAutoPourStocksCritiques,
         simulerAlerteStockRestaurant,
         updateArticleSeuilAlerte,
+        // 11c. Alertes & Notifications Automatiques Consommables d'Hôtel
+        consumableStockAlerts,
+        unreadConsumableAlertsCount,
+        acquitterConsumableAlert,
+        acquitterAllConsumableAlerts,
+        mettreAJourSeuilConsommable,
+        ajusterStockConsommable,
+        genererBonCommandeConsommables,
+        simulerAlerteConsommables,
         // 12. Facture Globale
         generateGlobalInvoice,
         // 13. Module Restaurant & POS Restaurant

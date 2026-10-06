@@ -39,13 +39,16 @@ export const NotificationCenterModal: React.FC<{
     genererBonsAchatAutoPourStocksCritiques,
     restaurantStockAlerts,
     unreadStockAlertsCount,
+    consumableStockAlerts,
+    unreadConsumableAlertsCount,
+    simulerAlerteConsommables,
     soundEnabled,
     setSoundEnabled,
     currentUserProfile
   } = useHotelData();
   const { formatPrice } = useHotelSettings();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'restaurant' | 'hotel' | 'stocks'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'restaurant' | 'hotel' | 'stocks' | 'consumables'>('all');
   const [stockOrderSuccess, setStockOrderSuccess] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -73,6 +76,17 @@ export const NotificationCenterModal: React.FC<{
   const filteredNotifs = baseList.filter((n) => {
     if (activeTab === 'unread') return !n.lue;
     if (activeTab === 'stocks') return n.typeNotification === 'stock_critique' || n.typeNotification === 'rupture_stock';
+    if (activeTab === 'consumables') {
+      return (
+        (n.typeNotification === 'stock_critique' || n.typeNotification === 'rupture_stock') &&
+        (n.source === 'hotel' ||
+          n.titre?.toLowerCase().includes('consommable') ||
+          n.titre?.toLowerCase().includes('savon') ||
+          n.titre?.toLowerCase().includes('serviette') ||
+          n.titre?.toLowerCase().includes('lingerie') ||
+          n.titre?.toLowerCase().includes('entretien'))
+      );
+    }
     if (activeTab === 'restaurant') return n.source === 'restaurant' && !n.typeNotification;
     if (activeTab === 'hotel') return n.source === 'hotel' || !n.source;
     return true;
@@ -202,6 +216,25 @@ export const NotificationCenterModal: React.FC<{
               )}
             </button>
 
+            {/* Onglet Consommables Hôtel (Chef de Réception) */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('consumables')}
+              className={`px-2.5 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === 'consumables'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-white text-amber-800 border border-amber-200 hover:bg-amber-50'
+              }`}
+            >
+              <Boxes className="w-3.5 h-3.5 text-amber-500" />
+              <span>Consommables Hôtel</span>
+              {unreadConsumableAlertsCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-mono font-bold text-[10px]">
+                  {unreadConsumableAlertsCount}
+                </span>
+              )}
+            </button>
+
             {isSuperAdmin && (
               <>
                 <button
@@ -252,7 +285,18 @@ export const NotificationCenterModal: React.FC<{
               title="Simuler une alerte automatique de stock critique"
             >
               <AlertTriangle className="w-3 h-3 text-rose-600" />
-              <span>Simuler Alerte Stock</span>
+              <span>Alerte Restaurant</span>
+            </button>
+
+            {/* Simuler alerte consommables hôtel */}
+            <button
+              type="button"
+              onClick={() => simulerAlerteConsommables()}
+              className="px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold flex items-center gap-1.5 transition-all text-[11px] border border-amber-200"
+              title="Simuler une rupture de consommable hôtel (Savons, Serviettes, Entretien)"
+            >
+              <Boxes className="w-3 h-3 text-amber-600" />
+              <span>Alerte Consommable</span>
             </button>
 
             {/* Simuler notification adaptée au rôle */}
