@@ -17,8 +17,6 @@ import { GlobalInvoiceView } from './GlobalInvoiceView.tsx';
 import { ReservationAuditLogTab } from './ReservationAuditLogTab.tsx';
 import { RestaurantManagementTab } from './RestaurantManagementTab.tsx';
 import { LoyaltyAndMarketingTab } from './LoyaltyAndMarketingTab.tsx';
-import { RestaurantStockAlertBanner } from './RestaurantStockAlertBanner.tsx';
-import { HotelConsumablesAlertBanner } from './HotelConsumablesAlertBanner.tsx';
 import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 import { DevToolsModal } from './DevToolsModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
@@ -226,7 +224,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       case 'stock':
         return { pole: 'Restauration', title: 'Gestion des Stocks & Entrepôts', icon: <Boxes className="w-4 h-4 text-cyan-400" /> };
       case 'stock_alerts':
-        return { pole: 'Restauration', title: 'Alertes Stocks Critiques & Réassort', icon: <AlertTriangle className="w-4 h-4 text-rose-400" /> };
+        return { pole: 'Restauration', title: 'Centre Unifié des Alertes (Stocks & Consommables)', icon: <AlertTriangle className="w-4 h-4 text-rose-400" /> };
       case 'facture_globale':
         return { pole: 'Administration', title: 'Facture Globale Consolidée & FNE DGI', icon: <Receipt className="w-4 h-4 text-amber-400" /> };
       case 'finance':
@@ -697,6 +695,32 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               </span>
             </button>
 
+            {/* Onglet Direct : Centre d'Alertes Unifié (Stocks & Consommables) */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('stock_alerts')}
+              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                activeTab === 'stock_alerts'
+                  ? 'bg-rose-700 text-white border-2 border-rose-400 shadow-lg ring-2 ring-rose-500/35'
+                  : (unreadStockAlertsCount + unreadConsumableAlertsCount) > 0
+                  ? 'bg-rose-950/40 text-rose-300 border border-rose-800/80 hover:bg-rose-900/60 hover:text-white'
+                  : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
+              }`}
+              title="Ouvrir le centre unifié des alertes de stocks restaurant et consommables d'hôtel"
+            >
+              <AlertTriangle className={`w-4 h-4 ${(unreadStockAlertsCount + unreadConsumableAlertsCount) > 0 ? 'text-rose-400 animate-pulse' : 'text-stone-400'}`} />
+              <span>Onglet Alertes</span>
+              {(unreadStockAlertsCount + unreadConsumableAlertsCount) > 0 ? (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500 text-white animate-pulse">
+                  {unreadStockAlertsCount + unreadConsumableAlertsCount}
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  0
+                </span>
+              )}
+            </button>
+
             {/* Séparateur discret */}
             <div className="h-6 w-px bg-stone-800 shrink-0 hidden sm:block" />
 
@@ -776,16 +800,6 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Bandeau d'Alerte Proactif : Surveillance des Stocks Critiques Restaurant */}
-        <RestaurantStockAlertBanner
-          onNavigateToStockAlerts={() => handleTabClick('stock_alerts')}
-        />
-
-        {/* Bandeau d'Alerte Proactif : Surveillance des Consommables d'Hôtel (Chef de Réception & Direction) */}
-        <HotelConsumablesAlertBanner
-          onNavigateToStockManagement={() => handleTabClick('stock')}
-        />
 
         {/* Bannière de Session Caisse : Confirmation du périmètre exclusif réservations */}
         {isCaisse && (

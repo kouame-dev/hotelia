@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useHotelSettings } from '../context/SettingsContext.tsx';
 import { DashboardRevenueWidgets } from './DashboardRevenueWidgets.tsx';
-import { HotelConsumablesAlertBanner } from './backend/HotelConsumablesAlertBanner.tsx';
 import {
   Calendar,
   Clock,
@@ -395,9 +394,6 @@ export const AdminGanttDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* 1b. Surveillance Proactive des Consommables d'Hôtel (Savons, Serviettes, Entretien) */}
-      <HotelConsumablesAlertBanner />
 
       {/* 2. Bandeau KPI Opérationnels (Revenus cumulés & Rotations) avec Couleurs Bleu Nuit, Orange Caterpillar, Vert, Violet */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

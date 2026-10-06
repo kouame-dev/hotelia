@@ -23,11 +23,50 @@ import {
   Plus,
   X,
   Boxes,
-  Truck
+  Truck,
+  Bath,
+  SprayCan,
+  BedDouble,
+  Sliders
 } from 'lucide-react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
-import { RestaurantStockAlert, StockAlertLevel, BonAchat } from '../../types.ts';
+import {
+  RestaurantStockAlert,
+  ConsumableStockAlert,
+  StockAlertLevel,
+  BonAchat
+} from '../../types.ts';
+
+export interface UnifiedStockAlert {
+  id: string;
+  articleId: string;
+  articleCode: string;
+  articleDesignation: string;
+  categorie: string;
+  entrepotNom: string;
+  stockActuel: number;
+  seuilAlerte: number;
+  unite: string;
+  quantiteSuggeree: number;
+  prixAchatUnitaire: number;
+  coutEstimeReassort: number;
+  fournisseurId?: string;
+  fournisseurNom: string;
+  fournisseurTelephone?: string;
+  severite: StockAlertLevel;
+  statut: 'actif' | 'commande_en_cours' | 'reapprovisionne' | 'ignore';
+  dateDetection: string;
+  dateDetectionFormatted: string;
+  acquittee: boolean;
+  acquitteePar?: string;
+  dateAcquittement?: string;
+  notes?: string;
+  bonAchatId?: string;
+  bonAchatNumero?: string;
+  domaine: 'restaurant' | 'hotel';
+  impactChambre?: string;
+}
 
 interface RestaurantStockAlertsTabProps {
   onGoToStockModule?: () => void;
@@ -48,6 +87,14 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
     genererBonsAchatAutoPourStocksCritiques,
     simulerAlerteStockRestaurant,
     updateArticleSeuilAlerte,
+    consumableStockAlerts,
+    unreadConsumableAlertsCount,
+    acquitterConsumableAlert,
+    acquitterAllConsumableAlerts,
+    mettreAJourSeuilConsommable,
+    ajusterStockConsommable,
+    genererBonCommandeConsommables,
+    simulerAlerteConsommables,
     currentUserProfile,
     fournisseurs
   } = useHotelData();
@@ -55,85 +102,117 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
   const { formatPrice, settings } = useHotelSettings();
 
   // Filtres
+  const [domainFilter, setDomainFilter] = useState<'tous' | 'restaurant' | 'hotel'>('tous');
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'tous' | 'rupture' | 'critique' | 'faible' | 'en_cours'>('tous');
   const [categoryFilter, setCategoryFilter] = useState<string>('tous');
   const [supplierFilter, setSupplierFilter] = useState<string>('tous');
 
-  // Modals
-  const [restockModalItem, setRestockModalItem] = useState<RestaurantStockAlert | null>(null);
+  // Modales
+  const [restockModalItem, setRestockModalItem] = useState<UnifiedStockAlert | null>(null);
   const [restockQtyInput, setRestockQtyInput] = useState<number>(10);
-  const [restockMotif, setRestockMotif] = useState<string>('Réassort d’urgence restaurant');
+  const [restockMotif, setRestockMotif] = useState<string>('Réassort d’urgence');
 
-  const [thresholdModalItem, setThresholdModalItem] = useState<RestaurantStockAlert | null>(null);
+  const [thresholdModalItem, setThresholdModalItem] = useState<UnifiedStockAlert | null>(null);
   const [newThresholdInput, setNewThresholdInput] = useState<number>(10);
 
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'info'; text: string } | null>(null);
   const [isPrintSheetOpen, setIsPrintSheetOpen] = useState(false);
 
-  // Filtrage des alertes
+  // Consolidation de toutes les alertes en une liste unifiée
+  const allUnifiedAlerts = useMemo<UnifiedStockAlert[]>(() => {
+    const resto: UnifiedStockAlert[] = (restaurantStockAlerts || []).map((a) => ({
+      ...a,
+      domaine: 'restaurant' as const
+    }));
+    const hotel: UnifiedStockAlert[] = (consumableStockAlerts || []).map((a) => ({
+      ...a,
+      domaine: 'hotel' as const
+    }));
+    return [...resto, ...hotel];
+  }, [restaurantStockAlerts, consumableStockAlerts]);
+
+  // Filtrage des alertes consolidées
   const filteredAlerts = useMemo(() => {
-    return restaurantStockAlerts.filter((alert) => {
-      // Recherche
+    return allUnifiedAlerts.filter((alert) => {
+      // 1. Domaine (Pôle)
+      if (domainFilter === 'restaurant' && alert.domaine !== 'restaurant') return false;
+      if (domainFilter === 'hotel' && alert.domaine !== 'hotel') return false;
+
+      // 2. Recherche
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
         const matchNom = alert.articleDesignation.toLowerCase().includes(q);
         const matchCode = alert.articleCode.toLowerCase().includes(q);
         const matchFourn = alert.fournisseurNom.toLowerCase().includes(q);
         const matchEnt = alert.entrepotNom.toLowerCase().includes(q);
-        if (!matchNom && !matchCode && !matchFourn && !matchEnt) return false;
+        const matchCat = alert.categorie.toLowerCase().includes(q);
+        if (!matchNom && !matchCode && !matchFourn && !matchEnt && !matchCat) return false;
       }
 
-      // Sévérité
+      // 3. Sévérité
       if (severityFilter === 'rupture' && alert.severite !== 'rupture' && alert.stockActuel > 0) return false;
       if (severityFilter === 'critique' && alert.severite !== 'critique') return false;
       if (severityFilter === 'faible' && alert.severite !== 'faible') return false;
       if (severityFilter === 'en_cours' && alert.statut !== 'commande_en_cours') return false;
 
-      // Catégorie
+      // 4. Catégorie
       if (categoryFilter !== 'tous' && alert.categorie !== categoryFilter) return false;
 
-      // Fournisseur
+      // 5. Fournisseur
       if (supplierFilter !== 'tous' && alert.fournisseurNom !== supplierFilter) return false;
 
       return true;
     });
-  }, [restaurantStockAlerts, searchTerm, severityFilter, categoryFilter, supplierFilter]);
+  }, [allUnifiedAlerts, domainFilter, searchTerm, severityFilter, categoryFilter, supplierFilter]);
 
-  // Statistiques clés
-  const rupturesCount = restaurantStockAlerts.filter(
+  // Statistiques clés calculées sur les alertes
+  const totalAlertsCount = allUnifiedAlerts.filter((a) => a.statut !== 'reapprovisionne').length;
+  const countRestoAlerts = allUnifiedAlerts.filter((a) => a.domaine === 'restaurant' && a.statut !== 'reapprovisionne').length;
+  const countHotelAlerts = allUnifiedAlerts.filter((a) => a.domaine === 'hotel' && a.statut !== 'reapprovisionne').length;
+
+  const rupturesCount = allUnifiedAlerts.filter(
     (a) => (a.severite === 'rupture' || a.stockActuel === 0) && a.statut !== 'reapprovisionne'
   ).length;
 
-  const critiquesCount = restaurantStockAlerts.filter(
+  const critiquesCount = allUnifiedAlerts.filter(
     (a) => a.severite === 'critique' && a.statut !== 'reapprovisionne'
   ).length;
 
-  const commandesEnCoursCount = restaurantStockAlerts.filter(
+  const commandesEnCoursCount = allUnifiedAlerts.filter(
     (a) => a.statut === 'commande_en_cours'
   ).length;
 
-  const totalBudgetEstime = restaurantStockAlerts
+  const totalBudgetEstime = allUnifiedAlerts
     .filter((a) => a.statut === 'actif' || a.statut === 'commande_en_cours')
     .reduce((acc, a) => acc + a.coutEstimeReassort, 0);
 
   // Fournisseurs distincts
   const uniqueSuppliers = useMemo(() => {
     const set = new Set<string>();
-    restaurantStockAlerts.forEach((a) => {
+    allUnifiedAlerts.forEach((a) => {
       if (a.fournisseurNom) set.add(a.fournisseurNom);
     });
     return Array.from(set);
-  }, [restaurantStockAlerts]);
+  }, [allUnifiedAlerts]);
+
+  // Catégories distinctes
+  const uniqueCategories = useMemo(() => {
+    const set = new Set<string>();
+    allUnifiedAlerts.forEach((a) => {
+      if (a.categorie) set.add(a.categorie);
+    });
+    return Array.from(set);
+  }, [allUnifiedAlerts]);
 
   // Groupement des alertes actives par fournisseur
   const alertsBySupplier = useMemo(() => {
     const groups: Record<
       string,
-      { supplierName: string; telephone?: string; alerts: RestaurantStockAlert[]; totalCost: number }
+      { supplierName: string; telephone?: string; alerts: UnifiedStockAlert[]; totalCost: number }
     > = {};
 
-    restaurantStockAlerts
+    allUnifiedAlerts
       .filter((a) => a.statut === 'actif' || a.statut === 'commande_en_cours')
       .forEach((alert) => {
         const name = alert.fournisseurNom || 'Fournisseur Inconnu';
@@ -150,17 +229,22 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
       });
 
     return Object.values(groups);
-  }, [restaurantStockAlerts]);
+  }, [allUnifiedAlerts]);
 
-  // Action : Générer bon d'achat pour tous les articles critiques
+  // Action : Générer bon de commande pour tous les articles critiques
   const handleGenerateAllOrders = () => {
-    const created = genererBonsAchatAutoPourStocksCritiques();
-    if (created.length > 0) {
+    const createdResto = genererBonsAchatAutoPourStocksCritiques();
+    const hotelAlerts = (consumableStockAlerts || []).filter((a) => a.statut === 'actif');
+    let hotelBon = null;
+    if (hotelAlerts.length > 0) {
+      hotelBon = genererBonCommandeConsommables(hotelAlerts.map((a) => a.id));
+    }
+
+    const totalOrdersCount = createdResto.length + (hotelBon ? 1 : 0);
+    if (totalOrdersCount > 0) {
       setFeedbackMsg({
         type: 'success',
-        text: `✓ ${created.length} bon(s) d'achat automatique(s) généré(s) pour un montant total de ${formatPrice(
-          created.reduce((sum, b) => sum + b.montantTotal, 0)
-        )} ! Les commandes sont envoyées dans le module Achats & Stocks.`
+        text: `✓ ${totalOrdersCount} bon(s) de commande généré(s) (Restaurant & Lingerie) ! Commandes transmises aux fournisseurs.`
       });
       setTimeout(() => setFeedbackMsg(null), 6000);
     } else {
@@ -172,24 +256,48 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
     }
   };
 
-  // Action : Générer bon d'achat pour un article spécifique
-  const handleGenerateOrderForSingle = (articleId: string) => {
-    const created = genererBonsAchatAutoPourStocksCritiques([articleId]);
-    if (created.length > 0) {
+  // Action : Générer bon de commande pour un article spécifique
+  const handleGenerateOrderForSingle = (alert: UnifiedStockAlert) => {
+    if (alert.domaine === 'hotel') {
+      const order = genererBonCommandeConsommables([alert.id]);
       setFeedbackMsg({
         type: 'success',
-        text: `✓ Bon d'achat #${created[0].numero} créé auprès de ${created[0].fournisseurNom} (${formatPrice(
-          created[0].montantTotal
+        text: `✓ Bon de commande #${order.bonNumero} créé pour "${alert.articleDesignation}" auprès de ${alert.fournisseurNom} (${formatPrice(
+          order.montantTotal
         )}) !`
       });
-      setTimeout(() => setFeedbackMsg(null), 5000);
+    } else {
+      const created = genererBonsAchatAutoPourStocksCritiques([alert.articleId]);
+      if (created.length > 0) {
+        setFeedbackMsg({
+          type: 'success',
+          text: `✓ Bon d'achat #${created[0].numero} créé auprès de ${created[0].fournisseurNom} (${formatPrice(
+            created[0].montantTotal
+          )}) !`
+        });
+      }
     }
+    setTimeout(() => setFeedbackMsg(null), 5000);
   };
 
   // Action : Valider réassort manuel
   const handleConfirmRestock = () => {
     if (!restockModalItem || restockQtyInput <= 0) return;
-    reapprovisionnerStockArticle(restockModalItem.articleId, restockQtyInput, restockMotif);
+
+    if (restockModalItem.domaine === 'hotel') {
+      ajusterStockConsommable(
+        restockModalItem.articleId,
+        restockModalItem.stockActuel + restockQtyInput,
+        restockMotif || 'Réassort consommable hôtel'
+      );
+    } else {
+      reapprovisionnerStockArticle(
+        restockModalItem.articleId,
+        restockQtyInput,
+        restockMotif || 'Réassort d’urgence restaurant'
+      );
+    }
+
     setFeedbackMsg({
       type: 'success',
       text: `✓ Réapprovisionnement de +${restockQtyInput} ${restockModalItem.unite} enregistré pour "${restockModalItem.articleDesignation}". Stock mis à jour !`
@@ -198,37 +306,66 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
     setTimeout(() => setFeedbackMsg(null), 5000);
   };
 
-  // Action : Valider nouveau seuil
+  // Action : Valider nouveau seuil minimal
   const handleConfirmNewThreshold = () => {
     if (!thresholdModalItem || newThresholdInput < 0) return;
-    updateArticleSeuilAlerte(thresholdModalItem.articleId, newThresholdInput);
+
+    if (thresholdModalItem.domaine === 'hotel') {
+      mettreAJourSeuilConsommable(thresholdModalItem.articleId, newThresholdInput);
+    } else {
+      updateArticleSeuilAlerte(thresholdModalItem.articleId, newThresholdInput);
+    }
+
     setFeedbackMsg({
       type: 'success',
-      text: `✓ Seuil critique mis à jour à ${newThresholdInput} ${thresholdModalItem.unite} pour "${thresholdModalItem.articleDesignation}".`
+      text: `✓ Seuil minimal mis à jour à ${newThresholdInput} ${thresholdModalItem.unite} pour "${thresholdModalItem.articleDesignation}".`
     });
     setThresholdModalItem(null);
     setTimeout(() => setFeedbackMsg(null), 5000);
   };
 
-  // Export CSV
+  // Action : Acquitter une alerte
+  const handleAcknowledgeSingle = (alert: UnifiedStockAlert) => {
+    if (alert.domaine === 'hotel') {
+      acquitterConsumableAlert(alert.id);
+    } else {
+      acquitterStockAlert(alert.id);
+    }
+  };
+
+  // Action : Tout acquitter
+  const handleAcknowledgeAll = () => {
+    acquitterAllStockAlerts();
+    acquitterAllConsumableAlerts();
+    setFeedbackMsg({
+      type: 'info',
+      text: "Toutes les alertes de stocks et consommables ont été acquittées pour cette session."
+    });
+    setTimeout(() => setFeedbackMsg(null), 4000);
+  };
+
+  // Export CSV Unifié
   const handleExportCSV = () => {
     const headers = [
+      'Pôle',
       'Code',
       'Article',
       'Catégorie',
       'Entrepôt',
       'Stock Actuel',
-      'Seuil Critique',
+      'Seuil Minimal',
       'Unité',
       'Quantité Suggérée',
       'Prix Achat Unitaire',
       'Budget Estimé',
       'Fournisseur',
       'Statut Alerte',
+      'Impact Opérationnel',
       'Date Détection'
     ];
 
     const rows = filteredAlerts.map((a) => [
+      a.domaine === 'hotel' ? 'Hébergement' : 'Restauration',
       a.articleCode,
       `"${a.articleDesignation.replace(/"/g, '""')}"`,
       a.categorie,
@@ -241,21 +378,24 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
       a.coutEstimeReassort,
       `"${a.fournisseurNom.replace(/"/g, '""')}"`,
       a.statut,
+      `"${(a.impactChambre || a.notes || '').replace(/"/g, '""')}"`,
       a.dateDetectionFormatted
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `reapprovisionnement_restaurant_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `alertes_stocks_et_consommables_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Toast Feedback */}
       {feedbackMsg && (
         <div
@@ -279,45 +419,62 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
         </div>
       )}
 
-      {/* En-tête du module */}
+      {/* En-tête du Centre Unifié d'Alertes */}
       <div className="p-5 sm:p-6 bg-gradient-to-r from-[#1C1B18] via-stone-900 to-[#2A2925] border border-stone-800 rounded-3xl shadow-2xl flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30 shadow-inner">
+              <AlertTriangle className="w-5 h-5 text-rose-400" />
             </div>
-            <h2 className="font-serif font-bold text-xl sm:text-2xl text-white">
-              Notifications &amp; Réapprovisionnement Stocks Restaurant
-            </h2>
-            {unreadStockAlertsCount > 0 && (
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold block">
+                Module Centralisé d'Alertes Proactives
+              </span>
+              <h2 className="font-serif font-bold text-xl sm:text-2xl text-white">
+                Centre Unifié des Alertes (Stocks &amp; Consommables)
+              </h2>
+            </div>
+            {totalAlertsCount > 0 && (
               <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-mono font-bold text-xs animate-pulse">
-                {unreadStockAlertsCount} alerte(s) active(s)
+                {totalAlertsCount} alerte(s) active(s)
               </span>
             )}
           </div>
           <p className="text-xs sm:text-sm text-stone-400 max-w-2xl">
-            Surveillance automatique des seuils critiques, alertes gérant en temps réel, anticipation
-            proactive des commandes fournisseurs et réapprovisionnements sans interruption de service.
+            Surveillance centralisée des seuils minimaux sur l'ensemble de l'établissement :
+            consommables chambres (savons, serviettes, entretien) et stocks restaurant (nourriture, boissons, bar).
           </p>
         </div>
 
         {/* Boutons d'actions globales */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => simulerAlerteStockRestaurant()}
-            className="px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 hover:text-amber-200 border border-stone-700 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-            title="Simule une sortie de stock pour tester l'alerte sonore et visuelle"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Tester Déclenchement</span>
-          </button>
+          {/* Boutons de test simulation */}
+          <div className="flex items-center bg-stone-900 p-1 rounded-xl border border-stone-800">
+            <button
+              type="button"
+              onClick={() => simulerAlerteStockRestaurant()}
+              className="px-2.5 py-1.5 rounded-lg text-amber-300 hover:text-white text-[11px] font-bold flex items-center gap-1 transition-all"
+              title="Simuler une alerte stock restaurant"
+            >
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>Test Resto</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => simulerAlerteConsommables()}
+              className="px-2.5 py-1.5 rounded-lg text-rose-300 hover:text-white text-[11px] font-bold flex items-center gap-1 transition-all"
+              title="Simuler une alerte consommable hôtel (savon/serviette)"
+            >
+              <Bath className="w-3 h-3 text-rose-400" />
+              <span>Test Hôtel</span>
+            </button>
+          </div>
 
           <button
             type="button"
             onClick={handleGenerateAllOrders}
             className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-extrabold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
-            title="Générer automatiquement des bons d'achat pour tous les articles en rupture ou critique"
+            title="Générer automatiquement des bons de commande pour tous les articles critiques"
           >
             <ShoppingBag className="w-4 h-4 text-stone-950" />
             <span>Générer Bons d'Achat Auto</span>
@@ -336,15 +493,15 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
             type="button"
             onClick={handleExportCSV}
             className="p-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 transition-all cursor-pointer"
-            title="Exporter la liste au format CSV"
+            title="Exporter la liste consolidée au format CSV"
           >
             <FileSpreadsheet className="w-4 h-4" />
           </button>
 
-          {unreadStockAlertsCount > 0 && (
+          {(unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) && (
             <button
               type="button"
-              onClick={acquitterAllStockAlerts}
+              onClick={handleAcknowledgeAll}
               className="px-3 py-2 rounded-xl bg-stone-800/80 hover:bg-stone-800 text-stone-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
             >
               Tout acquitter
@@ -353,7 +510,54 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
         </div>
       </div>
 
-      {/* 4 Cartes d'indicateurs KPI */}
+      {/* Barre de commutation de périmètre (Pôle Restauration vs Pôle Hébergement) */}
+      <div className="bg-[#1C1B18] p-2 rounded-2xl border border-stone-800 flex flex-wrap items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-stone-400 font-semibold px-2 hidden sm:inline">Périmètre :</span>
+          <button
+            type="button"
+            onClick={() => setDomainFilter('tous')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              domainFilter === 'tous'
+                ? 'bg-[#C5A880] text-slate-950 shadow-md ring-2 ring-[#C5A880]/30'
+                : 'text-stone-300 hover:text-white hover:bg-stone-800'
+            }`}
+          >
+            <Boxes className="w-4 h-4" />
+            <span>Tous les Stocks &amp; Consommables ({allUnifiedAlerts.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDomainFilter('restaurant')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              domainFilter === 'restaurant'
+                ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30'
+                : 'text-stone-300 hover:text-white hover:bg-stone-800'
+            }`}
+          >
+            <span>🍽️ Stocks Restaurant &amp; Bar ({countRestoAlerts})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setDomainFilter('hotel')}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+              domainFilter === 'hotel'
+                ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-500/30'
+                : 'text-stone-300 hover:text-white hover:bg-stone-800'
+            }`}
+          >
+            <span>🏨 Consommables Hôtel (Savons, Serviettes, Entretien) ({countHotelAlerts})</span>
+          </button>
+        </div>
+
+        <div className="text-xs text-stone-400 px-3 font-mono">
+          <span>{filteredAlerts.length} article(s) affiché(s)</span>
+        </div>
+      </div>
+
+      {/* 4 Cartes d'indicateurs KPI Consolidés */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1 : Ruptures Totales */}
         <div
@@ -374,7 +578,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
             {rupturesCount}
           </div>
           <p className="text-[11px] text-stone-400 mt-1">
-            Articles à 0 unité (urgence absolue réapprovisionnement)
+            Articles à 0 unité (urgence absolue pour l'exploitation)
           </p>
         </div>
 
@@ -397,7 +601,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
             {critiquesCount}
           </div>
           <p className="text-[11px] text-stone-400 mt-1">
-            Articles en stock faible nécessitant commande
+            Articles sous le stock de sécurité paramétré
           </p>
         </div>
 
@@ -413,14 +617,14 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
             {formatPrice(totalBudgetEstime)}
           </div>
           <p className="text-[11px] text-stone-400 mt-1">
-            Estimation globale pour remettre le stock au niveau optimal
+            Estimation globale pour reconstituer les réserves
           </p>
         </div>
 
         {/* KPI 4 : Fournisseurs impliqués */}
         <div className="p-4 rounded-2xl bg-[#1C1B18] border border-stone-800 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase font-bold text-stone-400">Fournisseurs à Contacter</span>
+            <span className="text-xs uppercase font-bold text-stone-400">Fournisseurs Acteurs</span>
             <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
               <Truck className="w-4 h-4" />
             </div>
@@ -429,12 +633,12 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
             {alertsBySupplier.length}
           </div>
           <p className="text-[11px] text-stone-400 mt-1">
-            Partenaires avec des lignes de commande en attente
+            Partenaires (textile, cosmétique, boissons, vivres)
           </p>
         </div>
       </div>
 
-      {/* Barre de recherche et de filtres */}
+      {/* Barre de recherche et de filtres avancés */}
       <div className="p-4 bg-[#1C1B18] border border-stone-800 rounded-2xl shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 flex-1 min-w-[240px]">
           <div className="relative w-full">
@@ -443,7 +647,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Rechercher par article, code, fournisseur, entrepôt..."
+              placeholder="Rechercher par savon, serviette, boisson, code, fournisseur, entrepôt..."
               className="w-full pl-9 pr-4 py-2 bg-stone-900 border border-stone-700 rounded-xl text-stone-200 placeholder-stone-500 focus:outline-hidden focus:border-amber-500 text-xs"
             />
           </div>
@@ -461,7 +665,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                   : 'text-stone-400 hover:text-white'
               }`}
             >
-              Tous ({restaurantStockAlerts.length})
+              Tous ({allUnifiedAlerts.length})
             </button>
             <button
               type="button"
@@ -521,19 +725,22 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
             className="px-3 py-2 bg-stone-900 border border-stone-700 rounded-xl text-stone-300 text-xs focus:outline-hidden focus:border-amber-500 cursor-pointer"
           >
             <option value="tous">Toutes Catégories</option>
-            <option value="Boissons">Boissons &amp; Vins</option>
-            <option value="Nourriture & Épicerie">Nourriture &amp; Épicerie</option>
+            {uniqueCategories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
         </div>
       </div>
 
-      {/* Tableau détaillé des alertes de stock */}
+      {/* Tableau détaillé des alertes consolidées */}
       <div className="bg-[#1C1B18] border border-stone-800 rounded-2xl shadow-xl overflow-hidden">
-        <div className="p-4 border-b border-stone-800 flex items-center justify-between">
+        <div className="p-4 border-b border-stone-800 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Boxes className="w-4 h-4 text-amber-400" />
             <h3 className="font-bold text-sm text-white">
-              Articles Restaurant en Seuil Critique ({filteredAlerts.length})
+              Articles &amp; Consommables en Seuil Critique ({filteredAlerts.length})
             </h3>
           </div>
           <span className="text-[11px] text-stone-400">
@@ -547,11 +754,11 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <p className="font-bold text-sm text-stone-200">
-              Tous les stocks d'articles restaurant sont au-dessus du seuil critique !
+              Tous les stocks et consommables sont conformes au-dessus des seuils minimaux !
             </p>
             <p className="text-stone-400 max-w-md mx-auto text-[11px]">
-              Aucune rupture ni alerte critique à signaler pour le moment. Vous pouvez tester le déclenchement
-              automatique via le bouton en haut à droite.
+              Aucune rupture ni alerte critique à signaler pour le moment. Vous pouvez simuler un
+              déclenchement automatique via les boutons de test ci-dessus.
             </p>
           </div>
         ) : (
@@ -559,9 +766,9 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
             <table className="w-full text-left text-xs text-stone-300">
               <thead className="bg-stone-900/90 text-stone-400 text-[10px] uppercase font-mono tracking-wider border-b border-stone-800">
                 <tr>
-                  <th className="py-3 px-4">Article / Entrepôt</th>
+                  <th className="py-3 px-4">Pôle / Article / Entrepôt</th>
                   <th className="py-3 px-3">Niveau &amp; Jauge</th>
-                  <th className="py-3 px-3">Stock / Seuil</th>
+                  <th className="py-3 px-3">Stock / Seuil Min</th>
                   <th className="py-3 px-3">Réassort Suggéré</th>
                   <th className="py-3 px-3">Fournisseur Habituel</th>
                   <th className="py-3 px-3">Budget Estimé</th>
@@ -572,7 +779,10 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
               <tbody className="divide-y divide-stone-800/60 font-sans">
                 {filteredAlerts.map((alert) => {
                   const isRupture = alert.stockActuel === 0 || alert.severite === 'rupture';
-                  const percentRatio = alert.seuilAlerte > 0 ? Math.min(100, Math.round((alert.stockActuel / alert.seuilAlerte) * 100)) : 0;
+                  const percentRatio =
+                    alert.seuilAlerte > 0
+                      ? Math.min(100, Math.round((alert.stockActuel / alert.seuilAlerte) * 100))
+                      : 0;
 
                   return (
                     <tr
@@ -581,11 +791,27 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                         isRupture ? 'bg-rose-950/20' : ''
                       }`}
                     >
-                      {/* 1. Article & Entrepôt */}
+                      {/* 1. Pôle & Article & Entrepôt */}
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-white text-xs">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className={`px-2 py-0.5 rounded-full font-mono text-[9px] font-bold ${
+                              alert.domaine === 'hotel'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}
+                          >
+                            {alert.domaine === 'hotel' ? '🏨 Hébergement' : '🍽️ Restauration'}
+                          </span>
+                          <span className="text-[10px] text-stone-400 font-mono">
+                            {alert.categorie}
+                          </span>
+                        </div>
+
+                        <div className="font-bold text-white text-xs leading-snug">
                           {alert.articleDesignation}
                         </div>
+
                         <div className="flex items-center gap-2 mt-0.5 text-[10px] text-stone-400 font-mono">
                           <span className="px-1.5 py-0.2 rounded bg-stone-800 text-stone-300 border border-stone-700">
                             {alert.articleCode}
@@ -593,6 +819,14 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                           <span>•</span>
                           <span>{alert.entrepotNom}</span>
                         </div>
+
+                        {/* Impact direct sur les chambres pour les consommables d'hôtel */}
+                        {alert.impactChambre && (
+                          <div className="mt-1.5 p-1.5 rounded-lg bg-stone-900/80 border border-stone-800 text-[10px] text-amber-200/90 flex items-start gap-1.5">
+                            <BedDouble className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+                            <span>{alert.impactChambre}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* 2. Jauge visuelle de niveau de stock */}
@@ -626,14 +860,12 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                         </div>
                       </td>
 
-                      {/* 3. Stock Actuel vs Seuil Critique */}
+                      {/* 3. Stock Actuel vs Seuil Minimal */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <div className="flex items-baseline gap-1">
                           <span
                             className={`font-mono font-extrabold text-sm ${
-                              isRupture
-                                ? 'text-rose-400'
-                                : 'text-amber-400'
+                              isRupture ? 'text-rose-400' : 'text-amber-400'
                             }`}
                           >
                             {alert.stockActuel}
@@ -647,7 +879,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                             setNewThresholdInput(alert.seuilAlerte);
                           }}
                           className="text-[10px] text-stone-400 hover:text-amber-400 underline block mt-0.5 cursor-pointer"
-                          title="Ajuster le seuil critique pour cet article"
+                          title="Ajuster le seuil minimal pour cet article"
                         >
                           Modifier seuil
                         </button>
@@ -677,12 +909,12 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                             <span>•</span>
                             <a
                               href={`https://wa.me/${alert.fournisseurTelephone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                `Bonjour ${alert.fournisseurNom}, nous constatons un seuil critique pour l'article "${alert.articleDesignation}" au restaurant Hotelia. Merci de prévoir une livraison urgente de ${alert.quantiteSuggeree} ${alert.unite}.`
+                                `Bonjour ${alert.fournisseurNom}, nous constatons un seuil critique pour "${alert.articleDesignation}" à Hotelia. Merci de prévoir une livraison rapide de ${alert.quantiteSuggeree} ${alert.unite}.`
                               )}`}
                               target="_blank"
                               rel="noreferrer"
                               className="text-[10px] text-emerald-400 hover:underline flex items-center gap-0.5 font-semibold"
-                              title="Envoyer une commande d'urgence par WhatsApp"
+                              title="Envoyer une commande par WhatsApp"
                             >
                               <MessageSquare className="w-2.5 h-2.5" />
                               <span>WhatsApp</span>
@@ -722,12 +954,12 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                       {/* 8. Actions Proactives */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Bouton 1-clic Commande / Bon d'achat */}
+                          {/* Bouton Commander */}
                           <button
                             type="button"
-                            onClick={() => handleGenerateOrderForSingle(alert.articleId)}
+                            onClick={() => handleGenerateOrderForSingle(alert)}
                             className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-                            title="Générer immédiatement un bon d'achat officiel"
+                            title="Générer un bon d'achat officiel"
                           >
                             <ShoppingBag className="w-3 h-3" />
                             <span>Commander</span>
@@ -741,7 +973,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                               setRestockQtyInput(alert.quantiteSuggeree || 10);
                             }}
                             className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-                            title="Créditer le stock manuellement si la marchandise est arrivée"
+                            title="Créditer le stock physique"
                           >
                             <Plus className="w-3 h-3" />
                             <span>Réassort</span>
@@ -751,7 +983,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                           {!alert.acquittee && (
                             <button
                               type="button"
-                              onClick={() => acquitterStockAlert(alert.id)}
+                              onClick={() => handleAcknowledgeSingle(alert)}
                               className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white transition-colors cursor-pointer"
                               title="Marquer comme alerte vue / acquittée"
                             >
@@ -772,7 +1004,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
       {/* Synthèse des Commandes Recommandées par Fournisseur */}
       {alertsBySupplier.length > 0 && (
         <div className="bg-[#1C1B18] border border-stone-800 rounded-2xl shadow-xl p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+          <div className="flex items-center justify-between border-b border-stone-800 pb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-indigo-400" />
               <h3 className="font-bold text-sm text-white font-serif">
@@ -780,7 +1012,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
               </h3>
             </div>
             <span className="text-xs text-stone-400">
-              Regroupement logistique automatique pour réduire les frais de livraison
+              Regroupement logistique automatique (Lingerie, Boissons, Vivres) pour optimiser les livraisons
             </span>
           </div>
 
@@ -838,17 +1070,16 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
                   <button
                     type="button"
                     onClick={() => {
-                      const ids = group.alerts.map((a) => a.articleId);
-                      const created = genererBonsAchatAutoPourStocksCritiques(ids);
-                      if (created.length > 0) {
-                        setFeedbackMsg({
-                          type: 'success',
-                          text: `✓ Bon d'achat #${created[0].numero} généré pour ${group.supplierName} (${formatPrice(
-                            created[0].montantTotal
-                          )}) !`
-                        });
-                        setTimeout(() => setFeedbackMsg(null), 5000);
-                      }
+                      const restoIds = group.alerts.filter((a) => a.domaine === 'restaurant').map((a) => a.articleId);
+                      const hotelIds = group.alerts.filter((a) => a.domaine === 'hotel').map((a) => a.id);
+                      if (restoIds.length > 0) genererBonsAchatAutoPourStocksCritiques(restoIds);
+                      if (hotelIds.length > 0) genererBonCommandeConsommables(hotelIds);
+
+                      setFeedbackMsg({
+                        type: 'success',
+                        text: `✓ Commande groupée transmise pour ${group.supplierName} (${formatPrice(group.totalCost)}) !`
+                      });
+                      setTimeout(() => setFeedbackMsg(null), 5000);
                     }}
                     className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
                   >
@@ -882,7 +1113,7 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
 
             <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800 space-y-1">
               <span className="text-[10px] text-stone-400 uppercase font-semibold block">
-                Article à créditer
+                Article à créditer ({restockModalItem.domaine === 'hotel' ? '🏨 Consommable Hôtel' : '🍽️ Restauration'})
               </span>
               <div className="font-bold text-white text-sm">
                 {restockModalItem.articleDesignation}
@@ -943,14 +1174,14 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
         </div>
       )}
 
-      {/* Modal 2 : Modification du Seuil Critique */}
+      {/* Modal 2 : Modification du Seuil Minimal */}
       {thresholdModalItem && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-stone-900 border border-stone-700 rounded-2xl max-w-md w-full p-5 shadow-2xl text-xs space-y-4">
             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
               <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-                <SlidersHorizontal className="w-4 h-4" />
-                <span>Paramétrage Seuil Critique</span>
+                <Sliders className="w-4 h-4" />
+                <span>Paramétrer le Seuil Minimal d'Alerte</span>
               </div>
               <button
                 type="button"
@@ -962,27 +1193,30 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
             </div>
 
             <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800 space-y-1">
+              <span className="text-[10px] text-stone-400 uppercase font-semibold block">
+                Article sélectionné
+              </span>
               <div className="font-bold text-white text-sm">
                 {thresholdModalItem.articleDesignation}
               </div>
               <div className="text-xs text-stone-400 font-mono">
-                Seuil actuel : {thresholdModalItem.seuilAlerte} {thresholdModalItem.unite}
+                Stock actuel : <strong className="text-white">{thresholdModalItem.stockActuel} {thresholdModalItem.unite}</strong> • Seuil actuel : {thresholdModalItem.seuilAlerte} {thresholdModalItem.unite}
               </div>
             </div>
 
             <div>
               <label className="block text-stone-300 font-semibold mb-1">
-                Nouveau Seuil d'Alerte Critique ({thresholdModalItem.unite})
+                Nouveau seuil minimal ({thresholdModalItem.unite})
               </label>
               <input
                 type="number"
-                min="0"
+                min="1"
                 value={newThresholdInput}
-                onChange={(e) => setNewThresholdInput(Math.max(0, parseInt(e.target.value) || 0))}
+                onChange={(e) => setNewThresholdInput(Math.max(1, parseInt(e.target.value) || 1))}
                 className="w-full px-3 py-2 bg-stone-950 border border-stone-700 rounded-xl text-white font-mono text-sm focus:outline-hidden focus:border-amber-500"
               />
               <span className="text-[10px] text-stone-400 mt-1 block">
-                Une notification automatique sera émise dès que le stock descend à ou sous ce seuil.
+                L'alerte automatique se déclenchera dès que le stock physique passera sous ce chiffre.
               </span>
             </div>
 
@@ -1006,85 +1240,75 @@ export const RestaurantStockAlertsTab: React.FC<RestaurantStockAlertsTabProps> =
         </div>
       )}
 
-      {/* Modal 3 : Feuille Imprimable de Réapprovisionnement */}
+      {/* Modal 3 : Impression Fiche d'Inventaire & Réassort */}
       {isPrintSheetOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white text-stone-950 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b pb-3 no-print">
-              <h3 className="font-serif font-bold text-base">
-                Feuille de Réapprovisionnement des Stocks Restaurant
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 bg-stone-950 text-white rounded-lg font-bold text-xs cursor-pointer flex items-center gap-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimer</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsPrintSheetOpen(false)}
-                  className="px-3 py-1.5 bg-stone-200 text-stone-700 rounded-lg text-xs cursor-pointer"
-                >
-                  Fermer
-                </button>
+          <div className="bg-white text-stone-900 rounded-2xl max-w-3xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+              <div>
+                <h3 className="font-serif font-bold text-lg text-stone-900">
+                  Fiche de Réapprovisionnement &amp; Contrôle des Stocks
+                </h3>
+                <p className="text-xs text-stone-500">
+                  Édition du {new Date().toLocaleDateString('fr-FR')} • {filteredAlerts.length} article(s) à réapprovisionner
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setIsPrintSheetOpen(false)}
+                className="text-stone-400 hover:text-stone-700 text-lg font-bold"
+              >
+                ✕
+              </button>
             </div>
 
-            {/* En-tête officiel */}
-            <div className="text-center space-y-1 border-b pb-4">
-              <h2 className="font-serif font-extrabold text-xl uppercase tracking-wider">
-                {settings.appName || 'Gestion d\'Hôtel - Maison Meublées et services'}
-              </h2>
-              <p className="text-xs text-stone-500">
-                Direction Restaurant &amp; Économat • Registre Officiel de Réapprovisionnement d'Urgence
-              </p>
-              <p className="text-[11px] font-mono text-stone-500">
-                Édité le {new Date().toLocaleDateString('fr-FR')} à {new Date().toLocaleTimeString('fr-FR')} par {currentUserProfile.nom} ({currentUserProfile.role})
-              </p>
-            </div>
-
-            {/* Tableau imprimable */}
-            <table className="w-full text-left text-xs border border-stone-300">
-              <thead className="bg-stone-100 text-stone-700 font-bold border-b border-stone-300">
+            <table className="w-full text-left text-xs border border-stone-200">
+              <thead className="bg-stone-100 font-mono text-[10px] uppercase border-b border-stone-200">
                 <tr>
-                  <th className="p-2 border-r border-stone-300">Code</th>
-                  <th className="p-2 border-r border-stone-300">Article</th>
-                  <th className="p-2 border-r border-stone-300">Stock Actuel</th>
-                  <th className="p-2 border-r border-stone-300">Seuil</th>
-                  <th className="p-2 border-r border-stone-300">Qté Suggérée</th>
-                  <th className="p-2 border-r border-stone-300">Fournisseur</th>
-                  <th className="p-2">Visa / Reçu</th>
+                  <th className="p-2">Code</th>
+                  <th className="p-2">Pôle</th>
+                  <th className="p-2">Désignation</th>
+                  <th className="p-2">Stock</th>
+                  <th className="p-2">Seuil</th>
+                  <th className="p-2">À Commander</th>
+                  <th className="p-2">Fournisseur</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {filteredAlerts.map((a) => (
                   <tr key={a.id}>
-                    <td className="p-2 font-mono border-r border-stone-300">{a.articleCode}</td>
-                    <td className="p-2 font-bold border-r border-stone-300">{a.articleDesignation}</td>
-                    <td className="p-2 font-mono border-r border-stone-300">{a.stockActuel} {a.unite}</td>
-                    <td className="p-2 font-mono border-r border-stone-300">{a.seuilAlerte} {a.unite}</td>
-                    <td className="p-2 font-mono font-bold text-stone-950 border-r border-stone-300">
-                      +{a.quantiteSuggeree} {a.unite}
-                    </td>
-                    <td className="p-2 border-r border-stone-300">{a.fournisseurNom}</td>
-                    <td className="p-2 border-stone-300">________</td>
+                    <td className="p-2 font-mono text-[11px]">{a.articleCode}</td>
+                    <td className="p-2 text-[10px] font-semibold">{a.domaine === 'hotel' ? 'Hôtel' : 'Resto'}</td>
+                    <td className="p-2 font-bold">{a.articleDesignation}</td>
+                    <td className="p-2 font-mono text-rose-600 font-bold">{a.stockActuel} {a.unite}</td>
+                    <td className="p-2 font-mono">{a.seuilAlerte}</td>
+                    <td className="p-2 font-mono font-bold text-emerald-700">+{a.quantiteSuggeree}</td>
+                    <td className="p-2">{a.fournisseurNom}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            {/* Signature */}
-            <div className="grid grid-cols-2 gap-8 pt-6 text-xs text-stone-700">
-              <div>
-                <p className="font-bold">Le Responsable Économat / Restaurant :</p>
-                <div className="h-16 border-b border-stone-400 mt-2" />
-              </div>
-              <div>
-                <p className="font-bold">Validation Gérance / Direction :</p>
-                <div className="h-16 border-b border-stone-400 mt-2" />
+            <div className="flex items-center justify-between pt-3 border-t border-stone-200 text-xs">
+              <span className="font-bold">
+                Budget prévisionnel total : {formatPrice(totalBudgetEstime)}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPrintSheetOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 font-semibold cursor-pointer"
+                >
+                  Fermer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-[#C5A880] text-slate-950 font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Imprimer la Fiche</span>
+                </button>
               </div>
             </div>
           </div>
