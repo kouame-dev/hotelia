@@ -90,6 +90,41 @@ export type UserRole =
   | 'Directeur Restaurant'
   | 'Caisse Restaurant';
 
+export type AppFeatureId =
+  | 'reservations'
+  | 'gantt'
+  | 'chambres'
+  | 'services'
+  | 'facture_globale'
+  | 'pos'
+  | 'restaurant'
+  | 'cuisine'
+  | 'stock'
+  | 'stock_alerts'
+  | 'dashboard'
+  | 'finance'
+  | 'expenses'
+  | 'loyalty'
+  | 'audit'
+  | 'profile'
+  | 'settings';
+
+export interface FeaturePermissionConfig {
+  canActivate: boolean; // Droit d'activer / accéder
+  canAdd: boolean;      // Droit d'ajouter (création)
+  canEdit: boolean;     // Droit de modifier (édition)
+}
+
+export interface AppRoleDefinition {
+  id: string;
+  roleName: UserRole;
+  label: string;
+  description: string;
+  badgeColor: string;
+  isCustom?: boolean;
+  permissions: Record<AppFeatureId, FeaturePermissionConfig>;
+}
+
 export interface UserProfile {
   id: string;
   nom: string;
@@ -103,6 +138,28 @@ export interface UserProfile {
   dateCreation?: string;
   dernierAcces?: string;
   permissions?: string[];
+  customFeaturePermissions?: Partial<Record<AppFeatureId, FeaturePermissionConfig>>;
+}
+
+// Session active et suivi des employés connectés
+export interface ActiveUserSession {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  userAvatar: string;
+  userEmail: string;
+  telephone?: string;
+  isOnline: boolean;
+  loginTime: string;
+  lastActivityTime: string;
+  terminalName: string;
+  ipAddress: string;
+  currentModule: string;
+  deviceType: 'desktop' | 'tablet' | 'mobile';
+  status: 'actif' | 'inactif_temporaire' | 'reinitialise' | 'deconnecte';
+  temporaryPin?: string;
+  lastResetTime?: string;
 }
 
 // Configuration de l'imprimante thermique de caisse (Ticket 80mm / 58mm)

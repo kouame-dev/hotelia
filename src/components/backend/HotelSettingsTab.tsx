@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useHotelSettings, CURRENCIES, CurrencyCode } from '../../context/SettingsContext.tsx';
 import { MobileMoneySettingsForm } from './MobileMoneySettingsForm.tsx';
 import { FneSettingsForm } from './FneSettingsForm.tsx';
+import { HeroSliderManager } from './HeroSliderManager.tsx';
 import {
   Settings,
   Image,
@@ -25,7 +26,8 @@ import {
   HelpCircle,
   Smartphone,
   CreditCard,
-  Zap
+  Zap,
+  Sliders
 } from 'lucide-react';
 
 interface HotelSettingsTabProps {
@@ -37,7 +39,8 @@ interface HotelSettingsTabProps {
     | 'cancellation'
     | 'banner'
     | 'seo'
-    | 'legal';
+    | 'legal'
+    | 'slider';
 }
 
 export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
@@ -49,7 +52,7 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
   const [formData, setFormData] = useState(settings);
   const [saveNotification, setSaveNotification] = useState(false);
   const [activeSubSection, setActiveSubSection] = useState<
-    'general' | 'currency' | 'mobile_money' | 'fne_ivoirienne' | 'cancellation' | 'legal' | 'seo' | 'banner'
+    'general' | 'currency' | 'mobile_money' | 'fne_ivoirienne' | 'cancellation' | 'legal' | 'seo' | 'banner' | 'slider'
   >(initialSubSection);
 
   // Synchroniser l'état local si les réglages globaux changent
@@ -208,6 +211,22 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
         >
           <Megaphone className="w-4 h-4 text-rose-500" />
           <span>Bannières de Promotion</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubSection('slider')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+            activeSubSection === 'slider'
+              ? 'bg-[#1C1B18] text-white shadow-sm ring-2 ring-[#C5A880]/60'
+              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <Sliders className="w-4 h-4 text-[#C5A880]" />
+          <span>Sliders Accueil (Front-End)</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-[#C5A880]/20 text-[#927244] text-[10px] font-mono font-bold">
+            Vitrine
+          </span>
         </button>
 
         <button
@@ -945,23 +964,32 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
           />
         )}
 
+        {/* ========================================================================= */}
+        {/* 2.quater SECTION GESTIONNAIRE DES SLIDERS DU FRONT-END                    */}
+        {/* ========================================================================= */}
+        {activeSubSection === 'slider' && (
+          <HeroSliderManager />
+        )}
+
         {/* Bouton de sauvegarde inférieur */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="px-4 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold"
-          >
-            Annuler les changements
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs uppercase tracking-wider shadow-md transition-all flex items-center gap-2"
-          >
-            <Save className="w-4 h-4" />
-            <span>Enregistrer Tous les Paramètres</span>
-          </button>
-        </div>
+        {activeSubSection !== 'slider' && (
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="px-4 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold"
+            >
+              Annuler les changements
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs uppercase tracking-wider shadow-md transition-all flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              <span>Enregistrer Tous les Paramètres</span>
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

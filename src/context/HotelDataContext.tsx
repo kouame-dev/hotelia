@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   TypeChambreConfig,
   ChambreConfig,
@@ -45,12 +45,21 @@ import {
   RestaurantStockAlert,
   StockAlertLevel,
   ConsumableStockAlert,
-  ConsumableCategory
+  ConsumableCategory,
+  AppFeatureId,
+  FeaturePermissionConfig,
+  AppRoleDefinition,
+  ActiveUserSession
 } from '../types.ts';
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  INITIAL_ROLES_DEFINITIONS
+} from '../data/defaultRolePermissions.ts';
 import {
   INITIAL_ROOM_TYPES,
   INITIAL_CHAMBRES,
   INITIAL_USER_PROFILES,
+  INITIAL_ACTIVE_SESSIONS,
   INITIAL_NOTIFICATIONS,
   INITIAL_EXPENSES,
   INITIAL_REVENUES,
@@ -110,6 +119,23 @@ interface HotelDataContextType {
   deleteUserProfile: (id: string) => void;
   toggleUserStatus: (id: string) => void;
   switchUserRole: (keyOrRole: string) => void;
+
+  // 3b. Gestion Dynamique des Rôles & Permissions par Fonctionnalité (Ajouter, Modifier, Activer)
+  rolesList: AppRoleDefinition[];
+  updateRolePermissions: (roleName: UserRole, permissions: Record<AppFeatureId, FeaturePermissionConfig>) => void;
+  resetRolePermissionsToDefault: (roleName: UserRole) => void;
+  updateUserFeaturePermissions: (userId: string, permissions: Partial<Record<AppFeatureId, FeaturePermissionConfig>>) => void;
+  hasPermission: (featureId: AppFeatureId, action?: 'activate' | 'add' | 'edit') => boolean;
+  canUserPerform: (userId: string, featureId: AppFeatureId, action?: 'activate' | 'add' | 'edit') => boolean;
+  addCustomRole: (newRole: AppRoleDefinition) => void;
+  deleteCustomRole: (roleId: string) => void;
+
+  // 3c. Suivi Simplifié des Employés Connectés & Réinitialisation des Accès en 1 Clic
+  activeSessions: ActiveUserSession[];
+  connectedEmployeesCount: number;
+  resetEmployeeAccess: (sessionId: string, mode?: 'reconnect' | 'revoke_and_reset_pin' | 'suspend') => { success: boolean; message: string; newPin?: string };
+  resetAllEmployeesAccess: () => { count: number; message: string };
+  disconnectEmployeeSession: (sessionId: string) => void;
 
   // 4. Imprimante Thermique Paramétrable
   thermalPrinterConfig: ThermalPrinterConfig;
@@ -586,6 +612,208 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const restCaisse = profilesList.find(([, u]) => u.role === 'Caisse Restaurant');
       setActiveProfileKey(restCaisse ? restCaisse[0] : 'caisse_restaurant');
     }
+  };
+
+  // --- C2. Gestion Dynamique des Rôles & Permissions par Fonctionnalité (Ajouter, Modifier, Activer) ---
+  const [rolesList, setRolesList] = useState<AppRoleDefinition[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_roles_permissions');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_ROLES_DEFINITIONS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_roles_permissions', JSON.stringify(rolesList));
+  }, [rolesList]);
+
+  const updateRolePermissions = (roleName: UserRole, permissions: Record<AppFeatureId, FeaturePermissionConfig>) => {
+    setRolesList((prev) =>
+      prev.map((role) =>
+        role.roleName === roleName
+          ? { ...role, permissions: { ...role.permissions, ...permissions } }
+          : role
+      )
+    );
+  };
+
+  const resetRolePermissionsToDefault = (roleName: UserRole) => {
+    const defaultPerms = DEFAULT_ROLE_PERMISSIONS[roleName];
+    if (defaultPerms) {
+      updateRolePermissions(roleName, defaultPerms);
+    }
+  };
+
+  const updateUserFeaturePermissions = (userId: string, permissions: Partial<Record<AppFeatureId, FeaturePermissionConfig>>) => {
+    setUserProfiles((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        if (next[key]?.id === userId) {
+          next[key] = {
+            ...next[key],
+            customFeaturePermissions: {
+              ...(next[key].customFeaturePermissions || {}),
+              ...permissions
+            }
+          };
+          break;
+        }
+      }
+      return next;
+    });
+  };
+
+  const addCustomRole = (newRole: AppRoleDefinition) => {
+    setRolesList((prev) => [...prev, newRole]);
+  };
+
+  const deleteCustomRole = (roleId: string) => {
+    setRolesList((prev) => prev.filter((r) => r.id !== roleId));
+  };
+
+  const canUserPerform = (userId: string, featureId: AppFeatureId, action: 'activate' | 'add' | 'edit' = 'activate'): boolean => {
+    const user = (Object.values(userProfiles) as UserProfile[]).find((u) => u.id === userId);
+    if (!user) return false;
+    if (user.status === 'suspendu') return false;
+
+    // 1. Priorité aux permissions personnalisées spécifiques à cet utilisateur
+    if (user.customFeaturePermissions && user.customFeaturePermissions[featureId]) {
+      const cfg = user.customFeaturePermissions[featureId]!;
+      if (action === 'activate') return !!cfg.canActivate;
+      if (action === 'add') return !!cfg.canAdd;
+      if (action === 'edit') return !!cfg.canEdit;
+    }
+
+    // 2. Directeur Général et Admin ont accès intégral
+    if (user.role === 'Directeur Général' || user.role === 'Admin') {
+      return true;
+    }
+
+    // 3. Matrice de permissions selon le rôle configuré
+    const roleDef = rolesList.find((r) => r.roleName === user.role);
+    if (roleDef && roleDef.permissions && roleDef.permissions[featureId]) {
+      const perm = roleDef.permissions[featureId];
+      if (action === 'activate') return !!perm.canActivate;
+      if (action === 'add') return !!perm.canAdd;
+      if (action === 'edit') return !!perm.canEdit;
+    }
+
+    // 4. Fallback par défaut
+    return false;
+  };
+
+  const hasPermission = (featureId: AppFeatureId, action: 'activate' | 'add' | 'edit' = 'activate'): boolean => {
+    return canUserPerform(currentUserProfile.id, featureId, action);
+  };
+
+  // --- C3. Suivi Simplifié des Employés Connectés & Réinitialisation des Accès en 1 Clic ---
+  const [activeSessions, setActiveSessions] = useState<ActiveUserSession[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_active_sessions');
+      return saved ? JSON.parse(saved) : INITIAL_ACTIVE_SESSIONS;
+    } catch {
+      return INITIAL_ACTIVE_SESSIONS;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hotelia_active_sessions', JSON.stringify(activeSessions));
+  }, [activeSessions]);
+
+  const connectedEmployeesCount = useMemo(() => {
+    return activeSessions.filter((s) => s.isOnline).length;
+  }, [activeSessions]);
+
+  const resetEmployeeAccess = (
+    sessionId: string,
+    mode: 'reconnect' | 'revoke_and_reset_pin' | 'suspend' = 'revoke_and_reset_pin'
+  ): { success: boolean; message: string; newPin?: string } => {
+    const session = activeSessions.find((s) => s.id === sessionId);
+    if (!session) {
+      return { success: false, message: 'Session introuvable.' };
+    }
+
+    const generatedPin = Math.floor(100000 + Math.random() * 900000).toString();
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    setActiveSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== sessionId) return s;
+        if (mode === 'suspend') {
+          return {
+            ...s,
+            isOnline: false,
+            status: 'verrouille',
+            lastActivityTime: 'Compte verrouillé en urgence',
+            lastResetTime: nowTime
+          };
+        }
+        return {
+          ...s,
+          isOnline: mode === 'reconnect',
+          status: 'reinitialise',
+          temporaryPin: generatedPin,
+          lastResetTime: nowTime,
+          lastActivityTime: `Accès réinitialisé à ${nowTime}`
+        };
+      })
+    );
+
+    // Mettre à jour l'utilisateur si mot de passe ou statut
+    if (session.userId) {
+      updateUserProfile(session.userId, {
+        ...(mode === 'suspend' ? { status: 'suspendu' } : { status: 'actif', password: `Hotelia#${generatedPin}` })
+      });
+    }
+
+    return {
+      success: true,
+      message: `Accès de ${session.userName} réinitialisé avec succès ! Nouveau code PIN temporaire généré.`,
+      newPin: generatedPin
+    };
+  };
+
+  const resetAllEmployeesAccess = (): { count: number; message: string } => {
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    let resetCount = 0;
+
+    setActiveSessions((prev) =>
+      prev.map((s) => {
+        if (s.userId === currentUserProfile.id && currentUserProfile.role === 'Directeur Général') {
+          return s;
+        }
+        resetCount++;
+        const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+        return {
+          ...s,
+          isOnline: false,
+          status: 'reinitialise',
+          temporaryPin: newPin,
+          lastResetTime: nowTime,
+          lastActivityTime: `Accès global réinitialisé à ${nowTime}`
+        };
+      })
+    );
+
+    return {
+      count: resetCount,
+      message: `Tous les accès employés (${resetCount} sessions) ont été réinitialisés avec succès. Reconnexion requise.`
+    };
+  };
+
+  const disconnectEmployeeSession = (sessionId: string) => {
+    setActiveSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? {
+              ...s,
+              isOnline: false,
+              status: 'deconnecte',
+              lastActivityTime: 'Déconnecté manuellement'
+            }
+          : s
+      )
+    );
   };
 
   // --- D. Configuration Imprimante Thermique (80mm / 58mm) ---
@@ -3730,6 +3958,21 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         deleteUserProfile,
         toggleUserStatus,
         switchUserRole,
+        // 3b. Gestion Dynamique des Rôles & Permissions par Fonctionnalité
+        rolesList,
+        updateRolePermissions,
+        resetRolePermissionsToDefault,
+        updateUserFeaturePermissions,
+        hasPermission,
+        canUserPerform,
+        addCustomRole,
+        deleteCustomRole,
+        // 3c. Suivi Simplifié des Employés Connectés & Réinitialisation des Accès en 1 Clic
+        activeSessions,
+        connectedEmployeesCount,
+        resetEmployeeAccess,
+        resetAllEmployeesAccess,
+        disconnectEmployeeSession,
         thermalPrinterConfig,
         updateThermalPrinterConfig,
         notifications: roleFilteredNotifications,

@@ -73,28 +73,41 @@ interface HoteliaHeroSliderProps {
 }
 
 export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBooking }) => {
-  const { formatPrice } = useHotelSettings();
+  const { formatPrice, heroSlides } = useHotelSettings();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
+  // Filtrer les slides actifs configurés depuis le back-office
+  const activeSlides = (heroSlides && heroSlides.length > 0 ? heroSlides : HOTELIA_SLIDES).filter(
+    (s) => s.isActive !== false
+  );
+  const slides = activeSlides.length > 0 ? activeSlides : (heroSlides && heroSlides.length > 0 ? heroSlides : HOTELIA_SLIDES);
+
   const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev + 1) % HOTELIA_SLIDES.length);
-  }, []);
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  }, [slides.length]);
 
   const prevSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev - 1 + HOTELIA_SLIDES.length) % HOTELIA_SLIDES.length);
-  }, []);
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  }, [slides.length]);
+
+  // Sécurité pour réinitialiser l'index si la liste est modifiée
+  useEffect(() => {
+    if (currentSlide >= slides.length) {
+      setCurrentSlide(0);
+    }
+  }, [slides.length, currentSlide]);
 
   // Défilement automatique toutes les 6 secondes
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || slides.length <= 1) return;
     const timer = setInterval(() => {
       nextSlide();
     }, 6000);
     return () => clearInterval(timer);
-  }, [isPaused, nextSlide]);
+  }, [isPaused, nextSlide, slides.length]);
 
-  const slide = HOTELIA_SLIDES[currentSlide];
+  const slide = slides[currentSlide] || slides[0];
 
   return (
     <div
@@ -103,7 +116,7 @@ export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBook
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* Background Images with Fade Transition */}
-      {HOTELIA_SLIDES.map((s, index) => (
+      {slides.map((s, index) => (
         <div
           key={s.id}
           className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
@@ -111,9 +124,12 @@ export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBook
           } transform transition-transform duration-7000`}
         >
           <img
-            src={s.image}
+            src={s.image || HOTELIA_SLIDES[0].image}
             alt={s.title}
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = HOTELIA_SLIDES[0].image;
+            }}
             className="w-full h-full object-cover object-center brightness-[0.42]"
           />
           {/* Subtle gradient overlays for optimal text contrast */}
@@ -177,7 +193,7 @@ export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBook
               className="px-6 py-3.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 shadow-lg hover:shadow-[#C5A880]/30 hover:scale-[1.02] flex items-center gap-2"
             >
               <Moon className="w-4 h-4" />
-              <span>Réserver une Nuitée (Dès {formatPrice(slide.startingPriceNight)})</span>
+              <span>{slide.ctaNightText || 'Réserver une Nuitée'} (Dès {formatPrice(slide.startingPriceNight)})</span>
             </button>
 
             <button
@@ -186,7 +202,7 @@ export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBook
               className="px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-md font-semibold text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] flex items-center gap-2"
             >
               <Clock className="w-4 h-4 text-[#C5A880]" />
-              <span>À l’Heure / Day-Use ({formatPrice(slide.startingPriceHour)} / h)</span>
+              <span>{slide.ctaHourText || 'À l’Heure / Day-Use'} ({formatPrice(slide.startingPriceHour)} / h)</span>
             </button>
           </div>
         </div>
@@ -259,7 +275,7 @@ export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBook
 
       {/* Slide Indicators / Dots */}
       <div className="absolute bottom-24 sm:bottom-28 right-6 sm:right-12 z-20 flex items-center gap-2">
-        {HOTELIA_SLIDES.map((_, i) => (
+        {slides.map((_, i) => (
           <button
             key={i}
             type="button"

@@ -45,6 +45,76 @@ export interface PromoBanner {
   badgeText: string;
 }
 
+// 7b. Interface des Slides du Hero Slider Front-End
+export interface SlideData {
+  id: number;
+  badge: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  image: string;
+  startingPriceNight: number;
+  startingPriceHour: number;
+  isActive?: boolean;
+  ctaNightText?: string;
+  ctaHourText?: string;
+}
+
+export const DEFAULT_HERO_SLIDES: SlideData[] = [
+  {
+    id: 1,
+    badge: 'Hôtel & Résidence de Prestige',
+    title: 'Hotelia Résidence & Suites',
+    subtitle: 'L’élégance hôtelière signée Dekouassi Holding',
+    description: 'Une parenthèse d’exception au cœur de la ville. Profitez de nos suites haut de gamme réservables à la nuitée (dès 10 000 FCFA) ou pour quelques heures (2 500 FCFA/h).',
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1920&q=80',
+    startingPriceNight: 10000,
+    startingPriceHour: 2500,
+    isActive: true,
+    ctaNightText: 'Réserver une Nuitée',
+    ctaHourText: 'À l’Heure / Day-Use'
+  },
+  {
+    id: 2,
+    badge: 'Chambres & Suites Signature',
+    title: 'Suites Exécutives & Panoramiques',
+    subtitle: 'Confort absolu, literie d’art & technologies modernes',
+    description: 'Des espaces pensés pour les voyageurs exigeants et les séjours d’affaires. Vue imprenable, insonorisation de pointe et service d’étage discret.',
+    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1920&q=80',
+    startingPriceNight: 20000,
+    startingPriceHour: 2500,
+    isActive: true,
+    ctaNightText: 'Réserver une Nuitée',
+    ctaHourText: 'À l’Heure / Day-Use'
+  },
+  {
+    id: 3,
+    badge: 'Formule Day-Use & Courte Durée',
+    title: 'Réservations à l’Heure',
+    subtitle: '1h, 2h, 3h ou 4h de sérénité à tarif unique',
+    description: 'Idéal pour une escale, une session de travail en toute quiétude ou un instant de déconnexion. Tarif fixe de 2 500 FCFA par heure.',
+    image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1920&q=80',
+    startingPriceNight: 10000,
+    startingPriceHour: 2500,
+    isActive: true,
+    ctaNightText: 'Réserver une Nuitée',
+    ctaHourText: 'À l’Heure / Day-Use'
+  },
+  {
+    id: 4,
+    badge: 'Bien-Être & Détente',
+    title: 'Piscine & Spa Privé',
+    subtitle: 'Une oasis de fraîcheur et de volupté',
+    description: 'Bénéficiez d’un accès exclusif à nos installations bien-être lors de votre séjour, de jour comme de nuit.',
+    image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1920&q=80',
+    startingPriceNight: 25000,
+    startingPriceHour: 2500,
+    isActive: true,
+    ctaNightText: 'Réserver une Nuitée',
+    ctaHourText: 'À l’Heure / Day-Use'
+  }
+];
+
 // 7. Configurations des APIs Passerelles Mobile Money (Orange, MTN, Moov)
 export interface OrangeMoneyConfig {
   enabled: boolean;
@@ -272,6 +342,9 @@ export interface HotelSettings {
 
   // 8. Paramétrage FNE (Facture Normalisée Électronique - Côte d'Ivoire DGI)
   fneIvoirienne: FneIvoirienneConfig;
+
+  // 9. Slides du Hero Slider Front-End
+  heroSlides: SlideData[];
 }
 
 export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
@@ -316,7 +389,8 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
   },
 
   mobileMoney: DEFAULT_MOBILE_MONEY_SETTINGS,
-  fneIvoirienne: DEFAULT_FNE_IVOIRIENNE_CONFIG
+  fneIvoirienne: DEFAULT_FNE_IVOIRIENNE_CONFIG,
+  heroSlides: DEFAULT_HERO_SLIDES
 };
 
 interface SettingsContextType {
@@ -328,6 +402,14 @@ interface SettingsContextType {
   resetSettings: () => void;
   formatPrice: (amountFCFA: number) => string;
   convertPrice: (amountFCFA: number) => number;
+
+  // 9. Gestion des Sliders Front-End
+  heroSlides: SlideData[];
+  addHeroSlide: (slide: Omit<SlideData, 'id'>) => SlideData;
+  updateHeroSlide: (id: number, slide: Partial<SlideData>) => void;
+  deleteHeroSlide: (id: number) => void;
+  reorderHeroSlides: (newSlides: SlideData[]) => void;
+  resetHeroSlidesToDefault: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -374,7 +456,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           fneIvoirienne: {
             ...DEFAULT_FNE_IVOIRIENNE_CONFIG,
             ...(parsed.fneIvoirienne || {})
-          }
+          },
+          heroSlides:
+            parsed.heroSlides && Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0
+              ? parsed.heroSlides
+              : DEFAULT_HERO_SLIDES
         };
       }
     } catch (e) {
@@ -494,6 +580,38 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return `${formattedNumber} ${cur.symbol}`;
   };
 
+  const heroSlides = settings.heroSlides || DEFAULT_HERO_SLIDES;
+
+  const addHeroSlide = (newSlideData: Omit<SlideData, 'id'>): SlideData => {
+    const newId = Date.now();
+    const newSlide: SlideData = {
+      ...newSlideData,
+      id: newId,
+      isActive: newSlideData.isActive !== undefined ? newSlideData.isActive : true
+    };
+    const updated = [...heroSlides, newSlide];
+    updateSettings({ heroSlides: updated });
+    return newSlide;
+  };
+
+  const updateHeroSlide = (id: number, patch: Partial<SlideData>) => {
+    const updated = heroSlides.map((s) => (s.id === id ? { ...s, ...patch } : s));
+    updateSettings({ heroSlides: updated });
+  };
+
+  const deleteHeroSlide = (id: number) => {
+    const updated = heroSlides.filter((s) => s.id !== id);
+    updateSettings({ heroSlides: updated });
+  };
+
+  const reorderHeroSlides = (newSlides: SlideData[]) => {
+    updateSettings({ heroSlides: newSlides });
+  };
+
+  const resetHeroSlidesToDefault = () => {
+    updateSettings({ heroSlides: DEFAULT_HERO_SLIDES });
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -504,7 +622,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         incrementFneSequence,
         resetSettings,
         formatPrice,
-        convertPrice
+        convertPrice,
+        heroSlides,
+        addHeroSlide,
+        updateHeroSlide,
+        deleteHeroSlide,
+        reorderHeroSlides,
+        resetHeroSlidesToDefault
       }}
     >
       {children}

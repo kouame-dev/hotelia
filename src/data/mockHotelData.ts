@@ -7,7 +7,8 @@ import {
   UserProfile,
   ReservationItem,
   ThermalPrinterConfig,
-  AuditLogEntry
+  AuditLogEntry,
+  ActiveUserSession
 } from '../types.ts';
 
 // 1. Types de chambre initiaux
@@ -221,6 +222,95 @@ export const INITIAL_USER_PROFILES: Record<string, UserProfile> = {
     permissions: ['pos_restaurant', 'tables', 'reservations_restaurant', 'encaissements_restaurant']
   }
 };
+
+// 3b. Sessions Actives et Employés Connectés (Temps Réel)
+export const INITIAL_ACTIVE_SESSIONS: ActiveUserSession[] = [
+  {
+    id: 'sess-1',
+    userId: 'usr-1',
+    userName: 'Koua Dibi (Dekouassi Holding)',
+    userRole: 'Directeur Général',
+    userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
+    userEmail: 'koua.dibi@gmail.com',
+    telephone: '+225 07 08 09 10 11',
+    isOnline: true,
+    loginTime: '07:45',
+    lastActivityTime: 'À l’instant',
+    terminalName: 'Bureau Direction (PC Fixe 01)',
+    ipAddress: '192.168.1.10',
+    currentModule: 'Tableau de Bord & Revenus',
+    deviceType: 'desktop',
+    status: 'actif'
+  },
+  {
+    id: 'sess-2',
+    userId: 'usr-2',
+    userName: 'Aminata Koné',
+    userRole: 'Chef de Réception',
+    userAvatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
+    userEmail: 'reception@hotelia.dekouassiholding.com',
+    telephone: '+225 05 44 55 66 77',
+    isOnline: true,
+    loginTime: '08:00',
+    lastActivityTime: 'Il y a 2 min',
+    terminalName: 'Comptoir Réception (Poste 01)',
+    ipAddress: '192.168.1.25',
+    currentModule: 'Planning Gantt & Chambres',
+    deviceType: 'desktop',
+    status: 'actif'
+  },
+  {
+    id: 'sess-3',
+    userId: 'usr-3',
+    userName: 'Mariam Diallo',
+    userRole: 'Caisse',
+    userAvatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
+    userEmail: 'caisse@hotelia.dekouassiholding.com',
+    telephone: '+225 07 11 22 33 44',
+    isOnline: true,
+    loginTime: '08:15',
+    lastActivityTime: 'Il y a 1 min',
+    terminalName: 'Guichet Caisse Hôtel (Terminal TPE)',
+    ipAddress: '192.168.1.30',
+    currentModule: 'Réservations & Factures',
+    deviceType: 'desktop',
+    status: 'actif'
+  },
+  {
+    id: 'sess-4',
+    userId: 'usr-restaurant-admin',
+    userName: 'Chef Jean-Luc Gnahoua',
+    userRole: 'Directeur Restaurant',
+    userAvatar: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=400&q=80',
+    userEmail: 'restaurant.admin@hotelia.dekouassiholding.com',
+    telephone: '+225 07 55 44 33 22',
+    isOnline: true,
+    loginTime: '09:30',
+    lastActivityTime: 'Il y a 4 min',
+    terminalName: 'Tablette Service Salle (iPad Pro)',
+    ipAddress: '192.168.1.42',
+    currentModule: 'Plan de Salle & Tables',
+    deviceType: 'tablet',
+    status: 'actif'
+  },
+  {
+    id: 'sess-5',
+    userId: 'usr-restaurant-caisse',
+    userName: 'Aïcha Traoré',
+    userRole: 'Caisse Restaurant',
+    userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+    userEmail: 'caisse.restaurant@hotelia.dekouassiholding.com',
+    telephone: '+225 05 66 77 88 99',
+    isOnline: false,
+    loginTime: 'Hier 22:30',
+    lastActivityTime: 'Déconnecté hier',
+    terminalName: 'Caisse Bar & Lounge (Écran Tactile)',
+    ipAddress: '192.168.1.45',
+    currentModule: 'Point de Vente Restaurant',
+    deviceType: 'desktop',
+    status: 'deconnecte'
+  }
+];
 
 // Configuration par défaut de l'imprimante thermique
 export const DEFAULT_THERMAL_PRINTER_CONFIG: ThermalPrinterConfig = {

@@ -28,8 +28,12 @@ import {
   Building,
   CreditCard,
   Ban,
-  LogIn
+  LogIn,
+  SlidersHorizontal,
+  Zap
 } from 'lucide-react';
+import { RolePermissionsMatrix } from './RolePermissionsMatrix.tsx';
+import { ConnectedEmployeesSection } from './ConnectedEmployeesSection.tsx';
 
 const QUICK_AVATARS = [
   { label: 'Directeur (H)', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' },
@@ -51,8 +55,8 @@ export const UserProfileTab: React.FC = () => {
     toggleUserStatus
   } = useHotelData();
 
-  // Active section inside User Tab: 'profile' or 'accounts'
-  const [activeSection, setActiveSection] = useState<'profile' | 'accounts'>('accounts');
+  // Active section inside User Tab: 'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile'
+  const [activeSection, setActiveSection] = useState<'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile'>('accounts');
 
   // --- Local form state for Personal Profile ---
   const [nom, setNom] = useState(currentUserProfile.nom);
@@ -271,22 +275,55 @@ export const UserProfileTab: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. ONGLETS DE NAVIGATION INTERNE (Comptes Super Admin vs Mon Profil)      */}
+      {/* 2. ONGLETS DE NAVIGATION INTERNE (Comptes, Permissions & Mon Profil)      */}
       {/* ========================================================================= */}
-      <div className="flex space-x-2 border-b border-stone-200 pb-2 text-xs">
+      <div className="flex flex-wrap gap-2 border-b border-stone-200 pb-2 text-xs">
         <button
           type="button"
           onClick={() => setActiveSection('accounts')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${
             activeSection === 'accounts'
-              ? 'bg-[#1C1B18] text-white shadow-sm'
+              ? 'bg-[#1C1B18] text-white shadow-sm ring-2 ring-[#C5A880]/30'
               : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
           }`}
         >
           <Users className="w-4 h-4 text-[#C5A880]" />
-          <span>Gestion des Comptes &amp; Rôles (Super Admin)</span>
+          <span>Gestion des Comptes Utilisateurs</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#C5A880] text-slate-950 font-bold">
             {usersList.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSection('connected_employees')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${
+            activeSection === 'connected_employees'
+              ? 'bg-[#1C1B18] text-white shadow-sm ring-2 ring-[#C5A880]/30'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-emerald-500 fill-emerald-500" />
+          <span>Employés Connectés &amp; Sessions (1 Clic)</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>En Direct</span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSection('permissions_matrix')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${
+            activeSection === 'permissions_matrix'
+              ? 'bg-[#1C1B18] text-white shadow-sm ring-2 ring-[#C5A880]/30'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <SlidersHorizontal className="w-4 h-4 text-[#C5A880]" />
+          <span>Configuration Rôles &amp; Permissions (Ajouter, Modifier, Activer)</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+            17 Fonctions
           </span>
         </button>
 
@@ -303,6 +340,16 @@ export const UserProfileTab: React.FC = () => {
           <span>Mon Profil Personnel &amp; Sécurité</span>
         </button>
       </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION B : MATRICE DE CONFIGURATION DES RÔLES & PERMISSIONS (RBAC)      */}
+      {/* ========================================================================= */}
+      {activeSection === 'permissions_matrix' && <RolePermissionsMatrix />}
+
+      {/* ========================================================================= */}
+      {/* SECTION C : EMPLOYÉS CONNECTÉS & SESSIONS EN DIRECT (1 CLIC)              */}
+      {/* ========================================================================= */}
+      {activeSection === 'connected_employees' && <ConnectedEmployeesSection />}
 
       {/* ========================================================================= */}
       {/* SECTION A : GESTION DES COMPTES UTILISATEURS (SUPER ADMIN)                */}
@@ -539,6 +586,16 @@ export const UserProfileTab: React.FC = () => {
                             >
                               <LogIn className="w-3.5 h-3.5 text-[#C5A880]" />
                               <span>{isCurrent ? 'Session Active' : 'Se Connecter'}</span>
+                            </button>
+
+                            {/* Configurer les permissions */}
+                            <button
+                              type="button"
+                              onClick={() => setActiveSection('permissions_matrix')}
+                              className="p-1.5 rounded-lg hover:bg-[#C5A880]/20 text-[#C5A880] transition-all cursor-pointer"
+                              title="Configurer les permissions (Ajouter, Modifier, Activer)"
+                            >
+                              <SlidersHorizontal className="w-3.5 h-3.5" />
                             </button>
 
                             {/* Modifier */}

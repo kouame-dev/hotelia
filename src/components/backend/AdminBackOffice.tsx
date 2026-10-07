@@ -19,10 +19,12 @@ import { RestaurantManagementTab } from './RestaurantManagementTab.tsx';
 import { LoyaltyAndMarketingTab } from './LoyaltyAndMarketingTab.tsx';
 import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 import { DevToolsModal } from './DevToolsModal.tsx';
+import { ConnectedEmployeesModal } from './ConnectedEmployeesModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
+import { AppFeatureId } from '../../types.ts';
 import {
   LayoutDashboard,
   BarChart3,
@@ -69,7 +71,11 @@ import {
   ChefHat,
   Award,
   History,
-  Code2
+  Code2,
+  Zap,
+  RotateCcw,
+  Image as ImageIcon,
+  Sliders
 } from 'lucide-react';
 
 export type BackOfficeTab =
@@ -128,7 +134,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     unreadStockAlertsCount,
     consumableStockAlerts,
     unreadConsumableAlertsCount,
-    switchUserRole
+    switchUserRole,
+    hasPermission,
+    connectedEmployeesCount
   } = useHotelData();
 
   // Nombre de commandes restaurant actives en cuisine (En cours / Prêt) pour le badge KDS
@@ -164,7 +172,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       setRestaurantSubTab(initialRestaurantSubTab);
     }
   }, [initialRestaurantSubTab]);
-  const [settingsSubSection, setSettingsSubSection] = useState<'general' | 'mobile_money'>('general');
+  const [settingsSubSection, setSettingsSubSection] = useState<'general' | 'mobile_money' | 'slider'>('general');
   const [isReservationMenuOpen, setIsReservationMenuOpen] = useState(false);
   const [isRestaurantMenuOpen, setIsRestaurantMenuOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
@@ -176,6 +184,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const [isRestaurationModalOpen, setIsRestaurationModalOpen] = useState(false);
   const [isAdministrationModalOpen, setIsAdministrationModalOpen] = useState(false);
   const [isDevToolsModalOpen, setIsDevToolsModalOpen] = useState(false);
+  const [isConnectedEmployeesModalOpen, setIsConnectedEmployeesModalOpen] = useState(false);
 
   // Identification du pôle actif parmi les 3 pôles principaux
   const currentPole = useMemo<'hebergement' | 'restauration' | 'administration'>(() => {
@@ -317,70 +326,52 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   }, [isCaisseRestaurant, isDirecteurRestaurant, isCaisse, activeTab]);
 
   const handleTabClick = (tab: BackOfficeTab) => {
-    // 1. Dashboard Revenus, Facture Globale & FNE, Journal d'Audit, Alertes Stocks et Profil sont TOUJOURS ACCESSIBLES À 100% SANS RESTRICTION
-    if (tab === 'dashboard' || tab === 'facture_globale' || tab === 'profile' || tab === 'audit' || tab === 'stock_alerts') {
-      setActiveTab(tab);
+    // 0. Le profil et module de gestion reste accessible
+    if (tab === 'profile') {
+      setActiveTab('profile');
       return;
+    }
+
+    // 1. Contrôle dynamique par la Matrice de Permissions RBAC (hasPermission)
+    const featureMap: Record<string, AppFeatureId> = {
+      dashboard: 'dashboard',
+      gantt: 'gantt',
+      reservations: 'reservations',
+      chambres: 'chambres',
+      services: 'services',
+      facture_globale: 'facture_globale',
+      pos: 'pos',
+      restaurant: 'restaurant',
+      cuisine: 'cuisine',
+      stock: 'stock',
+      stock_alerts: 'stock_alerts',
+      finance: 'finance',
+      expenses: 'expenses',
+      loyalty: 'loyalty',
+      audit: 'audit',
+      profile: 'profile',
+      settings: 'settings'
+    };
+
+    const targetFeat = featureMap[tab];
+    if (targetFeat && !isDG) {
+      const isAllowed = hasPermission(targetFeat, 'activate');
+      if (!isAllowed) {
+        setRestrictedModalMessage(
+          `Accès Restreint : Votre compte (${currentUserProfile.nom} - ${currentUserProfile.role}) ne dispose pas de la permission d'activer le module "${targetFeat}". Le Directeur Général peut configurer ou réactiver vos droits d'accès dans le module Gestion des Utilisateurs & Permissions.`
+        );
+        return;
+      }
     }
 
     // 2. Gestion du Point de Vente (POS)
     if (tab === 'pos') {
-      if (isCaisse) {
-        setRestrictedModalMessage(
-          "Accès Réservé : Votre compte Caisse Hôtel est configuré pour gérer les Réservations de chambres, les encaissements et la Facture Globale. Le Point de Vente du restaurant est géré par la Caisse Restaurant."
-        );
-        return;
-      }
       setActiveTab('restaurant');
       setRestaurantSubTab('pos');
       return;
     }
 
-    // 3. Rôle Caisse Restaurant : accès au restaurant, cuisine, POS, facture_globale, profil
-    if (isCaisseRestaurant) {
-      if (tab === 'restaurant' || tab === 'cuisine') {
-        setActiveTab(tab);
-        return;
-      }
-      setRestrictedModalMessage(
-        "Accès Réservé : Votre compte Caisse Restaurant est dédié au Point de Vente (POS Restaurant), aux additions des tables, à la cuisine et à la Facture Globale & Certification FNE DGI."
-      );
-      return;
-    }
-
-    // 4. Rôle Directeur Restaurant : accès restaurant, cuisine, POS, stocks, services, facture_globale, profil
-    if (isDirecteurRestaurant) {
-      if (tab === 'restaurant' || tab === 'cuisine' || tab === 'stock' || tab === 'services') {
-        setActiveTab(tab);
-        return;
-      }
-      setRestrictedModalMessage(
-        "Accès Administrateur Restreint : Votre compte Direction Restaurant supervise la gestion du Restaurant, des Tables, de la Cuisine (KDS), du Menu, de la Facturation Globale et des Stocks."
-      );
-      return;
-    }
-
-    // 5. Rôle Caisse Hôtel : accès réservations, cuisine, facture_globale, profil
-    if (isCaisse) {
-      if (tab === 'reservations' || tab === 'cuisine') {
-        setActiveTab(tab);
-        return;
-      }
-      setRestrictedModalMessage(
-        "Accès Réservé : Votre compte Caisse Hôtel a été configuré pour gérer les Réservations de chambres, les Règlements, la Cuisine et la Facture Globale & Certification FNE DGI."
-      );
-      return;
-    }
-
-    // 6. Rôle Chef de Réception : restrictions spécifiques (finance, expenses, settings, erd, pricing, antioverbooking)
-    if (isChefReception && (tab === 'finance' || tab === 'expenses' || tab === 'settings' || tab === 'erd' || tab === 'pricing' || tab === 'antioverbooking')) {
-      setRestrictedModalMessage(
-        "Accès Administrateur Restreint : Les bilans financiers, dépenses de gestion et paramètres généraux sont réservés au Directeur Général (Super Admin)."
-      );
-      return;
-    }
-
-    // 7. Administrateur Général (DG) & accès autorisé
+    // 3. Navigation autorisée
     setActiveTab(tab);
   };
 
@@ -475,6 +466,30 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 </div>
               </button>
 
+              {/* Bouton Rapide : Employés Connectés & Reset 1-Clic */}
+              <button
+                type="button"
+                onClick={() => setIsConnectedEmployeesModalOpen(true)}
+                className="relative px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs bg-[#2A2925] hover:bg-[#383631] text-emerald-300 hover:text-emerald-200 border-emerald-600/40 hover:border-emerald-500/80"
+                title="Visualiser rapidement les employés connectés et réinitialiser leurs accès en 1 clic"
+              >
+                <div className="relative">
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  {connectedEmployeesCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-white hidden md:inline">
+                    Employés
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[10px] flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5 text-amber-400" />
+                    <span>{connectedEmployeesCount} En Ligne</span>
+                  </span>
+                </div>
+              </button>
+
               {/* Onglet Unifié : Profil & Déconnexion (Regroupement en 1 seul onglet avec menu complet) */}
               <div className="relative">
                 <button
@@ -560,17 +575,35 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         ))}
                       </div>
 
-                      <div className="border-t border-stone-800 pt-2 flex items-center justify-between gap-2">
+                      <div className="border-t border-stone-800 pt-2 space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            setIsConnectedEmployeesModalOpen(true);
+                          }}
+                          className="w-full flex items-center justify-between p-2 rounded-xl text-left transition-all hover:bg-stone-800 text-emerald-300 text-xs font-semibold cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Employés connectés (1-Clic)</span>
+                          </div>
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
+                            {connectedEmployeesCount} en ligne
+                          </span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
                             setActiveTab('profile');
                             setIsUserMenuOpen(false);
                           }}
-                          className="text-xs text-[#C5A880] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                          className="w-full flex items-center justify-between p-2 rounded-xl text-left transition-all hover:bg-stone-800 text-[#C5A880] text-xs font-semibold cursor-pointer"
                         >
-                          <UserCheck className="w-3.5 h-3.5" />
-                          <span>Gérer profil &amp; comptes</span>
+                          <div className="flex items-center gap-2">
+                            <UserCheck className="w-3.5 h-3.5" />
+                            <span>Gérer profil &amp; comptes</span>
+                          </div>
                         </button>
                         <button
                           type="button"
@@ -578,7 +611,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                             setIsUserMenuOpen(false);
                             onLogout();
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/80 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                          className="w-full p-2 rounded-xl bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-white border border-rose-800/80 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
                           title="Fermer la session"
                         >
                           <LogOut className="w-3.5 h-3.5" />
@@ -723,6 +756,21 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
             {/* Séparateur discret */}
             <div className="h-6 w-px bg-stone-800 shrink-0 hidden sm:block" />
+
+            {/* Bouton Direct : Employés Connectés (Visualisation & Reset 1 Clic) */}
+            <button
+              type="button"
+              onClick={() => setIsConnectedEmployeesModalOpen(true)}
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md bg-stone-900/90 hover:bg-stone-800 text-emerald-300 border border-emerald-600/40 hover:border-emerald-500/70"
+              title="Visualiser rapidement les employés connectés et réinitialiser leurs accès en un clic"
+            >
+              <Users className="w-4 h-4 text-emerald-400" />
+              <span className="text-stone-200">Employés Connectés</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {connectedEmployeesCount} en ligne
+              </span>
+            </button>
 
             {/* Boîte à Outils & Démonstrations Unifiée (Ouvre la Modale Outils) */}
             <button
@@ -1811,15 +1859,47 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                     </span>
                   </div>
                   <h4 className="font-bold text-sm text-white mb-1">
-                    Utilisateurs &amp; Profils du Personnel
+                    Gestion des Utilisateurs, Rôles &amp; Permissions
                   </h4>
                   <p className="text-xs text-stone-400 leading-relaxed">
-                    Comptes du personnel : Super Admin DG, Réceptionnistes, Caissiers Hôtel et Caisse Restaurant.
+                    Configuration des comptes, rôles et permissions granulaires (Ajouter, Modifier, Activer) par fonctionnalité.
                   </p>
                 </div>
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-sky-300 font-semibold">
-                  <span>Gérer les comptes et profils</span>
+                  <span>Gérer les comptes et la matrice des permissions</span>
                   <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Module 5b : Employés Connectés & Réinitialisation d'Accès en 1 Clic */}
+              <div
+                onClick={() => {
+                  setIsAdministrationModalOpen(false);
+                  setIsConnectedEmployeesModalOpen(true);
+                }}
+                className="p-4 rounded-2xl border border-emerald-500/50 bg-stone-900/90 hover:bg-stone-850 hover:border-emerald-400 transition-all cursor-pointer text-left flex flex-col justify-between shadow-md group"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 group-hover:scale-105 transition-transform">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      {connectedEmployeesCount} En Ligne
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white mb-1 flex items-center gap-1.5">
+                    <span>Employés Connectés &amp; Reset 1-Clic</span>
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  </h4>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Surveillance instantanée des postes de travail actifs (Caisse, Cuisine, Réception) et réinitialisation immédiate des accès/PIN en 1 clic.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                  <span>Surveiller les postes et réinitialiser</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
 
@@ -1855,6 +1935,38 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
                   <span>Modifier les paramètres de l'hôtel</span>
                   <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Module 6b : Sliders & Bannières d'Accueil Front-End */}
+              <div
+                onClick={() => {
+                  setSettingsSubSection('slider');
+                  handleTabClick('settings');
+                  setIsAdministrationModalOpen(false);
+                }}
+                className="p-4 rounded-2xl border border-stone-800 bg-stone-900/80 hover:bg-stone-850 hover:border-[#C5A880]/70 transition-all cursor-pointer text-left flex flex-col justify-between group shadow-sm"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880] group-hover:scale-105 transition-transform">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
+                      Vitrine Web
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white mb-1 flex items-center gap-1.5">
+                    <span>Sliders &amp; Diapositives Front-End</span>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  </h4>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Formulaire pour ajouter, modifier, activer/masquer et ordonner les sliders plein écran de la page d'accueil client (titres, images, tarifs nuitée/heure).
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
+                  <span>Gérer les sliders du front-end</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
 
@@ -1917,6 +2029,16 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         isOpen={isNotifModalOpen}
         onClose={() => setIsNotifModalOpen(false)}
         onGoToStockAlerts={() => handleTabClick('stock_alerts')}
+      />
+
+      {/* 4b. MODALE INTERFACE SIMPLIFIÉE : EMPLOYÉS CONNECTÉS & RESET ACCÈS 1-CLIC */}
+      <ConnectedEmployeesModal
+        isOpen={isConnectedEmployeesModalOpen}
+        onClose={() => setIsConnectedEmployeesModalOpen(false)}
+        onNavigateToUserPermissions={() => {
+          setIsConnectedEmployeesModalOpen(false);
+          setActiveTab('profile');
+        }}
       />
 
       {/* Modal d'Alerte : Accès Restreint par le Contrôle de Rôle (RBAC) */}
