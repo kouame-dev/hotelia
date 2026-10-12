@@ -4,7 +4,7 @@ export type PaymentStatus = 'en_attente' | 'paye' | 'annule' | 'rembourse';
 export type ReservationStatus = 'en_attente' | 'confirmee' | 'en_cours' | 'terminee' | 'annulee';
 
 // Modes de paiement mobile money & caisse demandés
-export type PaymentMethod = 'MTN Money' | 'Orange Money' | 'MOOV Money' | 'Espèces / Caisse' | 'Chèque' | 'Carte Bancaire';
+export type PaymentMethod = 'MTN Money' | 'Orange Money' | 'MOOV Money' | 'Wave' | 'Espèces / Caisse' | 'Chèque' | 'Carte Bancaire';
 
 // Structure complète d'une réservation gérée dans l'hôtel
 export interface ReservationItem {

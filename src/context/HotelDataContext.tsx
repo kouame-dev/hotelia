@@ -1135,7 +1135,14 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const needsMigration = parsed.some((r: any) => typeof r.montantTotal === 'number' && r.montantTotal < 1000);
-          if (!needsMigration) return ensureReservationPartialPayments(parsed);
+          const hasFutureReservations = parsed.some((r: any) => r.dateDebut && r.dateDebut >= '2026-10-01');
+          if (!needsMigration && hasFutureReservations) {
+            return ensureReservationPartialPayments(parsed);
+          }
+          if (!needsMigration && !hasFutureReservations) {
+            const futureConfirmed = INITIAL_RESERVATIONS.filter((r) => r.dateDebut && r.dateDebut >= '2026-10-01');
+            return ensureReservationPartialPayments([...parsed, ...futureConfirmed]);
+          }
         }
       }
       return ensureReservationPartialPayments(INITIAL_RESERVATIONS);

@@ -1684,19 +1684,19 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                     <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
                       <BarChart3 className="w-5 h-5" />
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      Graphiques Barres Quotidien &amp; Mensuel
+                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                      Recharts 30J • Quotidien &amp; Mensuel
                     </span>
                   </div>
                   <h4 className="font-bold text-sm text-white mb-1">
                     Tableau de Bord des Revenus &amp; Ventes
                   </h4>
                   <p className="text-xs text-stone-400 leading-relaxed">
-                    Pilotage visuel du chiffre d'affaires consolidé : graphiques en barres des revenus journaliers et mensuels, ventilation réservations d'hébergement vs ventes POS / restaurant.
+                    Pilotage visuel du chiffre d'affaires consolidé : projection graphique Recharts du <strong>CA prévisionnel pour les 30 prochains jours</strong> basé sur les réservations confirmées, graphiques journaliers et mensuels.
                   </p>
                 </div>
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
-                  <span>Ouvrir le tableau de bord des revenus</span>
+                  <span>Ouvrir le tableau de bord des revenus &amp; prévisions DG</span>
                   <ChevronRight className="w-4 h-4" />
                 </div>
               </div>

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { jsPDF } from 'jspdf';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
+import { ForecastRevenueChart } from './ForecastRevenueChart.tsx';
 import {
   BarChart3,
   TrendingUp,
@@ -32,7 +33,7 @@ import {
   Check
 } from 'lucide-react';
 
-export type GranularityView = 'consolidated' | 'daily' | 'monthly';
+export type GranularityView = 'consolidated' | 'daily' | 'monthly' | 'forecast';
 export type RevenueStreamFilter = 'all' | 'reservations' | 'sales';
 export type ChartDisplayStyle = 'stacked' | 'grouped';
 
@@ -1414,7 +1415,7 @@ export const RevenueDashboardTab: React.FC = () => {
         {/* 2. Barre de Filtres & Sélecteurs de Granularité */}
         <div className="mt-6 pt-5 border-t border-stone-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* A. Mode de vue (Granularité) */}
-          <div className="flex items-center gap-1.5 p-1 bg-stone-900/90 rounded-xl border border-stone-800">
+          <div className="flex items-center gap-1.5 p-1 bg-stone-900/90 rounded-xl border border-stone-800 flex-wrap">
             <button
               type="button"
               onClick={() => setGranularity('consolidated')}
@@ -1425,7 +1426,23 @@ export const RevenueDashboardTab: React.FC = () => {
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>Vue Complète (Quotidien &amp; Mensuel)</span>
+              <span>Vue Complète (Tous Flux)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setGranularity('forecast')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                granularity === 'forecast'
+                  ? 'bg-amber-400 text-stone-950 font-extrabold shadow-md scale-[1.02] ring-1 ring-amber-300'
+                  : 'text-amber-400 hover:text-amber-200 hover:bg-stone-800/80'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+              <span>📈 Prévisionnel 30J (DG)</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 font-mono font-bold">
+                Recharts
+              </span>
             </button>
 
             <button
@@ -1620,9 +1637,16 @@ export const RevenueDashboardTab: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
+      {/* 3b. VISUALISATION PRÉVISIONNELLE RECHARTS POUR LE DIRECTEUR GÉNÉRAL       */}
+      {/* ========================================================================= */}
+      {(granularity === 'consolidated' || granularity === 'forecast') && (
+        <ForecastRevenueChart />
+      )}
+
+      {/* ========================================================================= */}
       {/* 4. GRAPHIQUE QUOTIDIEN EN BARRES (DAILY REVENUE BAR CHART)               */}
       {/* ========================================================================= */}
-      {(granularity === 'consolidated' || granularity === 'daily') && (
+      {granularity !== 'forecast' && (granularity === 'consolidated' || granularity === 'daily') && (
         <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div>
@@ -1874,7 +1898,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 5. GRAPHIQUE MENSUEL EN BARRES (MONTHLY REVENUE BAR CHART)               */}
       {/* ========================================================================= */}
-      {(granularity === 'consolidated' || granularity === 'monthly') && (
+      {granularity !== 'forecast' && (granularity === 'consolidated' || granularity === 'monthly') && (
         <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div>
@@ -2050,7 +2074,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 6. INSPECTION DU JOUR SÉLECTIONNÉ & RÉPARTITION PAR CANAUX               */}
       {/* ========================================================================= */}
-      {activeDayDetails && (
+      {granularity !== 'forecast' && activeDayDetails && (
         <div className="bg-[#1C1B18] text-white rounded-3xl border border-stone-800 p-6 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-800">
             <div className="flex items-center space-x-3">
@@ -2145,6 +2169,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 7. TABLEAU DÉTAILLÉ & JOURNAL DE BORD DU MOIS                           */}
       {/* ========================================================================= */}
+      {granularity !== 'forecast' && (
       <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
           <div>
@@ -2312,6 +2337,7 @@ export const RevenueDashboardTab: React.FC = () => {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };
