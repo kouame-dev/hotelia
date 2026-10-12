@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { PosSale } from '../../types.ts';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
+import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { jsPDF } from 'jspdf';
 
 interface PosInvoiceModalProps {
@@ -35,7 +36,8 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
   onConfirmSale,
   initialFormat = 'thermal'
 }) => {
-  const { settings, thermalPrinterConfig } = useHotelData();
+  const { thermalPrinterConfig } = useHotelData();
+  const { settings } = useHotelSettings();
   const [activeFormat, setActiveFormat] = useState<'thermal' | 'a4'>(initialFormat);
   const [activePrintFormat, setActivePrintFormat] = useState<'thermal' | 'a4'>(initialFormat);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);

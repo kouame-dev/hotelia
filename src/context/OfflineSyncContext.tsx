@@ -21,6 +21,7 @@ interface OfflineSyncContextType {
     module: 'hotel' | 'restaurant' | 'facturation_fne',
     payload: any
   ) => OfflineQueueItem;
+  enqueueAction?: (arg1: any, arg2?: any, arg3?: any, arg4?: any) => any;
   toggleSimulateOffline: () => void;
 }
 
@@ -101,6 +102,16 @@ export const OfflineSyncProvider: React.FC<{ children: React.ReactNode }> = ({ c
     []
   );
 
+  const enqueueAction = useCallback(
+    (arg1: any, arg2?: any, arg3?: any, arg4?: any) => {
+      if (typeof arg1 === 'object' && arg1 !== null && 'type' in arg1) {
+        return enqueueOfflineAction(arg1.type, arg1.title || 'Action', arg1.module || 'facturation_fne', arg1.payload);
+      }
+      return enqueueOfflineAction(arg1, arg2, arg3, arg4);
+    },
+    [enqueueOfflineAction]
+  );
+
   const toggleSimulateOffline = useCallback(() => {
     setIsSimulatedOffline((prev) => {
       const next = !prev;
@@ -127,6 +138,7 @@ export const OfflineSyncProvider: React.FC<{ children: React.ReactNode }> = ({ c
         clearSynced,
         retryItem,
         enqueueOfflineAction,
+        enqueueAction: enqueueOfflineAction,
         toggleSimulateOffline
       }}
     >

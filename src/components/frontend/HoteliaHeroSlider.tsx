@@ -12,18 +12,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { ReservationMode } from '../ReservationForm.tsx';
-import { useHotelSettings } from '../../context/SettingsContext.tsx';
-
-export interface SlideData {
-  id: number;
-  badge: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  image: string;
-  startingPriceNight: number;
-  startingPriceHour: number;
-}
+import { useHotelSettings, SlideData } from '../../context/SettingsContext.tsx';
 
 export const HOTELIA_SLIDES: SlideData[] = [
   {

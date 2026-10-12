@@ -22,6 +22,7 @@ import { DevToolsModal } from './DevToolsModal.tsx';
 import { ConnectedEmployeesModal } from './ConnectedEmployeesModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
+import { ErrorBoundary } from '../common/ErrorBoundary.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { AppFeatureId } from '../../types.ts';
@@ -964,84 +965,186 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
 
         {/* Tab 0 : Tableau de Bord des Revenus & Ventes (Quotidien & Mensuel) */}
-        {activeTab === 'dashboard' && <RevenueDashboardTab />}
+        {activeTab === 'dashboard' && (
+          <ErrorBoundary fallbackTitle="Erreur sur le tableau de bord des revenus">
+            <RevenueDashboardTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab 1 : Planning Gantt */}
-        {activeTab === 'gantt' && !isCaisse && !isCaisseRestaurant && <AdminGanttDashboard />}
+        {activeTab === 'gantt' && !isCaisse && !isCaisseRestaurant && (
+          <ErrorBoundary fallbackTitle="Erreur sur le planning Gantt">
+            <AdminGanttDashboard />
+          </ErrorBoundary>
+        )}
 
         {/* Tab Réservations de Chambres avec Sous-Menus */}
         {activeTab === 'reservations' && !isCaisseRestaurant && (
-          <ReservationManagementTab key={reservationSubTab} initialSubTab={reservationSubTab} />
+          <ErrorBoundary fallbackTitle="Erreur sur la gestion des réservations">
+            <ReservationManagementTab key={reservationSubTab} initialSubTab={reservationSubTab} />
+          </ErrorBoundary>
         )}
 
         {/* Tab Dédié Restaurant (Plan de Tables, POS Restaurant, Réservations Tables, KDS, Menu) */}
         {activeTab === 'restaurant' && (!isCaisse || restaurantSubTab === 'commandes') && (
-          <RestaurantManagementTab
-            key={`rest-${restaurantSubTab}`}
-            initialSubTab={restaurantSubTab}
-            onSubTabChange={(tab) => setRestaurantSubTab(tab)}
-            onGoToFactureGlobale={() => setActiveTab('facture_globale')}
-            onGoToStockAlerts={() => handleTabClick('stock_alerts')}
-            onGoToKds={() => handleTabClick('cuisine')}
-          />
+          <ErrorBoundary fallbackTitle="Erreur sur le module Restaurant">
+            <RestaurantManagementTab
+              key={`rest-${restaurantSubTab}`}
+              initialSubTab={restaurantSubTab}
+              onSubTabChange={(tab) => setRestaurantSubTab(tab)}
+              onGoToFactureGlobale={() => setActiveTab('facture_globale')}
+              onGoToStockAlerts={() => handleTabClick('stock_alerts')}
+              onGoToKds={() => handleTabClick('cuisine')}
+            />
+          </ErrorBoundary>
         )}
 
         {/* Tab Dédié Cuisine et Suivi KDS (Kitchen Display System en temps réel) */}
-        {activeTab === 'cuisine' && <KitchenDisplaySystemTab />}
+        {activeTab === 'cuisine' && (
+          <ErrorBoundary fallbackTitle="Erreur sur l'affichage KDS Cuisine">
+            <KitchenDisplaySystemTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab Point de Vente (POS) */}
-        {activeTab === 'pos' && <PosSystemTab />}
+        {activeTab === 'pos' && (
+          <ErrorBoundary fallbackTitle="Erreur sur le terminal Point de Vente (POS)">
+            <PosSystemTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab Services Payants */}
-        {activeTab === 'services' && <PaidServicesTab />}
+        {activeTab === 'services' && (
+          <ErrorBoundary fallbackTitle="Erreur sur les services payants">
+            <PaidServicesTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab Facture Globale Consolidée */}
-        {activeTab === 'facture_globale' && <GlobalInvoiceView />}
+        {activeTab === 'facture_globale' && (
+          <ErrorBoundary fallbackTitle="Erreur sur la facturation globale FNE">
+            <GlobalInvoiceView />
+          </ErrorBoundary>
+        )}
 
         {/* Tab Journal d'Audit des Réservations */}
-        {activeTab === 'audit' && <ReservationAuditLogTab />}
+        {activeTab === 'audit' && (
+          <ErrorBoundary fallbackTitle="Erreur sur le journal d'audit">
+            <ReservationAuditLogTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab Gestion de Stock & Approvisionnements */}
-        {activeTab === 'stock' && !isCaisse && <StockManagementTab />}
+        {activeTab === 'stock' && !isCaisse && (
+          <ErrorBoundary fallbackTitle="Erreur sur la gestion des stocks">
+            <StockManagementTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab Alertes Stocks & Réapprovisionnement Restaurant */}
         {activeTab === 'stock_alerts' && (
-          <RestaurantStockAlertsTab
-            onGoToStockModule={() => handleTabClick('stock')}
-            onGoToRestaurant={() => handleTabClick('restaurant')}
-          />
+          <ErrorBoundary fallbackTitle="Erreur sur les alertes de stock">
+            <RestaurantStockAlertsTab
+              onGoToStockModule={() => handleTabClick('stock')}
+              onGoToRestaurant={() => handleTabClick('restaurant')}
+            />
+          </ErrorBoundary>
         )}
 
         {/* Tab Fidélité, Comptes Clients, Coupons Promo & Campagnes SMS / Push */}
-        {activeTab === 'loyalty' && !isCaisse && <LoyaltyAndMarketingTab />}
+        {activeTab === 'loyalty' && !isCaisse && (
+          <ErrorBoundary fallbackTitle="Erreur sur le module fidélité & marketing">
+            <LoyaltyAndMarketingTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab 2 : Gestion Complète des Chambres & Types de Chambres */}
-        {activeTab === 'chambres' && !isCaisse && <RoomManagementTab />}
+        {activeTab === 'chambres' && !isCaisse && (
+          <ErrorBoundary fallbackTitle="Erreur sur la gestion des chambres">
+            <RoomManagementTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab 3 : Rapports Financiers */}
         {activeTab === 'finance' && isDG && (
-          <FinancialReportTab onGoToRevenueDashboard={() => handleTabClick('dashboard')} />
+          <ErrorBoundary fallbackTitle="Erreur sur les rapports financiers">
+            <FinancialReportTab onGoToRevenueDashboard={() => handleTabClick('dashboard')} />
+          </ErrorBoundary>
         )}
 
         {/* Tab 4 : Module Dépenses */}
-        {activeTab === 'expenses' && isDG && <ExpensesTab />}
+        {activeTab === 'expenses' && isDG && (
+          <ErrorBoundary fallbackTitle="Erreur sur le module des dépenses">
+            <ExpensesTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab 5 : Profil Utilisateur & Gestion des Comptes (Super Admin) */}
-        {activeTab === 'profile' && <UserProfileTab />}
+        {activeTab === 'profile' && (
+          <ErrorBoundary fallbackTitle="Erreur sur le profil utilisateur">
+            <UserProfileTab />
+          </ErrorBoundary>
+        )}
 
         {/* Tab 6 : Paramètres de l'Application */}
         {activeTab === 'settings' && isDG && (
-          <HotelSettingsTab initialSubSection={settingsSubSection} />
+          <ErrorBoundary fallbackTitle="Erreur sur les paramètres de l'hôtel">
+            <HotelSettingsTab initialSubSection={settingsSubSection} />
+          </ErrorBoundary>
         )}
 
         {/* Tab 7 : Code PostgreSQL Anti-Surbooking */}
-        {activeTab === 'antioverbooking' && isDG && <AntiOverbookingCode />}
+        {activeTab === 'antioverbooking' && isDG && (
+          <ErrorBoundary fallbackTitle="Erreur sur le module anti-surbooking">
+            <AntiOverbookingCode />
+          </ErrorBoundary>
+        )}
 
         {/* Tab 8 : Testeur API Prix */}
-        {activeTab === 'pricing' && isDG && <PricingFunctionPlayground />}
+        {activeTab === 'pricing' && isDG && (
+          <ErrorBoundary fallbackTitle="Erreur sur le simulateur de prix">
+            <PricingFunctionPlayground />
+          </ErrorBoundary>
+        )}
 
         {/* Tab 9 : Diagramme ERD */}
-        {activeTab === 'erd' && isDG && <ErdDiagram />}
+        {activeTab === 'erd' && isDG && (
+          <ErrorBoundary fallbackTitle="Erreur sur le diagramme ERD">
+            <ErdDiagram />
+          </ErrorBoundary>
+        )}
+
+        {/* Filet de sécurité anti-page blanche : si l'onglet demandé est restreint pour le rôle connecté */}
+        {(
+          (activeTab === 'gantt' && (isCaisse || isCaisseRestaurant)) ||
+          (activeTab === 'reservations' && isCaisseRestaurant) ||
+          (activeTab === 'stock' && isCaisse) ||
+          (activeTab === 'loyalty' && isCaisse) ||
+          (activeTab === 'chambres' && isCaisse) ||
+          (activeTab === 'restaurant' && isCaisse && restaurantSubTab !== 'commandes') ||
+          ((activeTab === 'finance' || activeTab === 'expenses' || activeTab === 'settings' || activeTab === 'antioverbooking' || activeTab === 'pricing' || activeTab === 'erd') && !isDG)
+        ) && (
+          <div className="bg-white rounded-3xl border border-stone-200 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm space-y-4 my-8 animate-in fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
+              <ShieldCheck className="w-8 h-8 stroke-[2.2]" />
+            </div>
+            <h3 className="font-serif font-bold text-xl text-stone-900">
+              Accès restreint à cet onglet
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
+              Votre compte actuel avec le rôle <strong>{currentUserProfile.role}</strong> ne dispose pas des privilèges suffisants pour ouvrir le module <strong>{activeTab}</strong>.
+            </p>
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleTabClick('dashboard')}
+                className="px-5 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Retour au Tableau de Bord
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ========================================================================= */}

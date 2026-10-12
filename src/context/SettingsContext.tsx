@@ -261,6 +261,13 @@ export interface FneIvoirienneConfig {
   dernierPingDgiStatus?: 'success' | 'error' | 'idle';
   dernierPingDgiDate?: string;
   dernierPingDgiMessage?: string;
+  // Aliases de rétrocompatibilité
+  ncc?: string;
+  centreImpot?: string;
+  pointFacturationCode?: string;
+  mentionLegaleFne?: string;
+  formeJuridique?: string;
+  taxeSejourNuit?: number;
 }
 
 export const DEFAULT_FNE_IVOIRIENNE_CONFIG: FneIvoirienneConfig = {
@@ -296,17 +303,27 @@ export const DEFAULT_FNE_IVOIRIENNE_CONFIG: FneIvoirienneConfig = {
   signatureResponsable: 'Koua Dibi (Directeur Général & Administrateur Dekouassi Holding)',
   dernierPingDgiStatus: 'success',
   dernierPingDgiDate: '2026-09-24 10:15',
-  dernierPingDgiMessage: "Connexion opérationnelle avec le concentrateur fiscal e-Impôts DGI Côte d'Ivoire"
+  dernierPingDgiMessage: "Connexion opérationnelle avec le concentrateur fiscal e-Impôts DGI Côte d'Ivoire",
+  ncc: '2104592 X',
+  centreImpot: 'Direction des Grandes Entreprises (DGE)',
+  pointFacturationCode: 'POS-HTL-ABJ-01',
+  mentionLegaleFne: "Facture Normalisée Électronique délivrée conformément aux dispositions du Code Général des Impôts de Côte d'Ivoire (DGI CI).",
+  formeJuridique: 'Société Anonyme (SA)'
 };
 
 export interface HotelSettings {
   // 1. Identité de marque & Logo
   appName: string;
+  hotelName?: string;
   brandSubtitle: string;
   holdingName: string;
   logoUrl: string; // Image URL ou SVG/data URI
   logoType: 'icon' | 'image';
   faviconUrl: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  fne?: any;
 
   // 2. Devise & Tarification
   currency: CurrencyCode;

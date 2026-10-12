@@ -15,14 +15,17 @@ interface ImageUploadFieldProps {
   value?: string;
   onChange: (value: string) => void;
   placeholderText?: string;
+  placeholder?: string;
 }
 
 export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
   label = "Image d'illustration",
   value = '',
   onChange,
-  placeholderText = "PNG, JPG, WebP jusqu'à 5 Mo"
+  placeholderText = "PNG, JPG, WebP jusqu'à 5 Mo",
+  placeholder
 }) => {
+  const effectivePlaceholder = placeholder || placeholderText;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);

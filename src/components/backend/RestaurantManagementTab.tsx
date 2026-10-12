@@ -453,6 +453,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
       const foundItem = restaurantMenuItems.find((m) => m.id === art.menuItemId) || {
         id: art.menuItemId,
         nom: art.nom,
+        description: '',
         categorie: 'plat' as const,
         prix: art.prixUnitaire,
         coutRevient: 0,
@@ -721,7 +722,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
 
   // Chambres occupées actuelles pour "Note sur chambre"
   const occupiedRooms = useMemo(() => {
-    return chambres.filter((c) => c.statut === 'occupee');
+    return chambres.filter((c) => (c.statut as string).toLowerCase().includes('occup'));
   }, [chambres]);
 
   // Statistiques du restaurant

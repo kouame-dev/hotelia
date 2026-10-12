@@ -1,6 +1,6 @@
 export type ReservationType = 'nuit' | 'heure';
 export type RoomStatus = 'disponible' | 'occupee' | 'maintenance' | 'nettoyage';
-export type PaymentStatus = 'en_attente' | 'paye' | 'annule' | 'rembourse';
+export type PaymentStatus = 'en_attente' | 'paye' | 'annule' | 'rembourse' | 'acompte' | 'solde';
 export type ReservationStatus = 'en_attente' | 'confirmee' | 'en_cours' | 'terminee' | 'annulee';
 
 // Modes de paiement mobile money & caisse demandés
@@ -69,6 +69,7 @@ export interface ChambreConfig {
   numero: string;
   typeId: string;
   typeNom: string;
+  type?: string;
   etage: number;
   prixNuit: number;
   prixHeure: number;
@@ -157,7 +158,7 @@ export interface ActiveUserSession {
   ipAddress: string;
   currentModule: string;
   deviceType: 'desktop' | 'tablet' | 'mobile';
-  status: 'actif' | 'inactif_temporaire' | 'reinitialise' | 'deconnecte';
+  status: 'actif' | 'inactif_temporaire' | 'reinitialise' | 'deconnecte' | 'verrouille';
   temporaryPin?: string;
   lastResetTime?: string;
 }
@@ -173,6 +174,12 @@ export interface ThermalPrinterConfig {
   showTaxDetails: boolean;
   showBarcode: boolean;
   paperFeedLines: number; // Lignes de saut avant coupe papier
+  // Aliases de compatibilité
+  largeurPapier?: '80mm' | '58mm';
+  messageBas?: string;
+  enteteHaut?: string;
+  adresseHotel?: string;
+  telephoneHotel?: string;
 }
 
 // Notification sonore et visuelle (Hôtel, Restaurant, Stocks Critiques)
@@ -230,12 +237,15 @@ export interface RevenueItem {
   id: string;
   date: string; // YYYY-MM-DD
   reservationId?: string;
-  clientNom: string;
-  chambreNumero: string;
-  typeReservation: ReservationType;
-  modePaiement: PaymentMethod;
+  clientNom?: string;
+  chambreNumero?: string;
+  typeReservation?: ReservationType;
+  modePaiement?: PaymentMethod;
   montant: number;
-  statut: 'paye' | 'en_attente' | 'rembourse';
+  statut?: 'paye' | 'en_attente' | 'rembourse';
+  source?: 'chambre' | 'restaurant' | 'service';
+  categorie?: string;
+  description?: string;
 }
 
 export interface ColumnDefinition {
@@ -554,6 +564,7 @@ export interface FactureGlobaleData {
     prixUnitaire: number;
     totalLigne: number;
   }[];
+  consommationsPos?: any[];
   restaurantCommandes?: {
     id: string;
     date: string;
@@ -562,6 +573,7 @@ export interface FactureGlobaleData {
     quantite: number;
     totalLigne: number;
   }[];
+  restauration?: any[];
   sousTotalHebergement: number;
   sousTotalServices: number;
   sousTotalPos: number;
@@ -574,7 +586,7 @@ export interface FactureGlobaleData {
   totalTTC: number;
   totalAcomptesVerses: number;
   resteAPayer: number;
-  statutPaiement: 'solde' | 'acompte' | 'impaye';
+  statutPaiement: 'solde' | 'acompte' | 'impaye' | 'partiel';
   modeReglementPrincipal: PaymentMethod;
   historiqueReglements: {
     date: string;
@@ -606,6 +618,7 @@ export interface FactureGlobaleData {
     montantTdt: number;
     montantAirsi?: number;
     montantTimbreFiscal?: number;
+    montantTtc?: number;
     mentionLegale: string;
   };
 }
@@ -613,13 +626,14 @@ export interface FactureGlobaleData {
 // =========================================================================
 // 6. MODULE RESTAURANT DÉDIÉ (PLAN DE TABLES, CARTE, COMMANDES, POS & RÉSERVATIONS)
 // =========================================================================
-export type RestaurantZone = 'Salle Climatisée' | 'Terrasse' | 'Salon VIP' | 'Bar Lounge';
+export type RestaurantZone = 'Salle Climatisée' | 'Terrasse' | 'Salon VIP' | 'Bar Lounge' | 'salle' | 'terrasse' | 'vip' | 'bar';
 
-export type RestaurantTableStatus = 'libre' | 'occupee' | 'reservee' | 'addition';
+export type RestaurantTableStatus = 'libre' | 'occupee' | 'reservee' | 'addition' | 'addition_demandee';
 
 export interface RestaurantTable {
   id: string;
   numero: string; // ex: "Table 01", "Terrasse 02", "VIP Dekouassi 01"
+  nom?: string;
   capacite: number; // 2, 4, 6, 8, 12 personnes
   zone: RestaurantZone;
   statut: RestaurantTableStatus;
@@ -647,6 +661,7 @@ export interface RestaurantMenuItem {
   prix: number;
   description: string;
   imageUrl?: string;
+  image?: string;
   disponible: boolean;
   tempsPreparationMin?: number;
   coupDeCoeur?: boolean;
@@ -680,10 +695,13 @@ export interface RestaurantReservation {
   modePaiementAcompte?: PaymentMethod | string;
   referenceAcompte?: string;
   dateAcompte?: string;
+  acompteModePaiement?: PaymentMethod | string;
+  acompteReference?: string;
+  acompteDate?: string;
 }
 
 export interface RestaurantOrderItem {
-  id: string;
+  id?: string;
   menuItemId: string;
   nom: string;
   categorie: RestaurantCategory | string;
@@ -713,6 +731,7 @@ export interface RestaurantOrder {
   tva?: number;
   remise: number;
   acompteDeduit?: number;
+  acompteVerse?: number;
   totalNet: number;
   montantVerse?: number;
   monnaieRendue?: number;
@@ -720,7 +739,7 @@ export interface RestaurantOrder {
   statutPaiement: PaymentStatus | string;
   statutCuisine: 'en_attente' | 'en_preparation' | 'pret' | 'servi';
   statutAddition: 'en_cours' | 'addition_imprimee' | 'payee' | 'annulee';
-  statut?: 'en_attente' | 'en_preparation' | 'pret' | 'servi' | 'annule';
+  statut?: 'en_attente' | 'en_preparation' | 'pret' | 'servi' | 'annule' | 'servie';
   typeService?: 'sur_place' | 'a_emporter' | 'room_service';
   notes?: string;
 }

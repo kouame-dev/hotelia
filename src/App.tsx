@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HoteliaFrontEnd } from './components/frontend/HoteliaFrontEnd.tsx';
 import { RestaurantReservationPage } from './components/frontend/RestaurantReservationPage.tsx';
 import { AdminLoginPage } from './components/backend/AdminLoginPage.tsx';
@@ -12,6 +12,7 @@ import { SqlViewer } from './components/SqlViewer.tsx';
 import { ErdDiagram } from './components/ErdDiagram.tsx';
 import { ReservationSimulator } from './components/ReservationSimulator.tsx';
 import { ClientSpaceModal } from './components/frontend/ClientSpaceModal.tsx';
+import { ErrorBoundary } from './components/common/ErrorBoundary.tsx';
 import {
   Sparkles,
   Lock,
@@ -33,7 +34,17 @@ export type MainAppView = 'frontend' | 'restaurant_booking' | 'login' | 'backend
 
 export default function App() {
   // Vue active principale : par défaut 'frontend' avec le slider Hotelia
-  const [appView, setAppView] = useState<MainAppView>('frontend');
+  const [appView, setAppView] = useState<MainAppView>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#admin' || hash === '#backend') return 'backend';
+      if (hash === '#login' || hash === '#connexion') return 'login';
+      if (hash === '#restaurant' || hash === '#restaurant_booking') return 'restaurant_booking';
+      if (hash === '#dev' || hash === '#dev_tools') return 'dev_tools';
+    }
+    return 'frontend';
+  });
+
   const [isClientSpaceOpen, setIsClientSpaceOpen] = useState(false);
   const [backendInitialTab, setBackendInitialTab] = useState<BackOfficeTab | undefined>(undefined);
   const [backendTabTimestamp, setBackendTabTimestamp] = useState<number>(0);
@@ -52,14 +63,53 @@ export default function App() {
   // Onglet actif pour la vue outils techniques (dev_tools)
   const [devTab, setDevTab] = useState<AppTab>('form');
 
+  // Synchronisation bidirectionnelle de l'ancre URL (#login, #admin, #restaurant, #frontend)
+  useEffect(() => {
+    const handleHashSync = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#admin' || hash === '#backend') {
+        setAppView(currentUser ? 'backend' : 'login');
+      } else if (hash === '#login' || hash === '#connexion') {
+        setAppView('login');
+      } else if (hash === '#restaurant' || hash === '#restaurant_booking') {
+        setAppView('restaurant_booking');
+      } else if (hash === '#dev' || hash === '#dev_tools') {
+        setAppView('dev_tools');
+      } else if (hash === '#hotel' || hash === '#frontend' || hash === '' || hash === '#chambres' || hash === '#services' || hash === '#contact') {
+        setAppView('frontend');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashSync);
+    window.addEventListener('popstate', handleHashSync);
+    return () => {
+      window.removeEventListener('hashchange', handleHashSync);
+      window.removeEventListener('popstate', handleHashSync);
+    };
+  }, [currentUser]);
+
+  const navigateToView = (view: MainAppView) => {
+    setAppView(view);
+    if (typeof window !== 'undefined') {
+      const targetHash =
+        view === 'backend' ? '#admin' :
+        view === 'login' ? '#login' :
+        view === 'restaurant_booking' ? '#restaurant' :
+        view === 'dev_tools' ? '#dev' : '#hotel';
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(null, '', targetHash);
+      }
+    }
+  };
+
   const handleLoginSuccess = (userData: { nom: string; role: string; email: string }) => {
     setCurrentUser(userData);
-    setAppView('backend');
+    navigateToView('backend');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
-    setAppView('login');
+    navigateToView('login');
   };
 
   return (
@@ -83,7 +133,7 @@ export default function App() {
             {/* SEUL ONGLET AFFICHÉ SUR LE FRONT-END : Connexion Gérant */}
             <button
               type="button"
-              onClick={() => setAppView('login')}
+              onClick={() => navigateToView('login')}
               className="flex items-center space-x-2 px-4 py-2 rounded-xl font-bold transition-all bg-[#C5A880] hover:bg-[#b59870] text-slate-950 shadow-md cursor-pointer text-xs"
               title="Portail sécurisé réservé à la direction et au personnel"
             >
@@ -94,51 +144,71 @@ export default function App() {
         </aside>
       )}
 
-      {/* Rendu dynamique selon le mode actif */}
+      {/* Rendu dynamique protégé par ErrorBoundary selon le mode actif */}
       {appView === 'frontend' && (
-        <HoteliaFrontEnd
-          onGoToBackend={() => setAppView('login')}
-          onGoToRestaurant={() => setAppView('restaurant_booking')}
-        />
+        <ErrorBoundary fallbackTitle="Erreur sur la page d'accueil de l'Hôtel">
+          <HoteliaFrontEnd
+            onGoToBackend={() => navigateToView('login')}
+            onGoToRestaurant={() => navigateToView('restaurant_booking')}
+          />
+        </ErrorBoundary>
       )}
 
       {appView === 'restaurant_booking' && (
-        <RestaurantReservationPage
-          onBackToHome={() => setAppView('frontend')}
-          onGoToBackend={() => setAppView('login')}
-        />
+        <ErrorBoundary fallbackTitle="Erreur sur la page de réservation Restaurant">
+          <RestaurantReservationPage
+            onBackToHome={() => navigateToView('frontend')}
+            onGoToBackend={() => navigateToView('login')}
+          />
+        </ErrorBoundary>
       )}
 
       {appView === 'login' && (
-        <AdminLoginPage
-          onLoginSuccess={handleLoginSuccess}
-          onBackToSite={() => setAppView('frontend')}
-        />
+        <ErrorBoundary fallbackTitle="Erreur sur l'espace d'authentification">
+          <AdminLoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onBackToSite={() => navigateToView('frontend')}
+          />
+        </ErrorBoundary>
       )}
 
       {appView === 'backend' && currentUser && (
-        <AdminBackOffice
-          user={currentUser}
-          onLogout={handleLogout}
-          onGoToPublicSite={() => setAppView('frontend')}
-          initialTab={backendInitialTab}
-          initialTabTimestamp={backendTabTimestamp}
-        />
+        <ErrorBoundary fallbackTitle="Erreur dans le tableau de bord Back-Office">
+          <AdminBackOffice
+            user={currentUser}
+            onLogout={handleLogout}
+            onGoToPublicSite={() => navigateToView('frontend')}
+            initialTab={backendInitialTab}
+            initialTabTimestamp={backendTabTimestamp}
+          />
+        </ErrorBoundary>
+      )}
+
+      {/* Filet de sécurité anti-page blanche : si mode backend sans session, rediriger vers login */}
+      {appView === 'backend' && !currentUser && (
+        <ErrorBoundary fallbackTitle="Connexion requise pour le Back-Office">
+          <AdminLoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onBackToSite={() => navigateToView('frontend')}
+          />
+        </ErrorBoundary>
       )}
 
       {appView === 'dev_tools' && (
-        <div className="flex-1 flex flex-col">
-          <Navbar activeTab={devTab} setActiveTab={setDevTab} />
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {devTab === 'form' && <ReservationFormShowcase />}
-            {devTab === 'booking' && <BoutiqueClientDashboard />}
-            {devTab === 'antioverbooking' && <AntiOverbookingCode />}
-            {devTab === 'uxdesign' && <UxDesignSystem />}
-            {devTab === 'sql' && <SqlViewer />}
-            {devTab === 'erd' && <ErdDiagram />}
-            {devTab === 'simulator' && <ReservationSimulator />}
-          </main>
-        </div>
+        <ErrorBoundary fallbackTitle="Erreur dans les outils techniques">
+          <div className="flex-1 flex flex-col">
+            <Navbar activeTab={devTab} setActiveTab={setDevTab} />
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {devTab === 'form' && <ReservationFormShowcase />}
+              {devTab === 'booking' && <BoutiqueClientDashboard />}
+              {devTab === 'antioverbooking' && <AntiOverbookingCode />}
+              {devTab === 'uxdesign' && <UxDesignSystem />}
+              {devTab === 'sql' && <SqlViewer />}
+              {devTab === 'erd' && <ErdDiagram />}
+              {devTab === 'simulator' && <ReservationSimulator />}
+            </main>
+          </div>
+        </ErrorBoundary>
       )}
 
       {/* Modal Espace Client & Carte de Fidélité (Global) */}
