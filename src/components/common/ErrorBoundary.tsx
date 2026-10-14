@@ -14,15 +14,9 @@ interface State {
   showDetails: boolean;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
-  // @ts-ignore
-  public override props: Props;
-  // @ts-ignore
-  public override state: State;
-
+export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.props = props;
     this.state = {
       hasError: false,
       error: null,

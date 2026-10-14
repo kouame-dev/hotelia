@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
-import { playLuxuryBellSound, playStockAlertChime } from '../../utils/soundNotification.ts';
+import { playLuxuryBellSound, playStockAlertChime, playCancellationAlertSound } from '../../utils/soundNotification.ts';
 import {
   BellRing,
   Volume2,
@@ -44,6 +44,8 @@ export const NotificationCenterModal: React.FC<{
     simulerAlerteConsommables,
     soundEnabled,
     setSoundEnabled,
+    soundConfig,
+    simulateCancellation,
     currentUserProfile
   } = useHotelData();
   const { formatPrice } = useHotelSettings();
@@ -297,6 +299,17 @@ export const NotificationCenterModal: React.FC<{
             >
               <Boxes className="w-3 h-3 text-amber-600" />
               <span>Alerte Consommable</span>
+            </button>
+
+            {/* Simuler annulation de réservation avec alerte sonore */}
+            <button
+              type="button"
+              onClick={() => simulateCancellation()}
+              className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 font-bold flex items-center gap-1.5 transition-all text-[11px] border border-rose-300"
+              title="Simuler une annulation de réservation avec carillon sonore d'alerte immédiat"
+            >
+              <Volume2 className="w-3 h-3 text-rose-600" />
+              <span>Simuler Annulation (Son)</span>
             </button>
 
             {/* Simuler notification adaptée au rôle */}

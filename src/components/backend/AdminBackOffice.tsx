@@ -22,6 +22,7 @@ import { DevToolsModal } from './DevToolsModal.tsx';
 import { ConnectedEmployeesModal } from './ConnectedEmployeesModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
+import { SoundNotificationModal } from './SoundNotificationModal.tsx';
 import { ErrorBoundary } from '../common/ErrorBoundary.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
@@ -51,6 +52,7 @@ import {
   Bell,
   BellRing,
   Volume2,
+  VolumeX,
   ChevronDown,
   ChevronRight,
   XCircle,
@@ -123,6 +125,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     currentUserProfile,
     unreadCount,
     soundEnabled,
+    soundConfig,
+    activeSoundToast,
+    dismissSoundToast,
     pendingReservationsCount,
     completedReservationsCount,
     cancelledReservationsCount,
@@ -177,6 +182,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const [isReservationMenuOpen, setIsReservationMenuOpen] = useState(false);
   const [isRestaurantMenuOpen, setIsRestaurantMenuOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+  const [isSoundModalOpen, setIsSoundModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [restrictedModalMessage, setRestrictedModalMessage] = useState<string | null>(null);
 
@@ -430,6 +436,41 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
             {/* Profile & Navigation Actions */}
             <div className="flex items-center space-x-3">
+              {/* Bouton Rapide : Système de Notifications Sonores (Réception & Direction) */}
+              <button
+                type="button"
+                onClick={() => setIsSoundModalOpen(true)}
+                className={`relative px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs ${
+                  soundConfig?.enabled
+                    ? 'bg-[#C5A880]/15 hover:bg-[#C5A880]/25 text-amber-200 border-[#C5A880]/50 hover:border-[#C5A880]'
+                    : 'bg-[#2A2925] hover:bg-[#383631] text-stone-400 hover:text-stone-300 border-stone-700'
+                }`}
+                title={
+                  soundConfig?.enabled
+                    ? `Carillon et alertes sonores actifs (${Math.round((soundConfig.volume ?? 0.85) * 100)}%) - Cliquer pour tester et configurer`
+                    : 'Alertes sonores coupées - Cliquer pour activer le carillon'
+                }
+              >
+                <div className="relative">
+                  {soundConfig?.enabled ? (
+                    <Volume2 className="w-4 h-4 text-[#C5A880]" />
+                  ) : (
+                    <VolumeX className="w-4 h-4 text-stone-400" />
+                  )}
+                  {soundConfig?.enabled && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-white hidden sm:inline">
+                    {soundConfig?.enabled ? 'Alertes Sonores' : 'Son Muet'}
+                  </span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/40 text-[#C5A880] border border-[#C5A880]/30 hidden lg:inline">
+                    {soundConfig?.enabled ? `${Math.round((soundConfig.volume ?? 0.85) * 100)}%` : 'OFF'}
+                  </span>
+                </div>
+              </button>
+
               {/* Onglet Unifié : Alertes & Stocks Restaurant / Consommables Hôtel */}
               <button
                 type="button"
@@ -628,11 +669,11 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               <button
                 type="button"
                 onClick={onGoToPublicSite}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 text-xs font-semibold transition-all cursor-pointer"
-                title="Voir le site public Hotelia"
+                className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer"
+                title="Basculer vers le site public Hotelia (Front-End)"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-[#C5A880]" />
-                <span className="hidden sm:inline">Site Public</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Voir le Front-End</span>
               </button>
             </div>
           </div>
@@ -2133,6 +2174,10 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         onClose={() => setIsNotifModalOpen(false)}
         onGoToStockAlerts={() => handleTabClick('stock_alerts')}
       />
+      <SoundNotificationModal
+        isOpen={isSoundModalOpen}
+        onClose={() => setIsSoundModalOpen(false)}
+      />
 
       {/* 4b. MODALE INTERFACE SIMPLIFIÉE : EMPLOYÉS CONNECTÉS & RESET ACCÈS 1-CLIC */}
       <ConnectedEmployeesModal
@@ -2191,6 +2236,88 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Toast Flottant Alerte Sonore & Visuelle Immédiate (Réception & Direction) */}
+      {activeSoundToast && (
+        <aside
+          role="status"
+          aria-live="assertive"
+          aria-label="Notification d'alerte sonore et visuelle en temps réel"
+          className="fixed top-20 right-6 z-50 max-w-md w-full bg-[#1C1B18]/95 backdrop-blur-md text-white p-4 rounded-2xl border-2 shadow-2xl animate-in slide-in-from-top-4 duration-300 flex items-start gap-3.5"
+          style={{
+            borderColor: activeSoundToast.type === 'annulation' ? '#F43F5E' : '#C5A880',
+            boxShadow:
+              activeSoundToast.type === 'annulation'
+                ? '0 20px 40px -15px rgba(244, 63, 94, 0.45)'
+                : '0 20px 40px -15px rgba(197, 168, 128, 0.45)'
+          }}
+        >
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+              activeSoundToast.type === 'annulation'
+                ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
+                : 'bg-[#C5A880]/20 text-[#C5A880] border-[#C5A880]/40'
+            }`}
+          >
+            {activeSoundToast.type === 'annulation' ? (
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
+            ) : (
+              <BellRing className="w-5 h-5 animate-bounce" />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className={`text-[10px] font-mono uppercase tracking-wider font-bold px-1.5 py-0.5 rounded ${
+                  activeSoundToast.type === 'annulation'
+                    ? 'bg-rose-500/25 text-rose-300 border border-rose-500/40'
+                    : 'bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/40'
+                }`}
+              >
+                {activeSoundToast.type === 'annulation' ? 'ALERTE ANNULATION' : 'NOUVELLE RÉSERVATION'}
+              </span>
+              <span className="text-[10px] text-stone-400 font-mono">
+                {activeSoundToast.timestamp}
+              </span>
+            </div>
+
+            <h4 className="font-bold text-sm text-white mt-1">
+              {activeSoundToast.title}
+            </h4>
+            <p className="text-xs text-stone-300 mt-0.5 line-clamp-2">
+              {activeSoundToast.details}
+            </p>
+
+            <div className="mt-3 pt-2 border-t border-stone-800 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] text-stone-400">
+                <Volume2 className="w-3.5 h-3.5 text-[#C5A880]" />
+                <span>Carillon sonore diffusé</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    dismissSoundToast();
+                    handleTabClick('reservations');
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-[#C5A880] hover:bg-[#b09268] text-stone-950 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Voir Réservations
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissSoundToast}
+                  className="p-1 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 transition-colors cursor-pointer"
+                  aria-label="Fermer l'alerte"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
       )}
     </div>
   );

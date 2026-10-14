@@ -216,8 +216,15 @@ export interface ReservationNotification {
   quantiteSuggeree?: number;
 }
 
-// Module de Dépenses (Ménage, Réparation, etc.)
-export type ExpenseCategory = 'Ménage & Produits' | 'Réparation & Maintenance' | 'Blanchisserie' | 'Fournitures' | 'Autre';
+// Module de Dépenses (Ménage, Réparation, Achats, etc.)
+export type ExpenseCategory =
+  | 'Ménage & Produits'
+  | 'Réparation & Maintenance'
+  | 'Blanchisserie'
+  | 'Fournitures'
+  | 'Alimentation & Boissons'
+  | 'Énergie & Utilités'
+  | 'Autre';
 
 export interface ExpenseItem {
   id: string;

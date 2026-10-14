@@ -3,9 +3,12 @@ import { jsPDF } from 'jspdf';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { ForecastRevenueChart } from './ForecastRevenueChart.tsx';
+import { DailyExpensesChart } from './DailyExpensesChart.tsx';
+import { MobileMoneyVsExpensesChart } from './MobileMoneyVsExpensesChart.tsx';
 import {
   BarChart3,
   TrendingUp,
+  TrendingDown,
   Calendar,
   CreditCard,
   Bed,
@@ -30,10 +33,11 @@ import {
   FileDown,
   X,
   ShieldCheck,
-  Check
+  Check,
+  Smartphone
 } from 'lucide-react';
 
-export type GranularityView = 'consolidated' | 'daily' | 'monthly' | 'forecast';
+export type GranularityView = 'consolidated' | 'daily' | 'monthly' | 'forecast' | 'expenses' | 'mobile_money_expenses';
 export type RevenueStreamFilter = 'all' | 'reservations' | 'sales';
 export type ChartDisplayStyle = 'stacked' | 'grouped';
 
@@ -1447,6 +1451,38 @@ export const RevenueDashboardTab: React.FC = () => {
 
             <button
               type="button"
+              onClick={() => setGranularity('expenses')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                granularity === 'expenses'
+                  ? 'bg-rose-600 text-white font-extrabold shadow-md scale-[1.02] ring-1 ring-rose-400'
+                  : 'text-rose-400 hover:text-rose-200 hover:bg-stone-800/80'
+              }`}
+            >
+              <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
+              <span>💸 Dépenses &amp; Achats (DG)</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] bg-rose-500/20 text-rose-300 font-mono font-bold">
+                Recharts
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setGranularity('mobile_money_expenses')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                granularity === 'mobile_money_expenses'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-extrabold shadow-md scale-[1.02] ring-1 ring-amber-400'
+                  : 'text-amber-400 hover:text-amber-200 hover:bg-stone-800/80'
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+              <span>📱 Mobile Money vs Dépenses</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 font-mono font-bold">
+                Recharts
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setGranularity('daily')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 granularity === 'daily'
@@ -1644,9 +1680,23 @@ export const RevenueDashboardTab: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
+      {/* 3c. SUIVI DES DÉPENSES QUOTIDIENNES RECHARTS PAR CATÉGORIES D'ACHAT      */}
+      {/* ========================================================================= */}
+      {(granularity === 'consolidated' || granularity === 'expenses') && (
+        <DailyExpensesChart initialMonth={selectedMonth} initialYear={selectedYear} />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3d. WIDGET DATA VISUALIZATION : REVENUS MOBILE MONEY VS DÉPENSES (RECHARTS) */}
+      {/* ========================================================================= */}
+      {(granularity === 'consolidated' || granularity === 'mobile_money_expenses') && (
+        <MobileMoneyVsExpensesChart initialYear={selectedYear} />
+      )}
+
+      {/* ========================================================================= */}
       {/* 4. GRAPHIQUE QUOTIDIEN EN BARRES (DAILY REVENUE BAR CHART)               */}
       {/* ========================================================================= */}
-      {granularity !== 'forecast' && (granularity === 'consolidated' || granularity === 'daily') && (
+      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && (granularity === 'consolidated' || granularity === 'daily') && (
         <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div>

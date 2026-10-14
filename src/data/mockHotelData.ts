@@ -435,8 +435,220 @@ export const INITIAL_NOTIFICATIONS: ReservationNotification[] = [
 
 // 5. Module Dépenses (Ménage, Réparations, etc.)
 export const INITIAL_EXPENSES: ExpenseItem[] = [
+  // --- OCTOBRE 2026 (Mois Courant) ---
   {
-    id: 'dep-1',
+    id: 'dep-oct-12',
+    date: '2026-10-12',
+    titre: 'Réapprovisionnement produits ménagers écologiques & serviettes',
+    categorie: 'Ménage & Produits',
+    montant: 32000,
+    chambreConcernee: 'Toutes chambres',
+    payePar: 'Aminata Koné (Chef de Réception)',
+    modePaiement: 'Orange Money',
+    notes: 'Gel hydroalcoolique, lingettes et sprays surodorants'
+  },
+  {
+    id: 'dep-oct-11',
+    date: '2026-10-11',
+    titre: 'Pressing express draps de luxe et serviettes spa',
+    categorie: 'Blanchisserie',
+    montant: 48000,
+    chambreConcernee: 'Suites 201 & 301',
+    payePar: 'Blanchisserie Centrale Abidjan',
+    modePaiement: 'MTN Money',
+    notes: 'Traitement anti-acarien et repassage satin'
+  },
+  {
+    id: 'dep-oct-10',
+    date: '2026-10-10',
+    titre: 'Achat fruits frais, café bio et viennoiseries d’accueil',
+    categorie: 'Alimentation & Boissons',
+    montant: 42500,
+    chambreConcernee: 'Général / Accueil VIP',
+    payePar: 'Caisse Hôtel',
+    modePaiement: 'Espèces / Caisse',
+    notes: 'Plateaux d’accueil et réassort minibar'
+  },
+  {
+    id: 'dep-oct-09',
+    date: '2026-10-09',
+    titre: 'Maintenance préventive groupe électrogène & carburant',
+    categorie: 'Énergie & Utilités',
+    montant: 85000,
+    chambreConcernee: 'Infrastructure technique',
+    payePar: 'Directeur Général',
+    modePaiement: 'Virement / Chèque',
+    notes: 'Plein gazole 150L et filtre à huile'
+  },
+  {
+    id: 'dep-oct-08',
+    date: '2026-10-08',
+    titre: 'Remplacement ampoules LED architecturales & rubans',
+    categorie: 'Réparation & Maintenance',
+    montant: 22000,
+    chambreConcernee: 'Couloirs & Chambre 103',
+    payePar: 'Électricien Bâtiment',
+    modePaiement: 'Orange Money',
+    notes: 'Spots LED basse consommation salon VIP'
+  },
+  {
+    id: 'dep-oct-07',
+    date: '2026-10-07',
+    titre: 'Papeterie, rouleaux papier thermique caisse 80mm & badges',
+    categorie: 'Fournitures',
+    montant: 18500,
+    chambreConcernee: 'Réception & Caisse',
+    payePar: 'Aminata Koné',
+    modePaiement: 'Caisse Hôtel',
+    notes: 'Cartons de 50 rouleaux thermiques FNE'
+  },
+  {
+    id: 'dep-oct-06',
+    date: '2026-10-06',
+    titre: 'Blanchisserie draps et peignoirs de bain',
+    categorie: 'Blanchisserie',
+    montant: 38000,
+    chambreConcernee: 'Chambres 101, 102',
+    payePar: 'Blanchisserie Centrale',
+    modePaiement: 'MTN Money',
+    notes: 'Cycle complet désinfection'
+  },
+  {
+    id: 'dep-oct-05',
+    date: '2026-10-05',
+    titre: 'Achat détergents sols marbre et cire lustrante',
+    categorie: 'Ménage & Produits',
+    montant: 29000,
+    chambreConcernee: 'Hall et Suites',
+    payePar: 'Aminata Koné',
+    modePaiement: 'MOOV Money',
+    notes: 'Produits d’entretien spécial marbre d’Italie'
+  },
+  {
+    id: 'dep-oct-04',
+    date: '2026-10-04',
+    titre: 'Réparation fuite siphon baignoire balnéo',
+    categorie: 'Réparation & Maintenance',
+    montant: 35000,
+    chambreConcernee: 'Suite Royale 301',
+    payePar: 'Plombier Express Abidjan',
+    modePaiement: 'Orange Money',
+    notes: 'Joint torique et flexible haute pression'
+  },
+  {
+    id: 'dep-oct-03',
+    date: '2026-10-03',
+    titre: 'Boissons fraîches et dosettes café Illy minibar',
+    categorie: 'Alimentation & Boissons',
+    montant: 36000,
+    chambreConcernee: 'Minibar toutes suites',
+    payePar: 'Caisse Hôtel',
+    modePaiement: 'Caisse Hôtel',
+    notes: 'Sodas, eaux minérales et capsules'
+  },
+  {
+    id: 'dep-oct-02',
+    date: '2026-10-02',
+    titre: 'Nettoyage des filtres de climatisation split inverter',
+    categorie: 'Réparation & Maintenance',
+    montant: 25000,
+    chambreConcernee: 'Chambres 201 & 202',
+    payePar: 'FrigoClim SARL',
+    modePaiement: 'MTN Money',
+    notes: 'Désinfection antibactérienne annuelle'
+  },
+  {
+    id: 'dep-oct-01',
+    date: '2026-10-01',
+    titre: 'Facture CIE Électricité & Réseau d’eau SODECI',
+    categorie: 'Énergie & Utilités',
+    montant: 120000,
+    chambreConcernee: 'Complexe Hôtel & Restaurant',
+    payePar: 'Koua Dibi (DG)',
+    modePaiement: 'Orange Money',
+    notes: 'Règlement mensuel compteur général'
+  },
+
+  // --- SEPTEMBRE 2026 (Historique Complet) ---
+  {
+    id: 'dep-sep-30',
+    date: '2026-09-30',
+    titre: 'Blanchisserie de fin de mois & réassort literie',
+    categorie: 'Blanchisserie',
+    montant: 55000,
+    chambreConcernee: 'Toutes chambres',
+    payePar: 'Blanchisserie Centrale',
+    modePaiement: 'MTN Money',
+    notes: 'Nettoyage complet couettes et oreillers'
+  },
+  {
+    id: 'dep-sep-28',
+    date: '2026-09-28',
+    titre: 'Achat savons artisanaux karité et gels douche luxe',
+    categorie: 'Ménage & Produits',
+    montant: 45000,
+    chambreConcernee: 'Kits d’accueil',
+    payePar: 'Aminata Koné',
+    modePaiement: 'Orange Money',
+    notes: 'Cosmétiques locaux haut de gamme'
+  },
+  {
+    id: 'dep-sep-25',
+    date: '2026-09-25',
+    titre: 'Réparation téléviseur Smart TV 4K salon',
+    categorie: 'Réparation & Maintenance',
+    montant: 30000,
+    chambreConcernee: 'Suite Exécutive 201',
+    payePar: 'Technicien AudioVisuel',
+    modePaiement: 'Caisse Hôtel',
+    notes: 'Remplacement carte alimentation'
+  },
+  {
+    id: 'dep-sep-22',
+    date: '2026-09-22',
+    titre: 'Fournitures de bureau & cartes de clés magnétiques',
+    categorie: 'Fournitures',
+    montant: 28000,
+    chambreConcernee: 'Réception',
+    payePar: 'Aminata Koné',
+    modePaiement: 'Orange Money',
+    notes: 'Lot 100 cartes RFID gravées Hotelia'
+  },
+  {
+    id: 'dep-sep-20',
+    date: '2026-09-20',
+    titre: 'Désinsectisation et traitement préventif boiseries',
+    categorie: 'Ménage & Produits',
+    montant: 65000,
+    chambreConcernee: 'Tout l’établissement',
+    payePar: 'Hygiène Pro Abidjan',
+    modePaiement: 'Virement / Chèque',
+    notes: 'Certificat de salubrité trimestriel'
+  },
+  {
+    id: 'dep-sep-18',
+    date: '2026-09-18',
+    titre: 'Achat de denrées de base & spiritueux pour minibar',
+    categorie: 'Alimentation & Boissons',
+    montant: 52000,
+    chambreConcernee: 'Bar & Minibars',
+    payePar: 'Caisse Hôtel',
+    modePaiement: 'MTN Money',
+    notes: 'Approvisionnement hebdomadaire'
+  },
+  {
+    id: 'dep-sep-15',
+    date: '2026-09-15',
+    titre: 'Changement serrure électronique porte blindée',
+    categorie: 'Réparation & Maintenance',
+    montant: 58000,
+    chambreConcernee: 'Suite 301 VIP',
+    payePar: 'Serrurier Sécurité CI',
+    modePaiement: 'Orange Money',
+    notes: 'Installation cylindre haute sécurité'
+  },
+  {
+    id: 'dep-sep-12',
     date: '2026-09-12',
     titre: 'Achat détergents haute désinfection & lingettes',
     categorie: 'Ménage & Produits',
@@ -447,7 +659,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     notes: 'Réassortiment hebdomadaire pour protocole sanitaire'
   },
   {
-    id: 'dep-2',
+    id: 'dep-sep-11',
     date: '2026-09-11',
     titre: 'Remplacement mitigeur douche thermostatique',
     categorie: 'Réparation & Maintenance',
@@ -458,7 +670,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     notes: 'Intervention d’urgence suite à signalement client'
   },
   {
-    id: 'dep-3',
+    id: 'dep-sep-10',
     date: '2026-09-10',
     titre: 'Pressing & Blanchisserie draps satin 5 étoiles',
     categorie: 'Blanchisserie',
@@ -469,7 +681,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     notes: 'Lot 24 parures de lit et peignoirs'
   },
   {
-    id: 'dep-4',
+    id: 'dep-sep-08',
     date: '2026-09-08',
     titre: 'Changement ampoules LED spot et variateur',
     categorie: 'Réparation & Maintenance',
@@ -480,7 +692,7 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     notes: 'Remplacement éclairage tamisé salon'
   },
   {
-    id: 'dep-5',
+    id: 'dep-sep-05',
     date: '2026-09-05',
     titre: 'Désodorisants naturels & capsules Nespresso accueil',
     categorie: 'Ménage & Produits',
@@ -491,16 +703,69 @@ export const INITIAL_EXPENSES: ExpenseItem[] = [
     notes: 'Produits d’accueil VIP'
   },
   {
-    id: 'dep-6',
-    date: '2026-08-28',
-    titre: 'Révision climatisation split inverter',
-    categorie: 'Réparation & Maintenance',
-    montant: 75000,
-    chambreConcernee: 'Chambres 101 & 102',
-    payePar: 'FrigoClim SARL',
+    id: 'dep-sep-02',
+    date: '2026-09-02',
+    titre: 'Abonnement Internet Fibre Optique Pro & Canal+ Suites',
+    categorie: 'Énergie & Utilités',
+    montant: 85000,
+    chambreConcernee: 'Tout l’hôtel',
+    payePar: 'Directeur Général',
     modePaiement: 'Orange Money',
-    notes: 'Nettoyage des filtres et recharge gaz R410'
-  }
+    notes: 'Forfait 300 Mbps et bouquet premium hospitality'
+  },
+  {
+    id: 'dep-sep-01',
+    date: '2026-09-01',
+    titre: 'Produits d’entretien général & gants de protection',
+    categorie: 'Ménage & Produits',
+    montant: 22000,
+    chambreConcernee: 'Équipe d’étage',
+    payePar: 'Aminata Koné',
+    modePaiement: 'Caisse Hôtel',
+    notes: 'Dotation mensuelle du personnel de chambre'
+  },
+
+  // --- HISTORIQUE MENSUEL DES DÉPENSES OPÉRATIONNELLES (De Janvier à Août 2026) ---
+  // Août 2026
+  { id: 'dep-aug-01', date: '2026-08-30', titre: 'Facture Énergie CIE & Eau SODECI Août', categorie: 'Énergie & Utilités', montant: 135000, chambreConcernee: 'Complexe Général', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money', notes: 'Prélèvement mensuel compte professionnel' },
+  { id: 'dep-aug-02', date: '2026-08-20', titre: 'Maintenance préventive climatiseurs suites', categorie: 'Réparation & Maintenance', montant: 85000, chambreConcernee: 'Suites 201 & 301', payePar: 'Technicien Froid', modePaiement: 'MTN Money', notes: 'Recharge gaz R410A et nettoyage filtres' },
+  { id: 'dep-aug-03', date: '2026-08-10', titre: 'Produits d’entretien, désinfectants & éponges', categorie: 'Ménage & Produits', montant: 65000, chambreConcernee: 'Chambres 101 à 202', payePar: 'Aminata Koné', modePaiement: 'Orange Money', notes: 'Réassort détergents sols et vitres' },
+  { id: 'dep-aug-04', date: '2026-08-04', titre: 'Blanchisserie industrielle draps & serviettes', categorie: 'Blanchisserie', montant: 75000, chambreConcernee: 'Toutes chambres', payePar: 'Blanchisserie Centrale', modePaiement: 'Espèces / Caisse', notes: 'Nettoyage haute température' },
+
+  // Juillet 2026
+  { id: 'dep-jul-01', date: '2026-07-29', titre: 'Énergie, climatisation & éclairage Juillet', categorie: 'Énergie & Utilités', montant: 140000, chambreConcernee: 'Général', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+  { id: 'dep-jul-02', date: '2026-07-18', titre: 'Réassort papeterie, badges & fournitures bureau', categorie: 'Fournitures', montant: 52000, chambreConcernee: 'Réception & Direction', payePar: 'Koua Dibi (DG)', modePaiement: 'MTN Money' },
+  { id: 'dep-jul-03', date: '2026-07-06', titre: 'Entretien plomberie & robinetterie chambres 201-202', categorie: 'Réparation & Maintenance', montant: 68000, chambreConcernee: 'Chambres 201-202', payePar: 'Plombier Agréé', modePaiement: 'Caisse Hôtel' },
+
+  // Juin 2026
+  { id: 'dep-jun-01', date: '2026-06-28', titre: 'Facturation électricité CIE & gaz Juin', categorie: 'Énergie & Utilités', montant: 125000, chambreConcernee: 'Complexe Général', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+  { id: 'dep-jun-02', date: '2026-06-15', titre: 'Blanchisserie draps de bain & peignoirs', categorie: 'Blanchisserie', montant: 58000, chambreConcernee: 'Suites VIP', payePar: 'Gouvernante Générale', modePaiement: 'MTN Money' },
+  { id: 'dep-jun-03', date: '2026-06-05', titre: 'Désinfection générale & produits d’accueil', categorie: 'Ménage & Produits', montant: 45000, chambreConcernee: 'Étage 1 & 2', payePar: 'Aminata Koné', modePaiement: 'Espèces / Caisse' },
+
+  // Mai 2026
+  { id: 'dep-may-01', date: '2026-05-29', titre: 'Charges d’énergie et fluides Mai', categorie: 'Énergie & Utilités', montant: 130000, chambreConcernee: 'Complexe Hôtel', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+  { id: 'dep-may-02', date: '2026-05-18', titre: 'Révision serrures électroniques & cartes RFID', categorie: 'Réparation & Maintenance', montant: 75000, chambreConcernee: 'Toutes chambres', payePar: 'Technicien Serrurerie', modePaiement: 'MTN Money' },
+  { id: 'dep-may-03', date: '2026-05-08', titre: 'Fournitures de réception & consommables POS', categorie: 'Fournitures', montant: 48000, chambreConcernee: 'Réception', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+
+  // Avril 2026
+  { id: 'dep-apr-01', date: '2026-04-28', titre: 'Facture CIE & maintenance groupe électrogène', categorie: 'Énergie & Utilités', montant: 115000, chambreConcernee: 'Groupe secours', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+  { id: 'dep-apr-02', date: '2026-04-14', titre: 'Blanchisserie Pâques & pressing nappes restaurant', categorie: 'Blanchisserie', montant: 62000, chambreConcernee: 'Restaurant & Chambres', payePar: 'Blanchisserie', modePaiement: 'MOOV Money' },
+  { id: 'dep-apr-03', date: '2026-04-03', titre: 'Produits d’hygiène & consommables sanitaires', categorie: 'Ménage & Produits', montant: 38000, chambreConcernee: 'Sanitaires communs & chambres', payePar: 'Aminata Koné', modePaiement: 'Caisse Hôtel' },
+
+  // Mars 2026
+  { id: 'dep-mar-01', date: '2026-03-29', titre: 'Électricité CIE & eau SODECI Mars', categorie: 'Énergie & Utilités', montant: 120000, chambreConcernee: 'Complexe Général', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+  { id: 'dep-mar-02', date: '2026-03-15', titre: 'Travaux de peinture & vernis suite 301', categorie: 'Réparation & Maintenance', montant: 90000, chambreConcernee: 'Suite 301', payePar: 'Peintre Bâtiment', modePaiement: 'MTN Money' },
+  { id: 'dep-mar-03', date: '2026-03-05', titre: 'Savonnerie, shampoings & kits VIP karité', categorie: 'Ménage & Produits', montant: 42000, chambreConcernee: 'Suites 201 & 301', payePar: 'Aminata Koné', modePaiement: 'Orange Money' },
+
+  // Février 2026
+  { id: 'dep-feb-01', date: '2026-02-27', titre: 'Énergie & climatisation Février', categorie: 'Énergie & Utilités', montant: 110000, chambreConcernee: 'Général', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+  { id: 'dep-feb-02', date: '2026-02-13', titre: 'Décoration & linge de lit Saint-Valentin', categorie: 'Fournitures', montant: 55000, chambreConcernee: 'Chambres 102 & 201', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+  { id: 'dep-feb-03', date: '2026-02-04', titre: 'Blanchisserie draps & housses de couette', categorie: 'Blanchisserie', montant: 48000, chambreConcernee: 'Toutes chambres', payePar: 'Blanchisserie Centrale', modePaiement: 'Caisse Hôtel' },
+
+  // Janvier 2026
+  { id: 'dep-jan-01', date: '2026-01-30', titre: 'Facture CIE énergie & éclairage festif Janvier', categorie: 'Énergie & Utilités', montant: 145000, chambreConcernee: 'Complexe Hôtel', payePar: 'Koua Dibi (DG)', modePaiement: 'Orange Money' },
+  { id: 'dep-jan-02', date: '2026-01-15', titre: 'Remplacement filtres climatisation & ampoules LED', categorie: 'Réparation & Maintenance', montant: 80000, chambreConcernee: 'Chambres 101 à 301', payePar: 'Électricien', modePaiement: 'MTN Money' },
+  { id: 'dep-jan-03', date: '2026-01-08', titre: 'Grand nettoyage de début d’année & désinfection', categorie: 'Ménage & Produits', montant: 70000, chambreConcernee: 'Toutes chambres & Hall', payePar: 'Aminata Koné', modePaiement: 'Orange Money' }
 ];
 
 // 6. Entrées Financières réparties par modes de paiement (MTN, Orange, MOOV, Caisse)

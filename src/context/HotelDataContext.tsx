@@ -93,7 +93,42 @@ import {
   INITIAL_PROMO_COUPONS,
   INITIAL_CAMPAIGNS
 } from '../data/mockClientLoyaltyData.ts';
-import { playLuxuryBellSound, playAlertChime, playStockAlertChime } from '../utils/soundNotification.ts';
+import {
+  playLuxuryBellSound,
+  playCancellationAlertSound,
+  playAlertChime,
+  playStockAlertChime,
+  playNotificationSoundByType
+} from '../utils/soundNotification.ts';
+
+export interface SoundNotificationConfig {
+  enabled: boolean;
+  volume: number; // 0 à 1
+  onNewReservation: boolean;
+  onCancellation: boolean;
+  onStockAlert: boolean;
+  onPayment: boolean;
+}
+
+export const DEFAULT_SOUND_CONFIG: SoundNotificationConfig = {
+  enabled: true,
+  volume: 0.85,
+  onNewReservation: true,
+  onCancellation: true,
+  onStockAlert: true,
+  onPayment: true
+};
+
+export interface SoundToastAlert {
+  id: string;
+  type: 'nouvelle' | 'annulation' | 'stock' | 'paiement';
+  title: string;
+  details: string;
+  chambreNumero?: string;
+  clientNom?: string;
+  montant?: number;
+  timestamp: string;
+}
 
 interface HotelDataContextType {
   // 1. Types de Chambres
@@ -149,8 +184,14 @@ interface HotelDataContextType {
   markAllNotificationsAsRead: () => void;
   simulateNewIncomingReservation: (customData?: Partial<ReservationNotification>) => void;
   simulateNewRestaurantReservation: (customData?: Partial<ReservationNotification>) => void;
+  simulateCancellation: (reservationId?: string) => void;
   soundEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
+  soundConfig: SoundNotificationConfig;
+  updateSoundConfig: (cfg: Partial<SoundNotificationConfig>) => void;
+  playTestNotificationSound: (type: 'reservation_nouvelle' | 'reservation_annulee' | 'stock_alerte' | 'paiement') => void;
+  activeSoundToast: SoundToastAlert | null;
+  dismissSoundToast: () => void;
 
   // 5. Dépenses (Ménage, Réparations, etc.)
   expenses: ExpenseItem[];
@@ -837,8 +878,49 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }));
   };
 
-  // --- E. Notifications & Alertes Sonores ---
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  // --- E. Notifications & Alertes Sonores Paramétrables ---
+  const [soundConfig, setSoundConfig] = useState<SoundNotificationConfig>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_sound_config');
+      if (saved) return { ...DEFAULT_SOUND_CONFIG, ...JSON.parse(saved) };
+    } catch {}
+    return DEFAULT_SOUND_CONFIG;
+  });
+
+  const soundEnabled = soundConfig.enabled;
+
+  const setSoundEnabled = (enabled: boolean) => {
+    setSoundConfig((prev) => ({ ...prev, enabled }));
+  };
+
+  const updateSoundConfig = (cfg: Partial<SoundNotificationConfig>) => {
+    setSoundConfig((prev) => ({ ...prev, ...cfg }));
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hotelia_sound_config', JSON.stringify(soundConfig));
+    } catch {}
+  }, [soundConfig]);
+
+  // Toast visuel synchronisé avec les alertes sonores
+  const [activeSoundToast, setActiveSoundToast] = useState<SoundToastAlert | null>(null);
+
+  const dismissSoundToast = () => setActiveSoundToast(null);
+
+  useEffect(() => {
+    if (activeSoundToast) {
+      const timer = setTimeout(() => {
+        setActiveSoundToast(null);
+      }, 5500);
+      return () => clearTimeout(timer);
+    }
+  }, [activeSoundToast]);
+
+  const playTestNotificationSound = (type: 'reservation_nouvelle' | 'reservation_annulee' | 'stock_alerte' | 'paiement') => {
+    playNotificationSoundByType(type, soundConfig.volume);
+  };
+
   const [notifications, setNotifications] = useState<ReservationNotification[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_notifications');
@@ -856,7 +938,9 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_notifications', JSON.stringify(notifications));
+    try {
+      localStorage.setItem('hotelia_notifications', JSON.stringify(notifications));
+    } catch {}
   }, [notifications]);
 
   // Restriction des notifications par rôle :
@@ -906,8 +990,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
    * Simule une nouvelle réservation Restaurant (table ou commande) avec sonnette luxueuse
    */
   const simulateNewRestaurantReservation = (customData?: Partial<ReservationNotification>) => {
-    if (soundEnabled) {
-      playLuxuryBellSound();
+    if (soundConfig.enabled && soundConfig.onNewReservation) {
+      playLuxuryBellSound(soundConfig.volume);
     }
 
     const tables = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'VIP 8'];
@@ -940,6 +1024,16 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     setNotifications((prev) => [newNotif, ...prev]);
+
+    setActiveSoundToast({
+      id: newNotif.id,
+      type: 'nouvelle',
+      title: '🍽️ Nouvelle Réservation Restaurant',
+      details: `${clientNom} - Table ${chosenTable} (${nbCouverts} couverts • ${amount.toLocaleString('fr-FR')} FCFA)`,
+      clientNom,
+      montant: amount,
+      timestamp: "À l'instant"
+    });
   };
 
   /**
@@ -952,13 +1046,9 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return;
     }
 
-    const isTargetRole =
-      currentUserProfile.role === 'Directeur Général' ||
-      currentUserProfile.role === 'Chef de Réception';
-
-    // Jouer le son d'alerte luxueux si le rôle correspond et le son est actif
-    if (soundEnabled && isTargetRole) {
-      playLuxuryBellSound();
+    // Jouer le son d'alerte luxueux si le son est actif
+    if (soundConfig.enabled && soundConfig.onNewReservation) {
+      playLuxuryBellSound(soundConfig.volume);
     }
 
     const randomMethods: PaymentMethod[] = ['Orange Money', 'MTN Money', 'MOOV Money'];
@@ -987,6 +1077,17 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     setNotifications((prev) => [newNotif, ...prev]);
 
+    setActiveSoundToast({
+      id: newNotif.id,
+      type: 'nouvelle',
+      title: '🛎️ Nouvelle Réservation Hôtel',
+      details: `${newNotif.clientNom} - Chambre ${chosenChambre} (${amount.toLocaleString('fr-FR')} FCFA)`,
+      chambreNumero: chosenChambre,
+      clientNom: newNotif.clientNom,
+      montant: amount,
+      timestamp: "À l'instant"
+    });
+
     // Ajouter également l'entrée financière associée
     addRevenue({
       date: newNotif.dateReservation,
@@ -999,13 +1100,60 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   };
 
+  /**
+   * Alerte d'annulation de réservation avec carillon sonore spécifique
+   */
+  const simulateCancellation = (resId?: string) => {
+    // Jouer immédiatement l'alerte sonore descendante d'annulation
+    if (soundConfig.enabled && soundConfig.onCancellation) {
+      playCancellationAlertSound(soundConfig.volume);
+    }
+
+    const target = resId
+      ? reservations.find((r) => r.id === resId)
+      : reservations.find((r) => r.statutReservation !== 'annulee');
+
+    if (target) {
+      updateReservationStatus(target.id, 'annulee', 'Imprévu client - Annulation signalée à la réception');
+    } else {
+      const cancelNotif: ReservationNotification = {
+        id: `notif-cancel-${Date.now()}`,
+        source: 'hotel',
+        timestamp: "À l'instant",
+        titre: '⚠️ Annulation Réservation - Chambre 101 Libérée',
+        message: 'La réservation de M. Alexandre Laurent (Chambre 101) a été annulée. La chambre est de nouveau disponible sur le planning.',
+        clientNom: 'Alexandre Laurent',
+        clientTelephone: '+225 07 12 34 56 78',
+        chambreNumero: '101',
+        typeReservation: 'nuit',
+        montant: 15000,
+        modePaiement: 'Orange Money',
+        dateReservation: new Date().toISOString().split('T')[0],
+        lue: false
+      };
+
+      setNotifications((prev) => [cancelNotif, ...prev]);
+
+      setActiveSoundToast({
+        id: cancelNotif.id,
+        type: 'annulation',
+        title: '⚠️ Annulation de Réservation',
+        details: 'Alexandre Laurent - Chambre 101 libérée pour relocation',
+        chambreNumero: '101',
+        clientNom: 'Alexandre Laurent',
+        montant: 15000,
+        timestamp: "À l'instant"
+      });
+    }
+  };
+
   // --- E. Module Dépenses ---
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
     try {
       const saved = localStorage.getItem('hotelia_expenses');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed) && parsed.length >= 35) {
           const needsMigration = parsed.some((e: any) => typeof e.montant === 'number' && e.montant < 1000);
           if (!needsMigration) return parsed;
         }
@@ -1217,9 +1365,20 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
 
     // Déclencher carillon sonore d'alerte si activé
-    if (soundEnabled) {
-      playLuxuryBellSound();
+    if (soundConfig.enabled && soundConfig.onNewReservation) {
+      playLuxuryBellSound(soundConfig.volume);
     }
+
+    setActiveSoundToast({
+      id: fullReservation.id,
+      type: 'nouvelle',
+      title: '🛎️ Nouvelle Réservation Confirmée',
+      details: `${fullReservation.clientNom} - Chambre ${fullReservation.chambreNumero} (${fullReservation.montantTotal.toLocaleString('fr-FR')} FCFA)`,
+      chambreNumero: fullReservation.chambreNumero,
+      clientNom: fullReservation.clientNom,
+      montant: fullReservation.montantTotal,
+      timestamp: "À l'instant"
+    });
 
     // Ajouter une notification associée
     const newNotif: ReservationNotification = {
@@ -1372,6 +1531,27 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const isCheckIn = newStatus === 'en_cours';
     const isCheckOut = newStatus === 'terminee';
     const isReactivate = oldStatus === 'annulee' && newStatus === 'en_attente';
+
+    // Alerte sonore d'annulation pour alerter la réception et la direction
+    if (isCancel) {
+      if (soundConfig.enabled && soundConfig.onCancellation) {
+        playCancellationAlertSound(soundConfig.volume);
+      }
+      setActiveSoundToast({
+        id: `cancel-${Date.now()}`,
+        type: 'annulation',
+        title: '⚠️ Annulation de Réservation',
+        details: `${currentRes.clientNom} - Chambre ${currentRes.chambreNumero} libérée (${cancelReason || 'Motif non précisé'})`,
+        chambreNumero: currentRes.chambreNumero,
+        clientNom: currentRes.clientNom,
+        montant: currentRes.montantTotal,
+        timestamp: "À l'instant"
+      });
+    } else if (isConfirm) {
+      if (soundConfig.enabled && soundConfig.onNewReservation) {
+        playLuxuryBellSound(soundConfig.volume);
+      }
+    }
 
     const actionType: AuditActionType = isCancel
       ? 'annulation'
@@ -3989,8 +4169,14 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         markAllNotificationsAsRead,
         simulateNewIncomingReservation,
         simulateNewRestaurantReservation,
+        simulateCancellation,
         soundEnabled,
         setSoundEnabled,
+        soundConfig,
+        updateSoundConfig,
+        playTestNotificationSound,
+        activeSoundToast,
+        dismissSoundToast,
         expenses,
         addExpense,
         deleteExpense,

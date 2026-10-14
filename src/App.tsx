@@ -33,17 +33,8 @@ import {
 export type MainAppView = 'frontend' | 'restaurant_booking' | 'login' | 'backend' | 'dev_tools';
 
 export default function App() {
-  // Vue active principale : par défaut 'frontend' avec le slider Hotelia
-  const [appView, setAppView] = useState<MainAppView>(() => {
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash.toLowerCase();
-      if (hash === '#admin' || hash === '#backend') return 'backend';
-      if (hash === '#login' || hash === '#connexion') return 'login';
-      if (hash === '#restaurant' || hash === '#restaurant_booking') return 'restaurant_booking';
-      if (hash === '#dev' || hash === '#dev_tools') return 'dev_tools';
-    }
-    return 'frontend';
-  });
+  // Vue active principale : 'frontend' affichée par défaut
+  const [appView, setAppView] = useState<MainAppView>('frontend');
 
   const [isClientSpaceOpen, setIsClientSpaceOpen] = useState(false);
   const [backendInitialTab, setBackendInitialTab] = useState<BackOfficeTab | undefined>(undefined);
@@ -75,10 +66,15 @@ export default function App() {
         setAppView('restaurant_booking');
       } else if (hash === '#dev' || hash === '#dev_tools') {
         setAppView('dev_tools');
-      } else if (hash === '#hotel' || hash === '#frontend' || hash === '' || hash === '#chambres' || hash === '#services' || hash === '#contact') {
+      } else {
         setAppView('frontend');
       }
     };
+
+    // Si pas de hash ou si hash vaut #frontend / #hotel, afficher le Front-End
+    if (!window.location.hash || window.location.hash === '#frontend' || window.location.hash === '#hotel') {
+      setAppView('frontend');
+    }
 
     window.addEventListener('hashchange', handleHashSync);
     window.addEventListener('popstate', handleHashSync);
@@ -95,7 +91,7 @@ export default function App() {
         view === 'backend' ? '#admin' :
         view === 'login' ? '#login' :
         view === 'restaurant_booking' ? '#restaurant' :
-        view === 'dev_tools' ? '#dev' : '#hotel';
+        view === 'dev_tools' ? '#dev' : '#frontend';
       if (window.location.hash !== targetHash) {
         window.history.replaceState(null, '', targetHash);
       }
@@ -130,16 +126,27 @@ export default function App() {
               </span>
             </div>
 
-            {/* SEUL ONGLET AFFICHÉ SUR LE FRONT-END : Connexion Gérant */}
-            <button
-              type="button"
-              onClick={() => navigateToView('login')}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl font-bold transition-all bg-[#C5A880] hover:bg-[#b59870] text-slate-950 shadow-md cursor-pointer text-xs"
-              title="Portail sécurisé réservé à la direction et au personnel"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Connexion Gérant</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigateToView('restaurant_booking')}
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl font-semibold transition-all bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 cursor-pointer text-xs"
+                title="Accéder à la carte et réservation du restaurant"
+              >
+                <Utensils className="w-3.5 h-3.5 text-[#C5A880]" />
+                <span className="hidden sm:inline">Restaurant &amp; Bar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateToView(currentUser ? 'backend' : 'login')}
+                className="flex items-center space-x-2 px-4 py-2 rounded-xl font-bold transition-all bg-[#C5A880] hover:bg-[#b59870] text-slate-950 shadow-md cursor-pointer text-xs"
+                title="Portail sécurisé réservé à la direction et au personnel"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{currentUser ? 'Back-Office Gérant (DG)' : 'Connexion Gérant'}</span>
+              </button>
+            </div>
           </div>
         </aside>
       )}
