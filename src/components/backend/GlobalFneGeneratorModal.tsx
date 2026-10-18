@@ -122,7 +122,7 @@ export const GlobalFneGeneratorModal: React.FC<GlobalFneGeneratorModalProps> = (
   const montantTVA = Math.round(totalBrut - montantHT);
   const tauxAirsi = fneConfig.tauxAirsi || 0;
   const montantAIRSI = Math.round((montantHT * tauxAirsi) / 100);
-  const taxeSejourTotale = totalNuits * (fneConfig.taxeSejourNuit || 1000);
+  const taxeSejourTotale = totalNuits * (fneConfig.taxeSejourNuit !== undefined ? fneConfig.taxeSejourNuit : 0);
   const totalNetAPayer = totalBrut + taxeSejourTotale + montantAIRSI;
 
   const handlePrint = () => {

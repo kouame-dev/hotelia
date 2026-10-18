@@ -34,6 +34,24 @@ export interface ReservationItem {
   notes?: string;
   motifAnnulation?: string;
   dateCreation: string;
+  // Rappel automatique par email (24h après saisie pour réservations confirmées)
+  rappelEmailEnvoye?: boolean;
+  dateRappelEmailEnvoye?: string;
+  datePrevueRappel24h?: string;
+  statutRappelEmail?: 'programme' | 'envoye' | 'sans_email';
+}
+
+export interface EmailReminderLog {
+  id: string;
+  reservationId: string;
+  clientNom: string;
+  clientEmail: string;
+  chambreNumero: string;
+  dateEnvoi: string;
+  sujet: string;
+  contenuText: string;
+  statut: 'envoye' | 'programme' | 'echec';
+  declencheur: 'auto_24h' | 'manuel';
 }
 
 // Enregistrement d'un versement ou acompte partiel par un client

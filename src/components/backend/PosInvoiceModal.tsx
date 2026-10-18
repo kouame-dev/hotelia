@@ -21,6 +21,7 @@ import {
 import { PosSale } from '../../types.ts';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
+import { printThermalTicket } from '../../utils/thermalPrinter.ts';
 import { jsPDF } from 'jspdf';
 
 interface PosInvoiceModalProps {
@@ -57,16 +58,26 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
     : Math.max(0, montantVerseEffectif - sale.totalGlobal);
   const netEncaisseCaisse = sale.montantEncaisse > 0 ? Math.min(sale.montantEncaisse, sale.totalGlobal) : Math.min(montantVerseEffectif, sale.totalGlobal);
 
-  // 1. Impression par portail DOM direct sur document.body anti-page blanche
+  // 1. Impression ultra-fiable : thermique 80mm via flux dédié ou A4
   const handlePrint = (formatToPrint: 'thermal' | 'a4' = activeFormat) => {
     setActivePrintFormat(formatToPrint);
     setActiveFormat(formatToPrint);
 
+    const rollWidth = (thermalPrinterConfig.largeurPapier === '58mm' || thermalPrinterConfig.width === '58mm') ? '58mm' : '80mm';
+
+    if (formatToPrint === 'thermal') {
+      const el = document.getElementById('pos-thermal-ticket-screen') || document.getElementById('pos-print-portal-root');
+      if (el) {
+        printThermalTicket(el, rollWidth);
+        setPrintSuccessAlert(`Ticket de caisse thermique #${sale.numeroTicket} envoyé à l'imprimante (${rollWidth}).`);
+        setTimeout(() => setPrintSuccessAlert(null), 4000);
+        return;
+      }
+    }
+
     // Supprimer le style précédent s'il existe
     const existingStyle = document.getElementById('dynamic-pos-print-style');
     if (existingStyle) existingStyle.remove();
-
-    const rollWidth = (thermalPrinterConfig.largeurPapier === '58mm' || thermalPrinterConfig.width === '58mm') ? '58mm' : '80mm';
 
     const printStyle = document.createElement('style');
     printStyle.id = 'dynamic-pos-print-style';
@@ -89,7 +100,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
           padding: 0 !important;
           background: #ffffff !important;
           color: #000000 !important;
-          width: ${formatToPrint === 'thermal' ? rollWidth : '100%'} !important;
+          width: 100% !important;
           height: auto !important;
           overflow: visible !important;
           -webkit-print-color-adjust: exact !important;
@@ -97,17 +108,17 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
         }
 
         @page {
-          size: ${formatToPrint === 'thermal' ? `${rollWidth} auto` : 'A4 portrait'} !important;
-          margin: ${formatToPrint === 'thermal' ? '0mm' : '8mm'} !important;
+          size: A4 portrait !important;
+          margin: 8mm !important;
         }
 
         #pos-print-portal-root {
           display: block !important;
           position: static !important;
-          width: ${formatToPrint === 'thermal' ? rollWidth : '100%'} !important;
-          max-width: ${formatToPrint === 'thermal' ? rollWidth : '100%'} !important;
+          width: 100% !important;
+          max-width: 100% !important;
           margin: 0 !important;
-          padding: ${formatToPrint === 'thermal' ? '1.5mm' : '0'} !important;
+          padding: 0 !important;
           background: #ffffff !important;
           color: #000000 !important;
           box-shadow: none !important;
@@ -125,23 +136,159 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
 
     document.head.appendChild(printStyle);
 
-    // Pause courte pour laisser le temps au portail React de synchroniser le format actif avant la boîte d'impression
     setTimeout(() => {
       window.print();
-      setPrintSuccessAlert(
-        formatToPrint === 'thermal'
-          ? `Ticket thermique #${sale.numeroTicket} envoyé à l'imprimante (${rollWidth}).`
-          : `Facture A4 #${sale.numeroTicket} envoyée à l'imprimante.`
-      );
+      setPrintSuccessAlert(`Facture A4 #${sale.numeroTicket} envoyée à l'imprimante.`);
       setTimeout(() => setPrintSuccessAlert(null), 4000);
     }, 120);
   };
 
-  // 2. Génération et téléchargement PDF via jsPDF
+  // 2. Génération et téléchargement PDF via jsPDF (Thermique 80mm ou A4 Facture)
   const handleExportPdf = () => {
     try {
       setIsGeneratingPdf(true);
 
+      // --- FORMAT 1 : TICKET THERMIQUE 80MM CONTINU ---
+      if (activeFormat === 'thermal') {
+        const rollWidth = (thermalPrinterConfig.largeurPapier === '58mm' || thermalPrinterConfig.width === '58mm') ? 58 : 80;
+        let baseHeight = 90 + (sale.items?.length || 1) * 9;
+        if (sale.remise > 0) baseHeight += 5;
+        if (monnaieRendue > 0) baseHeight += 5;
+        if (sale.resteAPayer > 0) baseHeight += 5;
+        const estimatedHeight = Math.max(135, baseHeight + 25);
+
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: [rollWidth, estimatedHeight]
+        });
+
+        const centerX = rollWidth / 2;
+        const marginX = 4;
+        const rightX = rollWidth - marginX;
+
+        // En-tête
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text(settings.appName || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU', centerX, 8, { align: 'center' });
+
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(7.5);
+        doc.text('RESTAURANT & BAR LOUNGE', centerX, 12, { align: 'center' });
+        doc.text(settings.address || "Bongouanou, Côte d'Ivoire", centerX, 16, { align: 'center' });
+        doc.text(`Tél: ${settings.phone || '+225 07 00 00 00'}`, centerX, 20, { align: 'center' });
+
+        // Ligne de séparation
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(marginX, 23, rightX, 23);
+        doc.setLineDashPattern([], 0);
+
+        // Informations Ticket
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(8.5);
+        doc.text(`TICKET POINT DE VENTE #${sale.numeroTicket}`, centerX, 27, { align: 'center' });
+
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(7.5);
+        doc.text(`Date : ${sale.date} à ${sale.heure}`, marginX, 32);
+        doc.text(`Caisse : ${sale.serveurNom}`, marginX, 36);
+        if (sale.clientNom) {
+          doc.text(`Client : ${sale.clientNom}${sale.chambreNumero ? ` (Ch. ${sale.chambreNumero})` : ''}`, marginX, 40);
+        }
+
+        // Ligne d'en-tête articles
+        doc.line(marginX, 43, rightX, 43);
+        doc.setFont('courier', 'bold');
+        doc.text('ARTICLE', marginX, 46);
+        doc.text('TOTAL', rightX, 46, { align: 'right' });
+        doc.line(marginX, 48, rightX, 48);
+
+        // Liste des articles
+        let y = 52;
+        doc.setFont('courier', 'normal');
+        sale.items.forEach((item) => {
+          doc.setFont('courier', 'bold');
+          doc.text(`${item.quantite}x ${item.nom}`.slice(0, 22), marginX, y);
+          doc.text(formatPrice(item.totalLigne), rightX, y, { align: 'right' });
+          y += 3.5;
+          doc.setFont('courier', 'normal');
+          doc.setFontSize(6.5);
+          doc.text(`   PU: ${formatPrice(item.prixUnitaire)}`, marginX, y);
+          doc.setFontSize(7.5);
+          y += 4;
+        });
+
+        // Totaux
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(marginX, y, rightX, y);
+        doc.setLineDashPattern([], 0);
+        y += 4;
+
+        doc.text('Sous-total Brut :', marginX, y);
+        doc.text(formatPrice(sale.totalPartiel), rightX, y, { align: 'right' });
+        y += 4;
+
+        if (sale.remise > 0) {
+          doc.text('Remise accordée :', marginX, y);
+          doc.text(`-${formatPrice(sale.remise)}`, rightX, y, { align: 'right' });
+          y += 4;
+        }
+
+        // Taxe de séjour / TVA 0%
+        doc.text('Taxe de Séjour (0%) :', marginX, y);
+        doc.text('0 FCFA', rightX, y, { align: 'right' });
+        y += 4;
+
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(9.5);
+        doc.line(marginX, y, rightX, y);
+        y += 4.5;
+        doc.text('NET À PAYER :', marginX, y);
+        doc.text(formatPrice(sale.totalGlobal), rightX, y, { align: 'right' });
+        y += 5;
+
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(7.5);
+        doc.text(`Règlement : ${sale.modePaiement}`, marginX, y);
+        y += 3.5;
+        doc.text(`Montant Perçu : ${formatPrice(sale.montantEncaisse)}`, marginX, y);
+        y += 3.5;
+
+        if (monnaieRendue > 0) {
+          doc.setFont('courier', 'bold');
+          doc.text(`Monnaie Rendue : ${formatPrice(monnaieRendue)}`, marginX, y);
+          doc.setFont('courier', 'normal');
+          y += 3.5;
+        }
+
+        if (sale.resteAPayer > 0) {
+          doc.setFont('courier', 'bold');
+          doc.text(`Reste Dû : ${formatPrice(sale.resteAPayer)}`, marginX, y);
+          doc.setFont('courier', 'normal');
+          y += 3.5;
+        }
+
+        y += 3;
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(marginX, y, rightX, y);
+        doc.setLineDashPattern([], 0);
+        y += 5;
+
+        doc.setFontSize(7);
+        doc.text(thermalPrinterConfig.messageBas || 'Merci pour votre visite et à très bientôt !', centerX, y, { align: 'center' });
+        y += 3.5;
+        doc.text('Hôtel Refuge Palmeraie de Bongouanou', centerX, y, { align: 'center' });
+
+        const fileName = `Ticket_POS_${sale.numeroTicket}_${rollWidth}mm.pdf`;
+        doc.save(fileName);
+
+        setPrintSuccessAlert(`Ticket thermique "${fileName}" téléchargé avec succès !`);
+        setTimeout(() => setPrintSuccessAlert(null), 4000);
+        return;
+      }
+
+      // --- FORMAT 2 : FACTURE A4 STANDARD ---
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -160,13 +307,13 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
       doc.setTextColor(goldPrimary[0], goldPrimary[1], goldPrimary[2]);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
-      doc.text(settings.appName || 'HOTELIA RESORT & SPA', 14, 16);
+      doc.text(settings.appName || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU', 14, 16);
 
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.text(
-        `${settings.address || 'Abidjan, Côte d’Ivoire'}  •  Tél: ${settings.phone || '+225 07 00 00 00'}  •  ${settings.email || 'contact@hotelia.ci'}`,
+        `${settings.address || "Bongouanou, Région du Moronou, Côte d'Ivoire"}  •  Tél: ${settings.phone || '+225 07 00 00 00'}  •  contact@refugepalmeraie-bongouanou.ci`,
         14,
         24
       );
@@ -589,14 +736,14 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                     <span>Aperçu Réel Ticket</span>
                   </div>
 
-                  <div className="w-full bg-white text-black rounded-2xl shadow-2xl p-5 font-mono text-[11px] space-y-3 border border-stone-300">
+                  <div id="pos-thermal-ticket-screen" className="w-full bg-white text-black rounded-2xl shadow-2xl p-5 font-mono text-[11px] space-y-3 border border-stone-300">
                     {/* En-tête Ticket */}
                     <div className="text-center border-b border-dashed border-stone-400 pb-3">
                       <div className="font-bold text-xs uppercase tracking-wider text-black">
-                        {thermalPrinterConfig.enteteHaut || 'HOTELIA RESORT & SPA'}
+                        {thermalPrinterConfig.enteteHaut || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU'}
                       </div>
                       <div className="text-[9px] text-stone-600">
-                        {thermalPrinterConfig.adresseHotel || 'Boulevard Lagunaire, Abidjan'}
+                        {thermalPrinterConfig.adresseHotel || "Bongouanou, Région du Moronou, Côte d'Ivoire"}
                       </div>
                       <div className="text-[9px] text-stone-600">
                         Tél: {thermalPrinterConfig.telephoneHotel || '+225 07 00 00 00'}
@@ -687,7 +834,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                       <p className="font-medium text-stone-800">
                         {thermalPrinterConfig.messageBas || 'Merci de votre visite et à très bientôt !'}
                       </p>
-                      <p>Système Point de Vente Caisse Hotelia</p>
+                      <p>Hôtel Refuge Palmeraie de Bongouanou</p>
                     </div>
                   </div>
 
@@ -945,9 +1092,9 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                 {/* En-tête Ticket */}
                 <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
                   <div style={{ fontWeight: 'bold', fontSize: '13px', textTransform: 'uppercase' }}>
-                    {thermalPrinterConfig.enteteHaut || 'HOTELIA RESORT & SPA'}
+                    {thermalPrinterConfig.enteteHaut || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU'}
                   </div>
-                  <div style={{ fontSize: '9px' }}>{thermalPrinterConfig.adresseHotel || 'Boulevard Lagunaire, Abidjan'}</div>
+                  <div style={{ fontSize: '9px' }}>{thermalPrinterConfig.adresseHotel || "Bongouanou, Côte d'Ivoire"}</div>
                   <div style={{ fontSize: '9px' }}>Tél: {thermalPrinterConfig.telephoneHotel || '+225 07 00 00 00'}</div>
                   <div style={{ marginTop: '5px', fontWeight: 'bold', fontSize: '11px', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '2px 0' }}>
                     TICKET POINT DE VENTE #{sale.numeroTicket}
@@ -1021,7 +1168,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                 {/* Pied de ticket */}
                 <div style={{ textAlign: 'center', fontSize: '9px', marginTop: '6px' }}>
                   <div style={{ fontWeight: 'bold' }}>{thermalPrinterConfig.messageBas || 'Merci pour votre visite !'}</div>
-                  <div>Système Caisse Hotelia</div>
+                  <div>Hôtel Refuge Palmeraie de Bongouanou</div>
                 </div>
               </div>
             ) : (

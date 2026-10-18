@@ -318,8 +318,8 @@ export const DEFAULT_THERMAL_PRINTER_CONFIG: ThermalPrinterConfig = {
   fontSize: 'normal',
   showLogo: true,
   operatorName: 'Caisse Principale',
-  headerMessage: 'HOTELIA RÉSIDENCE & SUITES\nLuxe, Confort & Discrétion\nAbidjan - Côte d’Ivoire',
-  footerMessage: 'Code Wi-Fi : HOTELIA_VIP (Fibre 1Gbps)\nClé à restituer au check-out.\nMerci de votre confiance et bon séjour !',
+  headerMessage: 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU\nRestaurant, Bar & Chambres de Prestige\nBongouanou - Côte d’Ivoire',
+  footerMessage: 'Code Wi-Fi : PALMERAIE_VIP (Fibre 1Gbps)\nClé à restituer au check-out.\nMerci de votre confiance et bon séjour !',
   showTaxDetails: true,
   showBarcode: true,
   paperFeedLines: 3

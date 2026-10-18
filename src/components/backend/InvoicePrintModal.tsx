@@ -21,6 +21,7 @@ import {
 import { ReservationItem } from '../../types.ts';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
+import { printThermalTicket } from '../../utils/thermalPrinter.ts';
 
 interface InvoicePrintModalProps {
   reservation: ReservationItem;
@@ -61,6 +62,17 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
   // Launch tailored print based on active format
   const handlePrint = () => {
+    if (activeFormat === 'thermal') {
+      const el = document.getElementById('thermal-ticket-content');
+      const rollWidth = printerSettings.width === '58mm' ? '58mm' : '80mm';
+      if (el) {
+        printThermalTicket(el, rollWidth);
+        setPrintSuccessAlert(true);
+        setTimeout(() => setPrintSuccessAlert(false), 4000);
+        return;
+      }
+    }
+
     // We add a temporary style block in the document for the exact print media query
     const styleId = 'hotelia-print-style';
     const oldStyle = document.getElementById(styleId);
@@ -70,38 +82,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
     const printStyle = document.createElement('style');
     printStyle.id = styleId;
-
-    if (activeFormat === 'thermal') {
-      const rollWidth = printerSettings.width === '58mm' ? '58mm' : '80mm';
-      printStyle.innerHTML = `
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #thermal-ticket-content, #thermal-ticket-content * {
-            visibility: visible;
-          }
-          #thermal-ticket-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: ${rollWidth} !important;
-            max-width: ${rollWidth} !important;
-            margin: 0 !important;
-            padding: 8px 10px !important;
-            background: #fff !important;
-            color: #000 !important;
-            font-family: 'Courier New', Courier, monospace !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          @page {
-            size: ${rollWidth} auto;
-            margin: 0mm;
-          }
-        }
-      `;
-    } else {
       printStyle.innerHTML = `
         @media print {
           body * {
@@ -128,7 +108,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           }
         }
       `;
-    }
 
     document.head.appendChild(printStyle);
     window.print();
@@ -413,7 +392,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-900 via-stone-900 to-slate-950 p-2.5 border-2 border-[#C5A880] flex flex-col items-center justify-center text-center shadow-sm">
                       <Sparkles className="w-6 h-6 text-[#C5A880] mb-0.5" />
                       <span className="font-serif font-bold text-[9px] text-[#C5A880] tracking-widest uppercase">
-                        HOTELIA
+                        REFUGE PALMERAIE
                       </span>
                     </div>
                   )}
@@ -423,7 +402,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       {settings.holdingName || 'DEKOUASSI HOLDING'}
                     </span>
                     <h1 className="font-serif font-bold text-2xl sm:text-3xl text-stone-950 tracking-tight">
-                      {settings.appName || 'Hotelia Résidence & Suites'}
+                      {settings.appName || 'Hôtel Refuge Palmeraie de Bongouanou'}
                     </h1>
                     <p className="text-xs text-stone-500 italic mt-0.5">
                       {settings.brandSubtitle || 'L’élégance hôtelière de prestige'}
@@ -605,13 +584,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   <div className="flex items-center justify-between text-stone-600">
                     <span>Total Prestations HT</span>
                     <span className="font-mono font-semibold">
-                      {formatPrice(Math.round(reservation.montantTotal * 0.95))}
+                      {formatPrice(reservation.montantTotal)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-stone-600">
-                    <span>Taxe de Séjour &amp; Services (5%)</span>
-                    <span className="font-mono font-semibold">
-                      {formatPrice(Math.round(reservation.montantTotal * 0.05))}
+                    <span>Taxe de Séjour (0%)</span>
+                    <span className="font-mono font-semibold text-emerald-700">
+                      0 FCFA (0%)
                     </span>
                   </div>
                   <div className="h-px bg-stone-300 my-1" />
@@ -652,7 +631,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 {/* Cachet Numérique "ACQUITTÉ" */}
                 <div className="border-2 border-dashed border-emerald-600 p-3 rounded-xl text-center bg-emerald-50/60 rotate-[-2deg] shadow-xs">
                   <span className="text-[10px] font-mono tracking-widest text-emerald-700 font-bold block uppercase">
-                    HOTELIA RÉSIDENCE &amp; SUITES
+                    HÔTEL REFUGE PALMERAIE DE BONGOUANOU
                   </span>
                   <span className="font-serif font-black text-xl text-emerald-800 tracking-wider block">
                     ★ FACTURE ACQUITTÉE ★
@@ -703,7 +682,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       />
                     ) : (
                       <div className="text-center font-bold text-sm tracking-widest uppercase pb-1">
-                        ★ ★ ★ HOTELIA ★ ★ ★
+                        ★ ★ ★ HÔTEL REFUGE PALMERAIE ★ ★ ★
                       </div>
                     )}
                   </div>
@@ -712,16 +691,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 {/* En-tête personnalisé */}
                 <div className="text-center space-y-0.5 pb-2">
                   <div className="font-bold text-sm uppercase">
-                    {settings.appName || 'HOTELIA RÉSIDENCE'}
+                    {settings.appName || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU'}
                   </div>
                   <div className="text-[11px] text-stone-600 uppercase">
-                    {settings.holdingName || 'DEKOUASSI HOLDING'}
+                    BONGOUANOU, CÔTE D'IVOIRE
                   </div>
                   <div className="text-[10px] text-stone-500 whitespace-pre-line">
                     {printerSettings.headerMessage}
                   </div>
                   <div className="text-[10px] text-stone-600 pt-1">
-                    Tél: +225 07 08 09 10 11
+                    Tél: +225 07 00 00 00 00
                   </div>
                 </div>
 
@@ -768,7 +747,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     <span>
                       {reservation.typeReservation === 'nuit'
                         ? `NUITÉE (${reservation.nbNuits || 1} nuit)`
-                        : `DAY-USE (${reservation.dureeHeures || 3}h)`}
+                        : `PASSAGE (${reservation.dureeHeures || 3}h)`}
                     </span>
                     <span>
                       {reservation.typeReservation === 'nuit'
@@ -789,11 +768,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     <>
                       <div className="flex justify-between text-stone-600">
                         <span>SOUS-TOTAL HT:</span>
-                        <span>{formatPrice(Math.round(reservation.montantTotal * 0.95))}</span>
+                        <span>{formatPrice(reservation.montantTotal)}</span>
                       </div>
                       <div className="flex justify-between text-stone-600">
-                        <span>TAXE SEJOUR (5%):</span>
-                        <span>{formatPrice(Math.round(reservation.montantTotal * 0.05))}</span>
+                        <span>TAXE SEJOUR (0%):</span>
+                        <span>0 FCFA</span>
                       </div>
                     </>
                   )}

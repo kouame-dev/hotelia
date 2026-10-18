@@ -808,7 +808,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
                       </div>
                       <div>
                         <h1 className="text-xl font-serif font-bold tracking-tight text-stone-950 uppercase">
-                          {settings.hotelName || 'Hotelia Resort & Spa'}
+                          {settings.appName || settings.hotelName || 'Hôtel Refuge Palmeraie de Bongouanou'}
                         </h1>
                         <p className="text-xs text-stone-500 font-medium">
                           {fneConfig.nomEntreprise || 'Dekouassi Holding Hôtelière CI'}
@@ -1280,7 +1280,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
 
                 {/* Print Footer */}
                 <div className="text-center text-[10px] text-stone-500 mt-8 pt-4 border-t border-stone-200">
-                  {settings.hotelName || 'Hotelia Resort & Spa'} — Facture normalisée électronique délivrée conformément aux dispositions du Code Général des Impôts de Côte d'Ivoire.
+                  {settings.appName || settings.hotelName || 'Hôtel Refuge Palmeraie de Bongouanou'} — Facture normalisée électronique délivrée conformément aux dispositions du Code Général des Impôts de Côte d'Ivoire.
                 </div>
               </div>
             ) : (
@@ -1440,7 +1440,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
 
                 {/* Footer Ticket */}
                 <div className="text-center pt-4 text-[10px] text-stone-600 space-y-1">
-                  <p>{thermalPrinterConfig.footerMessage || 'Merci de votre séjour à Hotelia Resort & Spa !'}</p>
+                  <p>{thermalPrinterConfig.footerMessage || 'Merci de votre séjour à l’Hôtel Refuge Palmeraie de Bongouanou !'}</p>
                   <p>Mobile Money : MTN / Moov / Orange</p>
                   <p className="text-[9px] text-stone-400">Réf : {activeInvoice.numeroFacture}</p>
                 </div>

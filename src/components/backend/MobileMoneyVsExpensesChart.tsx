@@ -633,7 +633,7 @@ export const MobileMoneyVsExpensesChart: React.FC<MobileMoneyVsExpensesChartProp
               <ComposedChart
                 data={monthlyData}
                 margin={{ top: 15, right: 25, left: 10, bottom: 25 }}
-                onMouseMove={(state) => {
+                onMouseMove={(state: any) => {
                   if (state && state.activePayload && state.activePayload.length > 0) {
                     setHoveredMonth(state.activePayload[0].payload as MonthComparisonData);
                   }

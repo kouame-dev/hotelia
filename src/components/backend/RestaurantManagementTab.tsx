@@ -37,11 +37,13 @@ import {
   Leaf,
   Eye,
   Edit3,
-  Volume2
+  Volume2,
+  FileDown
 } from 'lucide-react';
 import { playPosBeep } from '../../utils/soundEffects.ts';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
+import { printThermalTicket, downloadThermalReceiptPdf } from '../../utils/thermalPrinter.ts';
 import {
   RestaurantTable,
   RestaurantMenuItem,
@@ -3071,11 +3073,11 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
             </div>
 
             {/* Aperçu Ticket Restaurant */}
-            <div className="bg-stone-50 border border-stone-300 rounded-xl p-4 font-mono text-xs text-stone-800 space-y-2 max-h-80 overflow-y-auto shadow-inner">
+            <div id="restaurant-ticket-preview-box" className="bg-stone-50 border border-stone-300 rounded-xl p-4 font-mono text-xs text-stone-800 space-y-2 max-h-80 overflow-y-auto shadow-inner">
               <div className="text-center border-b border-stone-300 pb-2">
-                <span className="font-bold text-sm block tracking-wider">HOTELIA RESORT &amp; SPA</span>
-                <span className="font-bold text-xs block text-emerald-800">RESTAURANT LE DEKOUASSI</span>
-                <span className="text-[10px] text-stone-500 block">Abidjan, Côte d'Ivoire • Tél: +225 07 00 00 00</span>
+                <span className="font-bold text-sm block tracking-wider uppercase">HÔTEL REFUGE PALMERAIE DE BONGOUANOU</span>
+                <span className="font-bold text-xs block text-emerald-800 uppercase">RESTAURANT &amp; BAR LOUNGE</span>
+                <span className="text-[10px] text-stone-500 block">Bongouanou, Côte d'Ivoire • Tél: +225 07 00 00 00</span>
 
                 {isTicketPreviewProforma || orderToPrint.statutAddition !== 'payee' ? (
                   <div className="mt-2 py-0.5 px-2 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold uppercase rounded">
@@ -3217,12 +3219,66 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                 <button
                   type="button"
                   onClick={() => {
-                    window.print();
+                    const isProforma = isTicketPreviewProforma || orderToPrint.statutAddition !== 'payee';
+                    const netPayable = (orderToPrint.acompteDeduit || 0) > 0
+                      ? Math.max(0, orderToPrint.totalNet - (orderToPrint.acompteDeduit || 0))
+                      : orderToPrint.totalNet;
+
+                    downloadThermalReceiptPdf({
+                      hotelName: 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU',
+                      subtitle: 'RESTAURANT & BAR LOUNGE',
+                      address: "Bongouanou, Côte d'Ivoire",
+                      phone: "+225 07 00 00 00",
+                      ticketTitle: isProforma ? 'NOTE PROVISOIRE / PRÉ-ADDITION' : 'TICKET DE CAISSE RESTAURANT',
+                      ticketNumber: orderToPrint.numeroCommande,
+                      tableNumber: orderToPrint.tableNumero,
+                      dateStr: orderToPrint.dateCommande,
+                      timeStr: orderToPrint.heureCommande,
+                      cashierName: orderToPrint.serveurNom,
+                      customerName: orderToPrint.clientNom,
+                      roomNumber: orderToPrint.chambreNumero,
+                      items: (orderToPrint.articles || orderToPrint.items || []).map((art) => ({
+                        name: art.nom,
+                        qty: art.quantite,
+                        unitPrice: art.prixUnitaire || (art.totalLigne / (art.quantite || 1)),
+                        total: art.totalLigne
+                      })),
+                      subtotal: orderToPrint.totalBrut || orderToPrint.totalNet,
+                      depositDeducted: orderToPrint.acompteDeduit || 0,
+                      totalNet: netPayable,
+                      paymentMethod: orderToPrint.statutAddition === 'payee' ? orderToPrint.modePaiement : undefined,
+                      amountReceived: orderToPrint.montantVerse,
+                      changeReturned: orderToPrint.monnaieRendue,
+                      footerMessage: orderToPrint.statutAddition === 'payee'
+                        ? 'Merci de votre visite et bon appétit !'
+                        : 'Note non libératoire • À régler en caisse restaurant'
+                    });
                   }}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-md flex items-center gap-1.5"
+                  className="px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-[#C5A880] font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 border border-stone-700"
+                  title="Télécharger le ticket de caisse en format PDF 80mm continu"
+                >
+                  <FileDown className="w-4 h-4 text-[#C5A880]" />
+                  <span>Ticket PDF 80mm</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (printFormat === 'thermal') {
+                      const el = document.getElementById('restaurant-ticket-preview-box');
+                      if (el) {
+                        printThermalTicket(el, '80mm', `Ticket ${orderToPrint.numeroCommande}`);
+                      } else {
+                        window.print();
+                      }
+                    } else {
+                      window.print();
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-md flex items-center gap-1.5"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Imprimer</span>
+                  <span>Imprimer {printFormat === 'thermal' ? 'Ticket 80mm' : 'Facture A4'}</span>
                 </button>
               </div>
             </div>

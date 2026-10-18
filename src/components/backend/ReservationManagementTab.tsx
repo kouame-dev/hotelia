@@ -33,6 +33,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Building,
+  CreditCard,
   Check,
   X,
   MessageSquare,
@@ -137,9 +138,22 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
   const [formHeureDebutNuit, setFormHeureDebutNuit] = useState('14:00');
   const [formHeureFinNuit, setFormHeureFinNuit] = useState('11:00');
 
-  // Pour réservations à l'heure
-  const [formHeureDebut, setFormHeureDebut] = useState('14:00');
-  const [formHeureFin, setFormHeureFin] = useState('17:00');
+  // Helper pour l'heure courante (HH:mm)
+  const getNowTimeFormatted = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // Pour réservations à l'heure (Passage / Day-Use) : Initialisé à l'heure courante
+  const [formHeureDebut, setFormHeureDebut] = useState(() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
+  const [formHeureFin, setFormHeureFin] = useState(() => {
+    const d = new Date();
+    d.setHours(d.getHours() + 3);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
   const [formDureeHeures, setFormDureeHeures] = useState<number>(3);
   const [formDureeMinutes, setFormDureeMinutes] = useState<number>(0);
   const [formNbPersonnes, setFormNbPersonnes] = useState<number>(1);
@@ -156,6 +170,15 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     const timer = setInterval(() => setCurrentTime(new Date()), 15000);
     return () => clearInterval(timer);
   }, []);
+
+  // Synchronisation automatique de l'heure actuelle pour le mode Passage (Day-Use) dans le back-end
+  React.useEffect(() => {
+    if (activeSubTab === 'ajouter' && formMode === 'heure') {
+      const nowTime = getNowTimeFormatted();
+      setFormHeureDebut(nowTime);
+      updateHourlyEndTime(nowTime, formDureeHeures, formDureeMinutes);
+    }
+  }, [activeSubTab, formMode]);
 
   // Chambre sélectionnée dans le formulaire
   const selectedChambreObj = useMemo(() => {
@@ -219,20 +242,54 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     });
   }, [reservations, formChambreNumero, formMode, formDateDebut, formDateFin, formHeureDebut, formHeureFin]);
 
+  // Bascule du mode de réservation avec initialisation automatique des valeurs par défaut Passage (Day-Use) vs Nuitée
+  const handleSelectMode = (mode: ReservationType) => {
+    setFormMode(mode);
+    if (mode === 'heure') {
+      const nowTime = getNowTimeFormatted();
+      setFormHeureDebut(nowTime);
+      updateHourlyEndTime(nowTime, formDureeHeures, formDureeMinutes);
+      // 1. Statut initial : Confirmé
+      // 2. Mode de règlement : Espèces / Caisse
+      // 3. État de paiement : Payé en totalité
+      // 4. Acompte : 0 FCFA (readOnly)
+      setFormStatutRes('confirmee');
+      setFormModePaiement('Espèces / Caisse');
+      setFormStatutPaiement('paye');
+      setFormAcompte(0);
+    } else {
+      setFormStatutRes('en_attente');
+      setFormModePaiement('Orange Money');
+      setFormStatutPaiement('en_attente');
+      setFormAcompte(0);
+    }
+  };
+
   // Soumission du formulaire "Ajouter une réservation"
   const handleCreateReservation = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formClientNom.trim()) {
-      alert('Veuillez renseigner le nom du client.');
+    // En formule Nuitée, le nom du client est obligatoire. En Day-Use, il est optionnel (valeur de secours automatique)
+    if (formMode === 'nuit' && !formClientNom.trim()) {
+      alert('Veuillez renseigner le nom du client pour une réservation à la nuitée.');
       return;
     }
 
     const typeChambreNom = selectedChambreObj ? selectedChambreObj.typeNom : 'Chambre Standard';
-    const isPaid = formStatutPaiement === 'paye' || formAcompte >= calculatedTotal;
+    const isPaid = formMode === 'heure' || formStatutPaiement === 'paye' || formAcompte >= calculatedTotal;
+
+    // Nom et téléphone optionnels en Day-Use : valeurs par défaut conviviales si non renseignés
+    const finalClientNom = formClientNom.trim() || (formMode === 'heure' ? 'Client Passager (Day-Use)' : 'Client Inconnu');
+    const finalClientTel = formClientTel.trim() && formClientTel.trim() !== '+225'
+      ? formClientTel.trim()
+      : (formMode === 'heure' ? 'Non renseigné (Day-Use)' : '+225 07 00 00 00 00');
+
+    // Acompte forcé à 0 pour le Day-Use
+    const finalAcompte = formMode === 'heure' ? 0 : formAcompte;
+    const finalResteAPayer = isPaid ? 0 : Math.max(0, calculatedTotal - finalAcompte);
 
     const created = addReservation({
-      clientNom: formClientNom.trim(),
-      clientTelephone: formClientTel.trim() || '+225 07 00 00 00 00',
+      clientNom: finalClientNom,
+      clientTelephone: finalClientTel,
       clientEmail: formClientEmail.trim() || undefined,
       chambreNumero: formChambreNumero,
       chambreType: typeChambreNom,
@@ -249,19 +306,32 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
       statutPaiement: isPaid ? 'paye' : formStatutPaiement,
       modePaiement: formModePaiement,
       montantTotal: calculatedTotal,
-      acompteVerse: formAcompte,
-      resteAPayer: Math.max(0, calculatedTotal - formAcompte),
+      acompteVerse: finalAcompte,
+      resteAPayer: finalResteAPayer,
       notes: formNotes.trim() || undefined
     });
 
     setFormSuccessMessage(`Réservation créée avec succès pour ${created.clientNom} (Chambre ${created.chambreNumero}) !`);
 
-    // Reset partiel
+    // Reset partiel adapté au mode courant
     setFormClientNom('');
     setFormClientTel('+225 ');
     setFormClientEmail('');
     setFormNotes('');
-    setFormAcompte(0);
+    if (formMode === 'heure') {
+      const nowTime = getNowTimeFormatted();
+      setFormHeureDebut(nowTime);
+      updateHourlyEndTime(nowTime, formDureeHeures, formDureeMinutes);
+      setFormStatutRes('confirmee');
+      setFormModePaiement('Espèces / Caisse');
+      setFormStatutPaiement('paye');
+      setFormAcompte(0);
+    } else {
+      setFormStatutRes('en_attente');
+      setFormModePaiement('Orange Money');
+      setFormStatutPaiement('en_attente');
+      setFormAcompte(0);
+    }
 
     // Si la réservation est en attente, basculer vers la liste des réservations en attente
     setTimeout(() => {
@@ -747,7 +817,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
                 <button
                   type="button"
-                  onClick={() => setFormMode('nuit')}
+                  onClick={() => handleSelectMode('nuit')}
                   className={`flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer shadow-xs ${
                     formMode === 'nuit'
                       ? 'border-blue-400 bg-[#0B132B] text-white shadow-md ring-2 ring-blue-500/30'
@@ -765,7 +835,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
                 <button
                   type="button"
-                  onClick={() => setFormMode('heure')}
+                  onClick={() => handleSelectMode('heure')}
                   className={`flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer shadow-xs ${
                     formMode === 'heure'
                       ? 'border-[#D97706] bg-[#FF9900] text-slate-950 shadow-md ring-2 ring-amber-500/30'
@@ -776,7 +846,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className={`font-bold text-sm block ${formMode === 'heure' ? 'text-slate-950' : 'text-stone-900'}`}>Courte Durée (Day-Use)</span>
+                    <span className={`font-bold text-sm block ${formMode === 'heure' ? 'text-slate-950' : 'text-stone-900'}`}>Passage (Day-Use)</span>
                     <span className={`text-xs ${formMode === 'heure' ? 'text-slate-900 font-medium' : 'text-stone-500'}`}>De 1h à 8h en journée</span>
                   </div>
                 </button>
@@ -790,7 +860,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                   2. Dates &amp; Créneau horaire (Heures &amp; Minutes)
                 </span>
                 <span className="text-[11px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                  {formMode === 'nuit' ? '🌙 Nuitée hôtelière / Séjour' : '⏱️ Courte durée à l\'heure'}
+                  {formMode === 'nuit' ? '🌙 Nuitée hôtelière / Séjour' : '⏱️ Formule Passage à l\'heure'}
                 </span>
               </div>
 
@@ -938,7 +1008,21 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
                     {/* Heure de début */}
                     <div>
-                      <label className="block text-xs font-semibold text-stone-600 mb-1">Heure de début *</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-stone-600">Heure de début *</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nowTime = getNowTimeFormatted();
+                            setFormHeureDebut(nowTime);
+                            updateHourlyEndTime(nowTime, formDureeHeures, formDureeMinutes);
+                          }}
+                          className="text-[10px] text-amber-800 bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded font-bold cursor-pointer"
+                          title="Actualiser à l'heure actuelle"
+                        >
+                          Heure actuelle
+                        </button>
+                      </div>
                       <input
                         type="time"
                         required
@@ -948,7 +1032,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                           setFormHeureDebut(val);
                           updateHourlyEndTime(val, formDureeHeures, formDureeMinutes);
                         }}
-                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                        className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none font-bold text-stone-900"
                       />
                     </div>
 
@@ -1065,27 +1149,52 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
             {/* D. Informations Client */}
             <div className="bg-[#FAF9F5] p-5 rounded-2xl border border-stone-200 space-y-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
-                4. Coordonnées du Client
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
+                  4. Coordonnées du Client
+                </span>
+                {formMode === 'heure' ? (
+                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    ⚡ Mode Day-Use : Nom et Téléphone optionnels (comptoir express)
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-stone-500">
+                    * Champs obligatoires pour séjour nuitée
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-600 mb-1">Nom complet du client *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-stone-600">
+                      Nom complet du client {formMode === 'nuit' ? '*' : ''}
+                    </label>
+                    {formMode === 'heure' && (
+                      <span className="text-[10px] text-stone-400 italic">Optionnel</span>
+                    )}
+                  </div>
                   <input
                     type="text"
-                    required
-                    placeholder="ex: Yao Jean-Baptiste"
+                    required={formMode === 'nuit'}
+                    placeholder={formMode === 'heure' ? 'Optionnel (ex: Passager Day-Use)' : 'ex: Yao Jean-Baptiste'}
                     value={formClientNom}
                     onChange={(e) => setFormClientNom(e.target.value)}
                     className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-stone-600 mb-1">Téléphone (WhatsApp) *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-stone-600">
+                      Téléphone (WhatsApp) {formMode === 'nuit' ? '*' : ''}
+                    </label>
+                    {formMode === 'heure' && (
+                      <span className="text-[10px] text-stone-400 italic">Optionnel</span>
+                    )}
+                  </div>
                   <input
                     type="tel"
-                    required
-                    placeholder="+225 07 00 00 00 00"
+                    required={formMode === 'nuit'}
+                    placeholder={formMode === 'heure' ? '+225 07 00 00 00 00 (optionnel)' : '+225 07 00 00 00 00'}
                     value={formClientTel}
                     onChange={(e) => setFormClientTel(e.target.value)}
                     className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none font-mono"
@@ -1107,55 +1216,99 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
             {/* E. Statut, Règlement & Paiement Mobile Money */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Statut initial *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-600">Statut initial *</label>
+                  {formMode === 'heure' && (
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      Défaut : Confirmé
+                    </span>
+                  )}
+                </div>
                 <select
                   value={formStatutRes}
                   onChange={(e) => setFormStatutRes(e.target.value as ReservationStatus)}
                   className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none font-semibold"
                 >
-                  <option value="en_attente">⏳ En attente (À valider)</option>
                   <option value="confirmee">🟢 Confirmée</option>
                   <option value="en_cours">🏨 Client déjà en chambre</option>
+                  <option value="en_attente">⏳ En attente (À valider)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Mode de règlement *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-600">Mode de règlement *</label>
+                  {formMode === 'heure' && (
+                    <span className="text-[10px] text-amber-800 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      Défaut : Espèces
+                    </span>
+                  )}
+                </div>
                 <select
                   value={formModePaiement}
                   onChange={(e) => setFormModePaiement(e.target.value as PaymentMethod)}
-                  className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                  className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none font-medium"
                 >
+                  <option value="Espèces / Caisse">💵 Espèces / Caisse</option>
                   <option value="Orange Money">🟠 Orange Money</option>
                   <option value="MTN Money">🟡 MTN Money</option>
                   <option value="MOOV Money">🔵 MOOV Money</option>
-                  <option value="Espèces / Caisse">💵 Espèces / Caisse</option>
+                  <option value="Wave">🌊 Wave</option>
                   <option value="Carte Bancaire">💳 Carte Bancaire</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">État de paiement</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-600">État de paiement</label>
+                  {formMode === 'heure' && (
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      Défaut : Payé en totalité
+                    </span>
+                  )}
+                </div>
                 <select
                   value={formStatutPaiement}
                   onChange={(e) => setFormStatutPaiement(e.target.value as PaymentStatus)}
-                  className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none"
+                  className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none font-medium"
                 >
-                  <option value="en_attente">En attente de versement</option>
                   <option value="paye">Payé en totalité</option>
+                  <option value="en_attente">En attente de versement</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Acompte versé</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-600">Acompte versé</label>
+                  {formMode === 'heure' && (
+                    <span className="text-[10px] text-stone-600 font-mono font-bold bg-stone-100 px-1.5 py-0.5 rounded border border-stone-300">
+                      0 FCFA (Lecture seule)
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
                   min={0}
                   max={calculatedTotal}
-                  value={formAcompte}
-                  onChange={(e) => setFormAcompte(parseFloat(e.target.value) || 0)}
-                  className="w-full p-2.5 bg-white border border-stone-300 rounded-xl text-sm focus:ring-2 focus:ring-[#C5A880] focus:border-transparent outline-none font-mono"
+                  readOnly={formMode === 'heure'}
+                  disabled={formMode === 'heure'}
+                  value={formMode === 'heure' ? 0 : formAcompte}
+                  onChange={(e) => {
+                    if (formMode !== 'heure') {
+                      setFormAcompte(parseFloat(e.target.value) || 0);
+                    }
+                  }}
+                  className={`w-full p-2.5 rounded-xl text-sm outline-none font-mono transition-colors ${
+                    formMode === 'heure'
+                      ? 'bg-stone-100 text-stone-500 cursor-not-allowed border border-stone-300 font-bold select-none'
+                      : 'bg-white border border-stone-300 focus:ring-2 focus:ring-[#C5A880] focus:border-transparent'
+                  }`}
                 />
+                {formMode === 'heure' && (
+                  <p className="text-[10px] text-stone-500 mt-1">
+                    🔒 Champ verrouillé à 0 FCFA pour le Day-Use (règlement complet requis).
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1180,13 +1333,22 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                     {formatPrice(calculatedTotal)}
                   </span>
                 </div>
-                {formAcompte > 0 && (
+                {formMode === 'heure' ? (
                   <div className="border-l border-blue-900/80 pl-6">
-                    <span className="text-[11px] text-amber-300 block uppercase font-mono tracking-wider font-bold">Reste à payer</span>
-                    <span className="text-xl font-bold font-mono text-amber-400">
-                      {formatPrice(Math.max(0, calculatedTotal - formAcompte))}
+                    <span className="text-[11px] text-emerald-300 block uppercase font-mono tracking-wider font-bold">Règlement Day-Use</span>
+                    <span className="text-sm font-bold font-mono text-emerald-400">
+                      Soldé en Totalité ({formatPrice(calculatedTotal)}) • Espèces / Caisse
                     </span>
                   </div>
+                ) : (
+                  formAcompte > 0 && (
+                    <div className="border-l border-blue-900/80 pl-6">
+                      <span className="text-[11px] text-amber-300 block uppercase font-mono tracking-wider font-bold">Reste à payer</span>
+                      <span className="text-xl font-bold font-mono text-amber-400">
+                        {formatPrice(Math.max(0, calculatedTotal - formAcompte))}
+                      </span>
+                    </div>
+                  )
                 )}
               </div>
 
@@ -1200,10 +1362,10 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer border border-[#D97706]"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-7 py-2.5 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer border border-[#D97706]"
                 >
-                  <Sparkles className="w-4 h-4 text-slate-950" />
-                  <span>Enregistrer la Réservation</span>
+                  <CreditCard className="w-4 h-4 text-slate-950" />
+                  <span>Payer</span>
                 </button>
               </div>
             </div>
@@ -1445,7 +1607,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                           </span>
                         </div>
                         <span className="text-[11px] text-stone-500 block mt-0.5">
-                          {res.typeReservation === 'nuit' ? '🌙 Nuitée hôtelière' : '⏱️ Courte durée'}
+                          {res.typeReservation === 'nuit' ? '🌙 Nuitée hôtelière' : '⏱️ Passage (Day-Use)'}
                         </span>
                       </td>
 

@@ -273,25 +273,25 @@ export interface FneIvoirienneConfig {
 export const DEFAULT_FNE_IVOIRIENNE_CONFIG: FneIvoirienneConfig = {
   enabled: true,
   modeTransmission: 'direct_dgi',
-  nomEntreprise: 'Dekouassi Holding SA • Hotelia Résidence & Suites',
+  nomEntreprise: 'Hôtel Refuge Palmeraie de Bongouanou',
   nccEntreprise: '2104592 X',
-  rccmEntreprise: 'CI-ABJ-2022-B-14892',
-  centreImpotRattachement: 'Direction des Grandes Entreprises (DGE) / Centre des Impôts de Cocody',
+  rccmEntreprise: 'CI-BGN-2022-B-14892',
+  centreImpotRattachement: 'Centre des Impôts de Bongouanou / Moronou',
   regimeImposition: 'Régime Réel Normal (RRN)',
-  codePointVenteDgi: 'POS-HTL-ABJ-01',
-  telephoneOfficiel: '+225 27 22 44 88 00',
-  adresseFiscale: "Boulevard Hassan II, Cocody Ambassades, Abidjan, Côte d'Ivoire",
+  codePointVenteDgi: 'POS-BGN-01',
+  telephoneOfficiel: '+225 07 00 00 00 00',
+  adresseFiscale: "Quartier Résidentiel Palmeraie, Bongouanou, Côte d'Ivoire",
 
   dgiApiEndpoint: 'https://fne-api.dgi.gouv.ci/v1/factures',
-  dgiApiKey: 'dgi_sec_token_ci_9832148092_abj',
-  cleSecuriteFiscale: 'SEC-DGI-CI-884920-HTL',
+  dgiApiKey: 'dgi_sec_token_ci_9832148092_bgn',
+  cleSecuriteFiscale: 'SEC-DGI-CI-884920-BGN',
   urlVerificationQrDgi: 'https://dgi.gouv.ci/verification-fne',
 
   tauxTva: 18,
-  activerTdt: true,
-  typeTdt: 'forfait_par_nuitee',
-  valeurTdtForfait: 500,
-  tauxTdtPourcentage: 5,
+  activerTdt: false, // Taxe de Développement Touristique / Séjour désactivée (0%)
+  typeTdt: 'pourcentage',
+  valeurTdtForfait: 0,
+  tauxTdtPourcentage: 0, // Taxe séjour 0%
   tauxAirsi: 5,
   appliquerAirsiClientSansNcc: true,
   timbreFiscalMontant: 100,
@@ -365,8 +365,8 @@ export interface HotelSettings {
 }
 
 export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
-  appName: "Gestion d'Hôtel - Maison Meublées et services",
-  brandSubtitle: 'Hôtels, Résidences, Maisons Meublées & Services signés Dekouassi Holding',
+  appName: 'Hôtel Refuge Palmeraie de Bongouanou',
+  brandSubtitle: 'Hôtel de prestige, Résidences, Chambres & Restaurant à Bongouanou',
   holdingName: 'Dekouassi Holding',
   logoUrl: '',
   logoType: 'icon',
@@ -378,26 +378,26 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
   cancellationPolicy: {
     delaiGratuitHeures: 24,
     remboursementPartielPct: 50,
-    conditionsTexte: 'Annulation 100% gratuite jusqu’à 24 heures avant l’arrivée pour les nuitées. Pour les réservations à l’heure (Day-Use), annulation sans frais possible jusqu’à 2 heures avant le créneau réservé. Au-delà, 50% du montant sera retenu à titre d’indemnité d’immobilisation.',
+    conditionsTexte: 'Annulation 100% gratuite jusqu’à 24 heures avant l’arrivée pour les nuitées. Pour les réservations de passage (Day-Use), annulation sans frais possible jusqu’à 2 heures avant le créneau réservé. Au-delà, 50% du montant sera retenu à titre d’indemnité d’immobilisation.',
     delaiAnnulationHeureCourte: 2
   },
 
-  termsOfService: 'Toute réservation effectuée sur Hotelia implique l’adhésion sans réserve aux conditions générales. Les chambres sont strictement non-fumeurs. Une pièce d’identité valide et une caution pourront être demandées au check-in. Le calme et la discrétion de l’établissement doivent être respectés en toute circonstance.',
+  termsOfService: 'Toute réservation effectuée à l’Hôtel Refuge Palmeraie de Bongouanou implique l’adhésion sans réserve aux conditions générales. Les chambres sont strictement non-fumeurs. Une pièce d’identité valide et une caution pourront être demandées au check-in. Le calme et la discrétion de l’établissement doivent être respectés en toute circonstance.',
   privacyPolicy: 'Dekouassi Holding s’engage à protéger la confidentialité de vos données personnelles. Les informations recueillies lors de votre réservation sont utilisées exclusivement pour la gestion de votre séjour et ne seront jamais cédées à des tiers.',
 
   seo: {
-    metaTitle: "Gestion d'Hôtel - Maison Meublées et services",
-    metaDescription: "Système complet de gestion hôtelière PMS Hotelia : gestion des chambres, résidences et maisons meublées, réservations nuitées & heures, module restaurant, facturation globale consolidée et FNE DGI.",
-    metaKeywords: "hôtel, maison meublée, gestion hôtelière, résidence meublée, réservation à l'heure, day use, restaurant, Dekouassi Holding",
+    metaTitle: 'Hôtel Refuge Palmeraie de Bongouanou',
+    metaDescription: "Système complet de gestion hôtelière PMS pour l'Hôtel Refuge Palmeraie de Bongouanou : chambres et suites de prestige, réservations nuitées & formules passage, restaurant gastronomique et facturation.",
+    metaKeywords: "hôtel, refuge palmeraie, bongouanou, gestion hôtelière, formule passage, day use, restaurant, Dekouassi Holding",
     ogImageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
-    canonicalUrl: 'https://hotelia.dekouassiholding.com',
+    canonicalUrl: 'https://refugepalmeraie-bongouanou.ci',
     googleAnalyticsId: 'G-HOTELIA2026'
   },
 
   promoBanner: {
     id: 'promo-1',
     enabled: true,
-    text: 'Offre Spéciale Ouverture : -20% sur toutes les réservations Day-Use en semaine avec le code HOTELIA20 !',
+    text: 'Offre Spéciale Bienvenue : -20% sur toutes les réservations Passage en semaine avec le code PALMERAIE20 !',
     linkText: 'En profiter',
     linkUrl: '#chambres',
     bgColor: '#1C1B18',
@@ -438,20 +438,31 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (saved) {
         const parsed = JSON.parse(saved);
         if (
-          parsed.appName &&
-          (parsed.appName.includes('PostgreSQL') ||
-            parsed.appName.includes('Architect') ||
-            parsed.appName === 'Hotelia Résidence & Suites')
+          !parsed.appName ||
+          parsed.appName.includes('PostgreSQL') ||
+          parsed.appName.includes('Architect') ||
+          parsed.appName.includes('Hotelia') ||
+          parsed.appName.includes("Gestion d'Hôtel")
         ) {
-          parsed.appName = "Gestion d'Hôtel - Maison Meublées et services";
+          parsed.appName = 'Hôtel Refuge Palmeraie de Bongouanou';
         }
         if (
-          parsed.seo?.metaTitle &&
-          (parsed.seo.metaTitle.includes('PostgreSQL') ||
-            parsed.seo.metaTitle.includes('Architect') ||
-            parsed.seo.metaTitle.includes('Hotelia Résidence'))
+          !parsed.seo?.metaTitle ||
+          parsed.seo.metaTitle.includes('PostgreSQL') ||
+          parsed.seo.metaTitle.includes('Architect') ||
+          parsed.seo.metaTitle.includes('Hotelia') ||
+          parsed.seo.metaTitle.includes("Gestion d'Hôtel")
         ) {
-          parsed.seo.metaTitle = "Gestion d'Hôtel - Maison Meublées et services";
+          if (!parsed.seo) parsed.seo = {};
+          parsed.seo.metaTitle = 'Hôtel Refuge Palmeraie de Bongouanou';
+        }
+        // Forcer taxe de séjour à 0% dans les paramètres enregistrés
+        if (parsed.fneIvoirienne) {
+          parsed.fneIvoirienne.nomEntreprise = 'Hôtel Refuge Palmeraie de Bongouanou';
+          parsed.fneIvoirienne.activerTdt = false;
+          parsed.fneIvoirienne.tauxTdtPourcentage = 0;
+          parsed.fneIvoirienne.valeurTdtForfait = 0;
+          parsed.fneIvoirienne.taxeSejourNuit = 0;
         }
         return {
           ...DEFAULT_HOTEL_SETTINGS,

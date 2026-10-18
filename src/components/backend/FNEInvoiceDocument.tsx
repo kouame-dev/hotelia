@@ -43,7 +43,7 @@ export const FNEInvoiceDocument: React.FC<FNEInvoiceDocumentProps> = ({
 
   // Taxe de séjour spécifique aux nuitées hôtelières
   const nbNuits = invoice.reservation?.type === 'nuit' ? (invoice.reservation.nbNuitsOuHeures || 1) : 0;
-  const taxeSejourTotale = nbNuits * (fne.taxeSejourNuit || 1000);
+  const taxeSejourTotale = nbNuits * (fne.taxeSejourNuit !== undefined ? fne.taxeSejourNuit : 0);
 
   // Conversion en lettres pour la mention OHADA / DGI obligatoire
   const montantEnLettres = numberToWordsFrench(totalTTC);

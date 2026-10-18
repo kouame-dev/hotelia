@@ -49,8 +49,13 @@ import {
   AppFeatureId,
   FeaturePermissionConfig,
   AppRoleDefinition,
-  ActiveUserSession
+  ActiveUserSession,
+  EmailReminderLog
 } from '../types.ts';
+import {
+  generateConfirmationEmail,
+  get24hReminderTiming
+} from '../utils/emailReminderService.ts';
 import {
   DEFAULT_ROLE_PERMISSIONS,
   INITIAL_ROLES_DEFINITIONS
@@ -213,6 +218,10 @@ interface HotelDataContextType {
   pendingReservationsCount: number;
   completedReservationsCount: number;
   cancelledReservationsCount: number;
+
+  // 7c. Rappel automatique 24h par email (Réservations confirmées)
+  emailRemindersLogs: EmailReminderLog[];
+  send24hEmailReminder: (reservationId: string, force?: boolean) => { success: boolean; message: string; emailLog?: EmailReminderLog };
 
   // 7b. Journal d'Audit des modifications de réservations
   auditLogs: AuditLogEntry[];
@@ -861,7 +870,17 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [thermalPrinterConfig, setThermalPrinterConfig] = useState<ThermalPrinterConfig>(() => {
     try {
       const saved = localStorage.getItem('hotelia_thermal_printer_config');
-      return saved ? JSON.parse(saved) : DEFAULT_THERMAL_PRINTER_CONFIG;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.headerMessage && parsed.headerMessage.includes('HOTELIA')) {
+          parsed.headerMessage = DEFAULT_THERMAL_PRINTER_CONFIG.headerMessage;
+        }
+        if (parsed.footerMessage && parsed.footerMessage.includes('HOTELIA')) {
+          parsed.footerMessage = DEFAULT_THERMAL_PRINTER_CONFIG.footerMessage;
+        }
+        return { ...DEFAULT_THERMAL_PRINTER_CONFIG, ...parsed };
+      }
+      return DEFAULT_THERMAL_PRINTER_CONFIG;
     } catch {
       return DEFAULT_THERMAL_PRINTER_CONFIG;
     }
@@ -1327,13 +1346,25 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         ]
       : [];
 
+    const isConfirmed = newRes.statutReservation === 'confirmee';
+    const hasEmail = Boolean(newRes.clientEmail && newRes.clientEmail.includes('@'));
+    const datePrevueRappel24h = isConfirmed
+      ? new Date(Date.now() + 24 * 3600 * 1000).toISOString()
+      : undefined;
+    const statutRappelEmail = isConfirmed
+      ? (hasEmail ? 'programme' : 'sans_email')
+      : undefined;
+
     const fullReservation: ReservationItem = {
       ...newRes,
       id,
       acompteVerse: acompte,
       resteAPayer: reste,
       paiementsPartiels: initialPaiements,
-      dateCreation
+      dateCreation,
+      datePrevueRappel24h,
+      statutRappelEmail,
+      rappelEmailEnvoye: false
     };
 
     setReservations((prev) => [fullReservation, ...prev]);
@@ -1519,6 +1550,11 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           // Si confirmée, passer le statut paiement en payé si solde nul
           if (updated.resteAPayer === 0) {
             updated.statutPaiement = 'paye';
+          }
+          if (!updated.rappelEmailEnvoye) {
+            const baseDate = updated.dateCreation ? new Date(updated.dateCreation).getTime() : Date.now();
+            updated.datePrevueRappel24h = new Date(baseDate + 24 * 3600 * 1000).toISOString();
+            updated.statutRappelEmail = updated.clientEmail && updated.clientEmail.includes('@') ? 'programme' : 'sans_email';
           }
         }
         return updated;
@@ -1749,6 +1785,158 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const cancelledReservationsCount = reservations.filter(
     (r) => r.statutReservation === 'annulee'
   ).length;
+
+  // =========================================================================
+  // 7c. RAPPEL AUTOMATIQUE PAR EMAIL (24H APRÈS SAISIE DES CONFIRMATIONS)
+  // =========================================================================
+  const [emailRemindersLogs, setEmailRemindersLogs] = useState<EmailReminderLog[]>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_email_reminders');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hotelia_email_reminders', JSON.stringify(emailRemindersLogs));
+    } catch {}
+  }, [emailRemindersLogs]);
+
+  const send24hEmailReminder = (
+    reservationId: string,
+    force: boolean = false
+  ): { success: boolean; message: string; emailLog?: EmailReminderLog } => {
+    const res = reservations.find((r) => r.id === reservationId);
+    if (!res) {
+      return { success: false, message: 'Réservation introuvable.' };
+    }
+
+    if (!res.clientEmail || !res.clientEmail.includes('@')) {
+      return { success: false, message: "Aucune adresse email valide n'est renseignée pour ce client." };
+    }
+
+    if (res.statutReservation !== 'confirmee') {
+      return { success: false, message: "Le rappel automatique 24h ne s'applique qu'aux réservations confirmées." };
+    }
+
+    const timing = get24hReminderTiming(res);
+    if (!force && !timing.isPast24h) {
+      return {
+        success: false,
+        message: `Le délai de 24h n'est pas encore écoulé (${timing.remainingHours}h ${timing.remainingMinutes}min restantes). Utilisez le mode forcé pour tester immédiatement.`
+      };
+    }
+
+    let hotelCfg: any = null;
+    try {
+      const savedSettings = localStorage.getItem('hotelia_settings');
+      if (savedSettings) hotelCfg = JSON.parse(savedSettings);
+    } catch {}
+
+    const { subject, textBody } = generateConfirmationEmail(res, {
+      hotelName: hotelCfg?.hotelName || hotelCfg?.appName || 'Hôtel Refuge Palmeraie de Bongouanou',
+      holdingName: hotelCfg?.holdingName || 'DEKOUASSI HOLDING',
+      phone: hotelCfg?.phone || '+225 07 00 00 00 00',
+      email: hotelCfg?.email || 'contact@hotelia.ci',
+      currency: hotelCfg?.currency || 'FCFA'
+    });
+
+    const nowIso = new Date().toISOString();
+    const logId = `eml-${Date.now()}`;
+    const newLog: EmailReminderLog = {
+      id: logId,
+      reservationId: res.id,
+      clientNom: res.clientNom,
+      clientEmail: res.clientEmail,
+      chambreNumero: res.chambreNumero,
+      dateEnvoi: nowIso,
+      sujet: subject,
+      contenuText: textBody,
+      statut: 'envoye',
+      declencheur: force ? 'manuel' : 'auto_24h'
+    };
+
+    setEmailRemindersLogs((prev) => [newLog, ...prev]);
+
+    // Mettre à jour la réservation
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === reservationId
+          ? {
+              ...r,
+              rappelEmailEnvoye: true,
+              dateRappelEmailEnvoye: nowIso,
+              statutRappelEmail: 'envoye'
+            }
+          : r
+      )
+    );
+
+    // Audit log
+    addAuditLog({
+      action: 'modification',
+      actionLabel: 'Rappel email 24h envoyé',
+      reservationId: res.id,
+      clientNom: res.clientNom,
+      clientTelephone: res.clientTelephone,
+      chambreNumero: res.chambreNumero,
+      chambreType: res.chambreType,
+      montantTotal: res.montantTotal,
+      userName: currentUserProfile?.nom || 'Automate Système',
+      userRole: currentUserProfile?.role || 'Système',
+      userEmail: currentUserProfile?.email,
+      details: `Envoi ${force ? 'manuel immédiat' : 'automatique 24h après saisie'} de l'email de confirmation à ${res.clientNom} (${res.clientEmail}). Sujet: "${subject}".`,
+      modifications: [
+        { champ: 'rappelEmailEnvoye', label: 'Rappel 24h Email', ancienneValeur: 'non', nouvelleValeur: 'envoyé' }
+      ]
+    });
+
+    // Toast de notification
+    setActiveSoundToast({
+      id: `toast-email-${Date.now()}`,
+      type: 'nouvelle',
+      title: '✉️ Confirmation par Email Envoyée (24h)',
+      details: `${res.clientNom} - Email transmis à ${res.clientEmail} (Chambre ${res.chambreNumero})`,
+      chambreNumero: res.chambreNumero,
+      clientNom: res.clientNom,
+      montant: res.montantTotal,
+      timestamp: "À l'instant"
+    });
+
+    return {
+      success: true,
+      message: `Email de confirmation (rappel 24h) transmis avec succès à ${res.clientEmail} !`,
+      emailLog: newLog
+    };
+  };
+
+  // Automate périodique de rappel 24h
+  useEffect(() => {
+    const checkEligibleReminders = () => {
+      const now = Date.now();
+      reservations.forEach((res) => {
+        if (
+          res.statutReservation === 'confirmee' &&
+          res.clientEmail &&
+          res.clientEmail.includes('@') &&
+          !res.rappelEmailEnvoye &&
+          res.dateCreation
+        ) {
+          const createdMs = new Date(res.dateCreation).getTime();
+          const target24hMs = createdMs + 24 * 60 * 60 * 1000;
+          if (now >= target24hMs) {
+            send24hEmailReminder(res.id, false);
+          }
+        }
+      });
+    };
+
+    checkEligibleReminders();
+    const interval = setInterval(checkEligibleReminders, 30000);
+    return () => clearInterval(interval);
+  }, [reservations]);
 
   // =========================================================================
   // 8. SERVICES PAYANTS (Catalogue & Tarifs)
@@ -4192,6 +4380,9 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         pendingReservationsCount,
         completedReservationsCount,
         cancelledReservationsCount,
+        // 7c. Rappels automatiques 24h par email
+        emailRemindersLogs,
+        send24hEmailReminder,
         // 7b. Journal d'Audit des modifications de réservations
         auditLogs,
         addAuditLog,

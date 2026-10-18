@@ -1948,7 +1948,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 5. GRAPHIQUE MENSUEL EN BARRES (MONTHLY REVENUE BAR CHART)               */}
       {/* ========================================================================= */}
-      {granularity !== 'forecast' && (granularity === 'consolidated' || granularity === 'monthly') && (
+      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && (granularity === 'consolidated' || granularity === 'monthly') && (
         <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div>
@@ -2124,7 +2124,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 6. INSPECTION DU JOUR SÉLECTIONNÉ & RÉPARTITION PAR CANAUX               */}
       {/* ========================================================================= */}
-      {granularity !== 'forecast' && activeDayDetails && (
+      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && activeDayDetails && (
         <div className="bg-[#1C1B18] text-white rounded-3xl border border-stone-800 p-6 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-800">
             <div className="flex items-center space-x-3">
@@ -2219,7 +2219,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 7. TABLEAU DÉTAILLÉ & JOURNAL DE BORD DU MOIS                           */}
       {/* ========================================================================= */}
-      {granularity !== 'forecast' && (
+      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && (
       <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
           <div>
