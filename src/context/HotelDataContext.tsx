@@ -105,6 +105,12 @@ import {
   playStockAlertChime,
   playNotificationSoundByType
 } from '../utils/soundNotification.ts';
+import {
+  safeGetItem,
+  safeSetItem,
+  safeRemoveItem,
+  logChromeDiagnostic
+} from '../utils/safeStorage.ts';
 
 export interface SoundNotificationConfig {
   enabled: boolean;
@@ -428,7 +434,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_room_types', JSON.stringify(roomTypes));
+    safeSetItem('hotelia_room_types', JSON.stringify(roomTypes));
   }, [roomTypes]);
 
   const addRoomType = (newType: Omit<TypeChambreConfig, 'id'>) => {
@@ -453,7 +459,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- B. État Chambres physiques ---
   const [chambres, setChambres] = useState<ChambreConfig[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_chambres');
+      const saved = safeGetItem('hotelia_chambres');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -473,7 +479,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_chambres', JSON.stringify(chambres));
+    safeSetItem('hotelia_chambres', JSON.stringify(chambres));
   }, [chambres]);
 
   const addChambre = (newChambre: Omit<ChambreConfig, 'id'>) => {
@@ -492,7 +498,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- C. Profils Utilisateurs & Gestion des Rôles (Super Admin) ---
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_user_profiles');
+      const saved = safeGetItem('hotelia_user_profiles');
       if (saved) {
         const parsed = JSON.parse(saved);
         // Ensure default caisse and restaurant users exist if missing in saved cache
@@ -515,7 +521,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [activeProfileKey, setActiveProfileKey] = useState<string>(() => {
     try {
-      const savedKey = localStorage.getItem('hotelia_active_user_key');
+      const savedKey = safeGetItem('hotelia_active_user_key');
       return savedKey || 'directeur';
     } catch {
       return 'directeur';
@@ -523,11 +529,11 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_user_profiles', JSON.stringify(userProfiles));
+    safeSetItem('hotelia_user_profiles', JSON.stringify(userProfiles));
   }, [userProfiles]);
 
   useEffect(() => {
-    localStorage.setItem('hotelia_active_user_key', activeProfileKey);
+    safeSetItem('hotelia_active_user_key', activeProfileKey);
   }, [activeProfileKey]);
 
   const currentUserProfile = userProfiles[activeProfileKey] || userProfiles.directeur;
@@ -667,14 +673,14 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- C2. Gestion Dynamique des Rôles & Permissions par Fonctionnalité (Ajouter, Modifier, Activer) ---
   const [rolesList, setRolesList] = useState<AppRoleDefinition[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_roles_permissions');
+      const saved = safeGetItem('hotelia_roles_permissions');
       if (saved) return JSON.parse(saved);
     } catch {}
     return INITIAL_ROLES_DEFINITIONS;
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_roles_permissions', JSON.stringify(rolesList));
+    safeSetItem('hotelia_roles_permissions', JSON.stringify(rolesList));
   }, [rolesList]);
 
   const updateRolePermissions = (roleName: UserRole, permissions: Record<AppFeatureId, FeaturePermissionConfig>) => {
@@ -759,7 +765,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- C3. Suivi Simplifié des Employés Connectés & Réinitialisation des Accès en 1 Clic ---
   const [activeSessions, setActiveSessions] = useState<ActiveUserSession[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_active_sessions');
+      const saved = safeGetItem('hotelia_active_sessions');
       return saved ? JSON.parse(saved) : INITIAL_ACTIVE_SESSIONS;
     } catch {
       return INITIAL_ACTIVE_SESSIONS;
@@ -767,7 +773,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_active_sessions', JSON.stringify(activeSessions));
+    safeSetItem('hotelia_active_sessions', JSON.stringify(activeSessions));
   }, [activeSessions]);
 
   const connectedEmployeesCount = useMemo(() => {
@@ -869,7 +875,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- D. Configuration Imprimante Thermique (80mm / 58mm) ---
   const [thermalPrinterConfig, setThermalPrinterConfig] = useState<ThermalPrinterConfig>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_thermal_printer_config');
+      const saved = safeGetItem('hotelia_thermal_printer_config');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.headerMessage && parsed.headerMessage.includes('HOTELIA')) {
@@ -887,7 +893,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_thermal_printer_config', JSON.stringify(thermalPrinterConfig));
+    safeSetItem('hotelia_thermal_printer_config', JSON.stringify(thermalPrinterConfig));
   }, [thermalPrinterConfig]);
 
   const updateThermalPrinterConfig = (config: Partial<ThermalPrinterConfig>) => {
@@ -900,7 +906,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- E. Notifications & Alertes Sonores Paramétrables ---
   const [soundConfig, setSoundConfig] = useState<SoundNotificationConfig>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_sound_config');
+      const saved = safeGetItem('hotelia_sound_config');
       if (saved) return { ...DEFAULT_SOUND_CONFIG, ...JSON.parse(saved) };
     } catch {}
     return DEFAULT_SOUND_CONFIG;
@@ -917,9 +923,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   useEffect(() => {
-    try {
-      localStorage.setItem('hotelia_sound_config', JSON.stringify(soundConfig));
-    } catch {}
+    safeSetItem('hotelia_sound_config', JSON.stringify(soundConfig));
   }, [soundConfig]);
 
   // Toast visuel synchronisé avec les alertes sonores
@@ -942,7 +946,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [notifications, setNotifications] = useState<ReservationNotification[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_notifications');
+      const saved = safeGetItem('hotelia_notifications');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -957,9 +961,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem('hotelia_notifications', JSON.stringify(notifications));
-    } catch {}
+    safeSetItem('hotelia_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
   // Restriction des notifications par rôle :
@@ -1169,7 +1171,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- E. Module Dépenses ---
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_expenses');
+      const saved = safeGetItem('hotelia_expenses');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length >= 35) {
@@ -1184,7 +1186,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_expenses', JSON.stringify(expenses));
+    safeSetItem('hotelia_expenses', JSON.stringify(expenses));
   }, [expenses]);
 
   const addExpense = (newExpense: Omit<ExpenseItem, 'id'>) => {
@@ -1199,7 +1201,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- F. Entrées Financières ---
   const [revenues, setRevenues] = useState<RevenueItem[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_revenues');
+      const saved = safeGetItem('hotelia_revenues');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1214,7 +1216,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_revenues', JSON.stringify(revenues));
+    safeSetItem('hotelia_revenues', JSON.stringify(revenues));
   }, [revenues]);
 
   const addRevenue = (newRevenue: Omit<RevenueItem, 'id'>) => {
@@ -1222,21 +1224,24 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setRevenues((prev) => [{ ...newRevenue, id }, ...prev]);
   };
 
-  // Helper pour s'assurer que chaque acompte a un historique de paiements partiels
+  // Helper pour s'assurer que chaque acompte a un historique de paiements partiels (résilient aux valeurs manquantes)
   const ensureReservationPartialPayments = (list: ReservationItem[]): ReservationItem[] => {
-    return list.map((res) => {
+    if (!Array.isArray(list)) return [];
+    return list.filter(Boolean).map((res) => {
+      const modePay = String(res.modePaiement || 'Espèces / Caisse');
+      const safeId = String(res.id || `res-${Date.now()}`);
       if (!res.paiementsPartiels || res.paiementsPartiels.length === 0) {
         if (res.acompteVerse && res.acompteVerse > 0) {
           return {
             ...res,
             paiementsPartiels: [
               {
-                id: `pay-init-${res.id}`,
-                date: res.dateDebut,
+                id: `pay-init-${safeId}`,
+                date: res.dateDebut || new Date().toISOString().split('T')[0],
                 heure: '10:30',
                 montant: res.acompteVerse,
-                modePaiement: res.modePaiement,
-                reference: `TXN-${res.modePaiement.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}-${res.id.replace('res-', '')}`,
+                modePaiement: (res.modePaiement || 'Espèces / Caisse') as PaymentMethod,
+                reference: `TXN-${modePay.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}-${safeId.replace('res-', '')}`,
                 recuPar: 'Réception Hôtel',
                 motif: 'Acompte initial de réservation',
                 note: 'Règlement d’acompte validé'
@@ -1252,7 +1257,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- G. Réservations de Chambres & Traçabilité d'Audit ---
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_audit_logs');
+      const saved = safeGetItem('hotelia_audit_logs');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1268,7 +1273,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     try {
-      localStorage.setItem('hotelia_audit_logs', JSON.stringify(auditLogs));
+      safeSetItem('hotelia_audit_logs', JSON.stringify(auditLogs));
     } catch (e) {
       console.error('Erreur sauvegarde audit logs', e);
     }
@@ -1289,7 +1294,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const clearAuditLogs = () => {
     setAuditLogs([]);
     try {
-      localStorage.removeItem('hotelia_audit_logs');
+      safeRemoveItem('hotelia_audit_logs');
     } catch (e) {
       console.error('Erreur purge journal audit', e);
     }
@@ -1297,29 +1302,35 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [reservations, setReservations] = useState<ReservationItem[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_reservations');
+      const saved = safeGetItem('hotelia_reservations');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const needsMigration = parsed.some((r: any) => typeof r.montantTotal === 'number' && r.montantTotal < 1000);
-          const hasFutureReservations = parsed.some((r: any) => r.dateDebut && r.dateDebut >= '2026-10-01');
+          const validList = parsed.filter((r) => r && typeof r === 'object');
+          const needsMigration = validList.some((r: any) => typeof r.montantTotal === 'number' && r.montantTotal < 1000);
+          const hasFutureReservations = validList.some((r: any) => r.dateDebut && r.dateDebut >= '2026-10-01');
           if (!needsMigration && hasFutureReservations) {
-            return ensureReservationPartialPayments(parsed);
+            return ensureReservationPartialPayments(validList);
           }
           if (!needsMigration && !hasFutureReservations) {
             const futureConfirmed = INITIAL_RESERVATIONS.filter((r) => r.dateDebut && r.dateDebut >= '2026-10-01');
-            return ensureReservationPartialPayments([...parsed, ...futureConfirmed]);
+            return ensureReservationPartialPayments([...validList, ...futureConfirmed]);
           }
         }
       }
       return ensureReservationPartialPayments(INITIAL_RESERVATIONS);
-    } catch {
+    } catch (err) {
+      logChromeDiagnostic('HotelDataContext', 'Fallback sur INITIAL_RESERVATIONS suite à erreur lecture storage', { error: err });
       return ensureReservationPartialPayments(INITIAL_RESERVATIONS);
     }
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_reservations', JSON.stringify(reservations));
+    try {
+      safeSetItem('hotelia_reservations', JSON.stringify(reservations));
+    } catch (err) {
+      logChromeDiagnostic('HotelDataContext', 'Échec sauvegarde reservations', { error: err });
+    }
   }, [reservations]);
 
   const addReservation = (newRes: Omit<ReservationItem, 'id' | 'dateCreation'>): ReservationItem => {
@@ -1774,16 +1785,16 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     );
   };
 
-  const pendingReservationsCount = reservations.filter(
-    (r) => r.statutReservation === 'en_attente'
+  const pendingReservationsCount = (Array.isArray(reservations) ? reservations : []).filter(
+    (r) => r && r.statutReservation === 'en_attente'
   ).length;
 
-  const completedReservationsCount = reservations.filter(
-    (r) => r.statutReservation === 'terminee'
+  const completedReservationsCount = (Array.isArray(reservations) ? reservations : []).filter(
+    (r) => r && r.statutReservation === 'terminee'
   ).length;
 
-  const cancelledReservationsCount = reservations.filter(
-    (r) => r.statutReservation === 'annulee'
+  const cancelledReservationsCount = (Array.isArray(reservations) ? reservations : []).filter(
+    (r) => r && r.statutReservation === 'annulee'
   ).length;
 
   // =========================================================================
@@ -1943,7 +1954,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // =========================================================================
   const [paidServices, setPaidServices] = useState<PaidService[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_paid_services');
+      const saved = safeGetItem('hotelia_paid_services');
       if (!saved) return INITIAL_PAID_SERVICES;
       const parsed: PaidService[] = JSON.parse(saved);
       // Ensure all services have high-res image and merge any missing initial services
@@ -1964,7 +1975,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_paid_services', JSON.stringify(paidServices));
+    safeSetItem('hotelia_paid_services', JSON.stringify(paidServices));
   }, [paidServices]);
 
   const addPaidService = (newService: Omit<PaidService, 'id'>): PaidService => {
@@ -1995,7 +2006,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // =========================================================================
   const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_service_orders');
+      const saved = safeGetItem('hotelia_service_orders');
       return saved ? JSON.parse(saved) : INITIAL_SERVICE_ORDERS;
     } catch {
       return INITIAL_SERVICE_ORDERS;
@@ -2003,7 +2014,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_service_orders', JSON.stringify(serviceOrders));
+    safeSetItem('hotelia_service_orders', JSON.stringify(serviceOrders));
   }, [serviceOrders]);
 
   const addServiceOrder = (newOrder: Omit<ServiceOrder, 'id' | 'numeroCommande'>): ServiceOrder => {
@@ -2064,7 +2075,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // =========================================================================
   const [posProducts, setPosProducts] = useState<PosProduct[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_pos_products');
+      const saved = safeGetItem('hotelia_pos_products');
       if (!saved) return INITIAL_POS_PRODUCTS;
       const parsed: PosProduct[] = JSON.parse(saved);
       const enriched: PosProduct[] = parsed.map((p) => ({
@@ -2084,7 +2095,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_pos_products', JSON.stringify(posProducts));
+    safeSetItem('hotelia_pos_products', JSON.stringify(posProducts));
   }, [posProducts]);
 
   const addPosProduct = (newProduct: Omit<PosProduct, 'id'>): PosProduct => {
@@ -2104,7 +2115,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [posSales, setPosSales] = useState<PosSale[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_pos_sales');
+      const saved = safeGetItem('hotelia_pos_sales');
       return saved ? JSON.parse(saved) : INITIAL_POS_SALES;
     } catch {
       return INITIAL_POS_SALES;
@@ -2112,7 +2123,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_pos_sales', JSON.stringify(posSales));
+    safeSetItem('hotelia_pos_sales', JSON.stringify(posSales));
   }, [posSales]);
 
   // =========================================================================
@@ -2120,7 +2131,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // =========================================================================
   const [entrepots, setEntrepots] = useState<Entrepot[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_entrepots');
+      const saved = safeGetItem('hotelia_entrepots');
       return saved ? JSON.parse(saved) : INITIAL_ENTREPOTS;
     } catch {
       return INITIAL_ENTREPOTS;
@@ -2128,7 +2139,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_entrepots', JSON.stringify(entrepots));
+    safeSetItem('hotelia_entrepots', JSON.stringify(entrepots));
   }, [entrepots]);
 
   const addEntrepot = (newEntrepot: Omit<Entrepot, 'id'>): Entrepot => {
@@ -2148,7 +2159,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_fournisseurs');
+      const saved = safeGetItem('hotelia_fournisseurs');
       return saved ? JSON.parse(saved) : INITIAL_FOURNISSEURS;
     } catch {
       return INITIAL_FOURNISSEURS;
@@ -2156,7 +2167,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_fournisseurs', JSON.stringify(fournisseurs));
+    safeSetItem('hotelia_fournisseurs', JSON.stringify(fournisseurs));
   }, [fournisseurs]);
 
   const addFournisseur = (newFournisseur: Omit<Fournisseur, 'id'>): Fournisseur => {
@@ -2176,7 +2187,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [stockItems, setStockItems] = useState<StockItem[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_stock_items');
+      const saved = safeGetItem('hotelia_stock_items');
       return saved ? JSON.parse(saved) : INITIAL_STOCK_ITEMS;
     } catch {
       return INITIAL_STOCK_ITEMS;
@@ -2184,7 +2195,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_stock_items', JSON.stringify(stockItems));
+    safeSetItem('hotelia_stock_items', JSON.stringify(stockItems));
   }, [stockItems]);
 
   const addStockItem = (newItem: Omit<StockItem, 'id'>): StockItem => {
@@ -2204,7 +2215,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [mouvementsStock, setMouvementsStock] = useState<MouvementStock[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_stock_mouvements');
+      const saved = safeGetItem('hotelia_stock_mouvements');
       return saved ? JSON.parse(saved) : INITIAL_MOUVEMENTS_STOCK;
     } catch {
       return INITIAL_MOUVEMENTS_STOCK;
@@ -2212,7 +2223,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_stock_mouvements', JSON.stringify(mouvementsStock));
+    safeSetItem('hotelia_stock_mouvements', JSON.stringify(mouvementsStock));
   }, [mouvementsStock]);
 
   const addMouvementStock = (mvt: Omit<MouvementStock, 'id'>) => {
@@ -2259,7 +2270,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [bonsAchat, setBonsAchat] = useState<BonAchat[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_bons_achat');
+      const saved = safeGetItem('hotelia_bons_achat');
       return saved ? JSON.parse(saved) : INITIAL_BONS_ACHAT;
     } catch {
       return INITIAL_BONS_ACHAT;
@@ -2267,7 +2278,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_bons_achat', JSON.stringify(bonsAchat));
+    safeSetItem('hotelia_bons_achat', JSON.stringify(bonsAchat));
   }, [bonsAchat]);
 
   const addBonAchat = (newBon: Omit<BonAchat, 'id' | 'numero'>): BonAchat => {
@@ -2357,7 +2368,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // =========================================================================
   const [restaurantStockAlerts, setRestaurantStockAlerts] = useState<RestaurantStockAlert[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_restaurant_stock_alerts');
+      const saved = safeGetItem('hotelia_restaurant_stock_alerts');
       return saved ? JSON.parse(saved) : INITIAL_RESTAURANT_STOCK_ALERTS;
     } catch {
       return INITIAL_RESTAURANT_STOCK_ALERTS;
@@ -2365,7 +2376,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_restaurant_stock_alerts', JSON.stringify(restaurantStockAlerts));
+    safeSetItem('hotelia_restaurant_stock_alerts', JSON.stringify(restaurantStockAlerts));
   }, [restaurantStockAlerts]);
 
   // Surveillance automatique des stocks du restaurant en temps réel
@@ -2738,7 +2749,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // =========================================================================
   const [consumableStockAlerts, setConsumableStockAlerts] = useState<ConsumableStockAlert[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_consumable_stock_alerts');
+      const saved = safeGetItem('hotelia_consumable_stock_alerts');
       return saved ? JSON.parse(saved) : INITIAL_CONSUMABLE_STOCK_ALERTS;
     } catch {
       return INITIAL_CONSUMABLE_STOCK_ALERTS;
@@ -2746,7 +2757,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_consumable_stock_alerts', JSON.stringify(consumableStockAlerts));
+    safeSetItem('hotelia_consumable_stock_alerts', JSON.stringify(consumableStockAlerts));
   }, [consumableStockAlerts]);
 
   // Surveillance automatique des stocks consommables hôtel en temps réel
@@ -3420,9 +3431,10 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   // --- 13. Module Restaurant & POS Restaurant ---
+  // --- 13. Module Restaurant & POS Restaurant ---
   const [restaurantTables, setRestaurantTables] = useState<RestaurantTable[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_restaurant_tables');
+      const saved = safeGetItem('hotelia_restaurant_tables');
       return saved ? JSON.parse(saved) : INITIAL_RESTAURANT_TABLES;
     } catch {
       return INITIAL_RESTAURANT_TABLES;
@@ -3431,7 +3443,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [restaurantMenuItems, setRestaurantMenuItems] = useState<RestaurantMenuItem[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_restaurant_menu');
+      const saved = safeGetItem('hotelia_restaurant_menu');
       if (saved) {
         const parsed: RestaurantMenuItem[] = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -3460,7 +3472,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [restaurantReservations, setRestaurantReservations] = useState<RestaurantReservation[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_restaurant_reservations');
+      const saved = safeGetItem('hotelia_restaurant_reservations');
       return saved ? JSON.parse(saved) : INITIAL_RESTAURANT_RESERVATIONS;
     } catch {
       return INITIAL_RESTAURANT_RESERVATIONS;
@@ -3469,7 +3481,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const [restaurantOrders, setRestaurantOrders] = useState<RestaurantOrder[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_restaurant_orders');
+      const saved = safeGetItem('hotelia_restaurant_orders');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -3487,19 +3499,19 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_restaurant_tables', JSON.stringify(restaurantTables));
+    safeSetItem('hotelia_restaurant_tables', JSON.stringify(restaurantTables));
   }, [restaurantTables]);
 
   useEffect(() => {
-    localStorage.setItem('hotelia_restaurant_menu', JSON.stringify(restaurantMenuItems));
+    safeSetItem('hotelia_restaurant_menu', JSON.stringify(restaurantMenuItems));
   }, [restaurantMenuItems]);
 
   useEffect(() => {
-    localStorage.setItem('hotelia_restaurant_reservations', JSON.stringify(restaurantReservations));
+    safeSetItem('hotelia_restaurant_reservations', JSON.stringify(restaurantReservations));
   }, [restaurantReservations]);
 
   useEffect(() => {
-    localStorage.setItem('hotelia_restaurant_orders', JSON.stringify(restaurantOrders));
+    safeSetItem('hotelia_restaurant_orders', JSON.stringify(restaurantOrders));
   }, [restaurantOrders]);
 
   const addRestaurantTable = (newTable: Omit<RestaurantTable, 'id'>) => {
@@ -3787,7 +3799,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // --- 14. Espace Client, Programme Fidélité, Coupons Promos, Push & SMS ---
   const [clientAccounts, setClientAccounts] = useState<ClientAccount[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_client_accounts');
+      const saved = safeGetItem('hotelia_client_accounts');
       return saved ? JSON.parse(saved) : INITIAL_CLIENT_ACCOUNTS;
     } catch {
       return INITIAL_CLIENT_ACCOUNTS;
@@ -3795,12 +3807,12 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_client_accounts', JSON.stringify(clientAccounts));
+    safeSetItem('hotelia_client_accounts', JSON.stringify(clientAccounts));
   }, [clientAccounts]);
 
   const [activeClientAccount, setActiveClientAccount] = useState<ClientAccount | null>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_active_client_id');
+      const saved = safeGetItem('hotelia_active_client_id');
       if (saved) {
         const found = clientAccounts.find((c) => c.id === saved);
         return found || clientAccounts[0] || null;
@@ -3813,15 +3825,15 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     if (activeClientAccount) {
-      localStorage.setItem('hotelia_active_client_id', activeClientAccount.id);
+      safeSetItem('hotelia_active_client_id', activeClientAccount.id);
     } else {
-      localStorage.removeItem('hotelia_active_client_id');
+      safeRemoveItem('hotelia_active_client_id');
     }
   }, [activeClientAccount]);
 
   const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyProgramConfig>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_loyalty_config');
+      const saved = safeGetItem('hotelia_loyalty_config');
       return saved ? JSON.parse(saved) : DEFAULT_LOYALTY_CONFIG;
     } catch {
       return DEFAULT_LOYALTY_CONFIG;
@@ -3829,12 +3841,12 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_loyalty_config', JSON.stringify(loyaltyConfig));
+    safeSetItem('hotelia_loyalty_config', JSON.stringify(loyaltyConfig));
   }, [loyaltyConfig]);
 
   const [promoCoupons, setPromoCoupons] = useState<PromoCoupon[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_promo_coupons');
+      const saved = safeGetItem('hotelia_promo_coupons');
       return saved ? JSON.parse(saved) : INITIAL_PROMO_COUPONS;
     } catch {
       return INITIAL_PROMO_COUPONS;
@@ -3842,12 +3854,12 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_promo_coupons', JSON.stringify(promoCoupons));
+    safeSetItem('hotelia_promo_coupons', JSON.stringify(promoCoupons));
   }, [promoCoupons]);
 
   const [campaigns, setCampaigns] = useState<NotificationCampaign[]>(() => {
     try {
-      const saved = localStorage.getItem('hotelia_campaigns');
+      const saved = safeGetItem('hotelia_campaigns');
       return saved ? JSON.parse(saved) : INITIAL_CAMPAIGNS;
     } catch {
       return INITIAL_CAMPAIGNS;
@@ -3855,7 +3867,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   useEffect(() => {
-    localStorage.setItem('hotelia_campaigns', JSON.stringify(campaigns));
+    safeSetItem('hotelia_campaigns', JSON.stringify(campaigns));
   }, [campaigns]);
 
   // Helper pour calculer le tier de fidélité selon les points

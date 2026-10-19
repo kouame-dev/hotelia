@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Trash2, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
+import { logChromeDiagnostic, getStorageDiagnosticInfo } from '../../utils/safeStorage.ts';
 
 interface Props {
   children: ReactNode;
@@ -37,6 +38,17 @@ export class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[Hotelia PMS ErrorBoundary] Erreur capturée :', error, errorInfo);
     this.setState({ errorInfo });
+    try {
+      const storageDiag = getStorageDiagnosticInfo();
+      logChromeDiagnostic('ErrorBoundary Catch', `Erreur capturée par le filet de sécurité: "${this.props.fallbackTitle || 'Sans titre'}"`, {
+        error: error?.message || String(error),
+        stack: error?.stack,
+        componentStack: errorInfo?.componentStack,
+        fallbackTitle: this.props.fallbackTitle,
+        storageQuota: storageDiag.storageQuota,
+        isStorageAccessible: storageDiag.isAccessible
+      });
+    } catch {}
   }
 
   private handleReload = () => {

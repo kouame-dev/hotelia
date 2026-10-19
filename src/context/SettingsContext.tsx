@@ -594,18 +594,23 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return Math.round(amountFCFA);
   };
 
-  const formatPrice = (amountFCFA: number): string => {
-    const converted = convertPrice(amountFCFA);
-    const cur = CURRENCIES[settings.currency];
-    const formattedNumber = new Intl.NumberFormat('fr-FR', {
-      maximumFractionDigits: settings.currency === 'XOF' ? 0 : 2,
-      minimumFractionDigits: settings.currency === 'XOF' ? 0 : 2
-    }).format(converted);
+  const formatPrice = (amountFCFA: number = 0): string => {
+    try {
+      const safeAmount = typeof amountFCFA === 'number' && !isNaN(amountFCFA) ? amountFCFA : 0;
+      const converted = convertPrice(safeAmount);
+      const cur = (settings?.currency && CURRENCIES[settings.currency]) ? CURRENCIES[settings.currency] : CURRENCIES.XOF;
+      const formattedNumber = new Intl.NumberFormat('fr-FR', {
+        maximumFractionDigits: settings?.currency === 'XOF' ? 0 : 2,
+        minimumFractionDigits: settings?.currency === 'XOF' ? 0 : 2
+      }).format(converted);
 
-    if (cur.position === 'before') {
-      return `${cur.symbol} ${formattedNumber}`;
+      if (cur.position === 'before') {
+        return `${cur.symbol} ${formattedNumber}`;
+      }
+      return `${formattedNumber} ${cur.symbol}`;
+    } catch {
+      return `${Math.round(amountFCFA || 0)} FCFA`;
     }
-    return `${formattedNumber} ${cur.symbol}`;
   };
 
   const heroSlides = settings.heroSlides || DEFAULT_HERO_SLIDES;

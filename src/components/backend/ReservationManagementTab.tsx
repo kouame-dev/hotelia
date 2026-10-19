@@ -124,7 +124,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
   const [formClientTel, setFormClientTel] = useState('+225 ');
   const [formClientEmail, setFormClientEmail] = useState('');
   const [formChambreNumero, setFormChambreNumero] = useState(
-    chambres.length > 0 ? chambres[0].numero : '101'
+    Array.isArray(chambres) && chambres.length > 0 && chambres[0]?.numero ? chambres[0].numero : '101'
   );
   const [formDateDebut, setFormDateDebut] = useState(
     new Date().toISOString().split('T')[0]
@@ -182,17 +182,24 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
   // Chambre sélectionnée dans le formulaire
   const selectedChambreObj = useMemo(() => {
-    return chambres.find((c) => c.numero === formChambreNumero) || chambres[0];
+    if (!Array.isArray(chambres) || chambres.length === 0) {
+      return { numero: '101', type: 'Standard', prixNuit: 10000, prixHeure: 2500 } as any;
+    }
+    return chambres.find((c) => c && c.numero === formChambreNumero) || chambres[0];
   }, [chambres, formChambreNumero]);
 
   // Calcul automatique du nombre de nuits
   const calculatedNights = useMemo(() => {
     if (formMode !== 'nuit') return 1;
-    const start = new Date(formDateDebut);
-    const end = new Date(formDateFin);
-    const diffTime = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 1;
+    try {
+      const start = new Date(formDateDebut);
+      const end = new Date(formDateFin);
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return !isNaN(diffDays) && diffDays > 0 ? diffDays : 1;
+    } catch {
+      return 1;
+    }
   }, [formMode, formDateDebut, formDateFin]);
 
   // Calcul automatique du montant total estimé
@@ -202,24 +209,29 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
       return (selectedChambreObj.prixNuit || 10000) * calculatedNights;
     } else {
       const baseHourPrice = selectedChambreObj.prixHeure || 2500;
-      const totalHours = formDureeHeures + (formDureeMinutes || 0) / 60;
-      return Math.round(baseHourPrice * totalHours);
+      const totalHours = (Number(formDureeHeures) || 0) + (Number(formDureeMinutes) || 0) / 60;
+      return Math.round(baseHourPrice * (totalHours > 0 ? totalHours : 1));
     }
   }, [selectedChambreObj, formMode, calculatedNights, formDureeHeures, formDureeMinutes]);
 
   // Calcul automatique de l'heure de fin pour les créneaux courts
   const updateHourlyEndTime = (startHStr: string, durH: number, durM: number) => {
-    const [h, m] = startHStr.split(':').map(Number);
-    const totalMinutes = (h || 0) * 60 + (m || 0) + durH * 60 + durM;
-    const endHour = Math.floor(totalMinutes / 60) % 24;
-    const endMin = totalMinutes % 60;
-    setFormHeureFin(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+    try {
+      const [h, m] = String(startHStr || '10:00').split(':').map(Number);
+      const totalMinutes = (Number(h) || 0) * 60 + (Number(m) || 0) + (Number(durH) || 0) * 60 + (Number(durM) || 0);
+      const endHour = Math.floor(totalMinutes / 60) % 24;
+      const endMin = totalMinutes % 60;
+      setFormHeureFin(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+    } catch {
+      setFormHeureFin('17:00');
+    }
   };
 
   // Vérification de conflit potentiel pour le formulaire
   const hasConflict = useMemo(() => {
+    if (!Array.isArray(reservations)) return false;
     return reservations.some((r) => {
-      if (r.chambreNumero !== formChambreNumero) return false;
+      if (!r || r.chambreNumero !== formChambreNumero) return false;
       if (r.statutReservation === 'annulee' || r.statutReservation === 'terminee') return false;
 
       if (formMode === 'nuit') {
@@ -346,8 +358,17 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
   // Calcul dynamique des minutes restantes pour les nuitées et jours restants pour les séjours
   const getRemainingTimeInfo = (res: ReservationItem) => {
+    if (!res) {
+      return {
+        type: 'nuitee',
+        isOngoing: false,
+        label: 'Données indisponibles',
+        sublabel: '',
+        badgeColor: 'bg-stone-100 text-stone-600 border-stone-200'
+      };
+    }
     const isNuit = res.typeReservation === 'nuit';
-    const nbNuits = res.nbNuits || 1;
+    const nbNuits = Number(res.nbNuits) || 1;
     const isMultiDay = isNuit && nbNuits > 1;
 
     if (res.statutReservation === 'terminee') {
@@ -374,15 +395,29 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     const startHour = res.heureDebut || (isNuit ? '14:00' : '10:00');
     const endHour = res.heureFin || (isNuit ? '11:00' : '17:00');
 
-    const [startH, startM] = startHour.split(':').map(Number);
-    const [endH, endM] = endHour.split(':').map(Number);
+    const [startH, startM] = String(startHour || '10:00').split(':').map(Number);
+    const [endH, endM] = String(endHour || '17:00').split(':').map(Number);
 
-    const startDt = new Date(`${res.dateDebut}T${String(startH || 0).padStart(2, '0')}:${String(startM || 0).padStart(2, '0')}:00`);
-    const endDt = new Date(`${res.dateFin}T${String(endH || 0).padStart(2, '0')}:${String(endM || 0).padStart(2, '0')}:00`);
+    const safeDateDebut = res.dateDebut || new Date().toISOString().split('T')[0];
+    const safeDateFin = res.dateFin || safeDateDebut;
+
+    const startDt = new Date(`${safeDateDebut}T${String(startH || 0).padStart(2, '0')}:${String(startM || 0).padStart(2, '0')}:00`);
+    const endDt = new Date(`${safeDateFin}T${String(endH || 0).padStart(2, '0')}:${String(endM || 0).padStart(2, '0')}:00`);
 
     const nowMs = currentTime.getTime();
     const diffStartMs = startDt.getTime() - nowMs;
     const diffEndMs = endDt.getTime() - nowMs;
+
+    if (isNaN(diffStartMs) || isNaN(diffEndMs)) {
+      return {
+        type: isMultiDay ? 'sejour' : (isNuit ? 'nuitee' : 'heure'),
+        isOngoing: false,
+        label: `Date: ${safeDateDebut}`,
+        sublabel: `${startHour} → ${endHour}`,
+        badgeColor: 'bg-stone-100 text-stone-700 border-stone-200'
+      };
+    }
+
     const remainingMins = Math.floor(diffEndMs / (1000 * 60));
 
     // Pas encore commencé
@@ -405,7 +440,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
         isOngoing: false,
         isUpcoming: true,
         label: arrivalText,
-        sublabel: `Prévu le ${res.dateDebut} à ${startHour}`,
+        sublabel: `Prévu le ${safeDateDebut} à ${startHour}`,
         badgeColor: 'bg-blue-50 text-blue-800 border-blue-200 font-medium'
       };
     }
@@ -436,7 +471,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
           type: 'sejour',
           isOngoing: true,
           label: `📅 ${daysLeft} jour${daysLeft > 1 ? 's' : ''} restant${daysLeft > 1 ? 's' : ''}`,
-          sublabel: `Fin de séjour le ${res.dateFin} à ${endHour}`,
+          sublabel: `Fin de séjour le ${safeDateFin} à ${endHour}`,
           badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
         };
       } else {
@@ -470,7 +505,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
         type: isNuit ? 'nuitee' : 'heure',
         isOngoing: true,
         label: `⏱️ ${hours}h ${mins}m restantes (${remainingMins} min)`,
-        sublabel: `Départ prévu le ${res.dateFin} à ${endHour}`,
+        sublabel: `Départ prévu le ${safeDateFin} à ${endHour}`,
         badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-semibold'
       };
     }
@@ -478,7 +513,9 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
   // Filtrage des réservations selon le sous-menu actif et la recherche
   const filteredReservations = useMemo(() => {
+    if (!Array.isArray(reservations)) return [];
     return reservations.filter((res) => {
+      if (!res) return false;
       // 1. Filtre du sous-menu actif
       if (activeSubTab === 'en_attente' && res.statutReservation !== 'en_attente') return false;
       if (activeSubTab === 'terminees' && res.statutReservation !== 'terminee') return false;
@@ -492,12 +529,12 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
       // 2. Filtre de recherche texte
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchName = res.clientNom.toLowerCase().includes(query);
-        const matchRoom = res.chambreNumero.toLowerCase().includes(query);
-        const matchPhone = res.clientTelephone.toLowerCase().includes(query);
-        const matchEmail = res.clientEmail?.toLowerCase().includes(query) || false;
-        const matchType = res.chambreType.toLowerCase().includes(query);
+        const query = searchQuery.toLowerCase().trim();
+        const matchName = String(res.clientNom || '').toLowerCase().includes(query);
+        const matchRoom = String(res.chambreNumero || '').toLowerCase().includes(query);
+        const matchPhone = String(res.clientTelephone || '').toLowerCase().includes(query);
+        const matchEmail = String(res.clientEmail || '').toLowerCase().includes(query);
+        const matchType = String(res.chambreType || '').toLowerCase().includes(query);
         if (!matchName && !matchRoom && !matchPhone && !matchEmail && !matchType) return false;
       }
 
@@ -623,7 +660,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
               </div>
             </div>
             <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono block">
-              {reservations.filter((r) => r.statutReservation === 'confirmee' || r.statutReservation === 'en_cours').length}
+              {(Array.isArray(reservations) ? reservations : []).filter((r) => r && (r.statutReservation === 'confirmee' || r.statutReservation === 'en_cours')).length}
             </span>
             <span className="text-[11px] font-medium text-blue-200/80 block mt-1">Clients accueillis</span>
           </div>
@@ -756,7 +793,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
           }`}
         >
           <FileText className="w-4 h-4 text-slate-400" />
-          <span>Toutes ({reservations.length})</span>
+          <span>Toutes ({Array.isArray(reservations) ? reservations.length : 0})</span>
         </button>
 
         {/* Sous-menu 7 : Journal d'Audit -> AMBRE / OR */}
@@ -1105,7 +1142,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                 3. Attribution de la chambre physique *
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {chambres.map((c) => {
+                {(Array.isArray(chambres) ? chambres : []).map((c) => {
                   const isSelected = formChambreNumero === c.numero;
                   return (
                     <button
@@ -1477,10 +1514,9 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
             </div>
           </div>
 
-          {/* Widget Décompte en direct des Chambres Actuellement Occupées */}
           {(() => {
-            const activeStays = reservations.filter(
-              (r) => r.statutReservation === 'confirmee' || r.statutReservation === 'en_cours'
+            const activeStays = (Array.isArray(reservations) ? reservations : []).filter(
+              (r) => r && (r.statutReservation === 'confirmee' || r.statutReservation === 'en_cours')
             );
             if (activeStays.length === 0) return null;
             return (

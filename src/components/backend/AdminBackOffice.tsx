@@ -20,6 +20,7 @@ import { LoyaltyAndMarketingTab } from './LoyaltyAndMarketingTab.tsx';
 import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 import { DevToolsModal } from './DevToolsModal.tsx';
 import { ConnectedEmployeesModal } from './ConnectedEmployeesModal.tsx';
+import { ChromeDiagnosticModal } from './ChromeDiagnosticModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
 import { SoundNotificationModal } from './SoundNotificationModal.tsx';
@@ -27,6 +28,13 @@ import { ErrorBoundary } from '../common/ErrorBoundary.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { AppFeatureId } from '../../types.ts';
+import {
+  getStorageDiagnosticInfo,
+  logChromeDiagnostic,
+  getBrowserInfo,
+  isLocalStorageAvailable,
+  StorageDiagnosticResult
+} from '../../utils/safeStorage.ts';
 import {
   LayoutDashboard,
   BarChart3,
@@ -78,7 +86,8 @@ import {
   Zap,
   RotateCcw,
   Image as ImageIcon,
-  Sliders
+  Sliders,
+  Cpu
 } from 'lucide-react';
 
 export type BackOfficeTab =
@@ -167,8 +176,157 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     initialRestaurantSubTab || 'pos'
   );
 
+  // Détection d'environnement navigateur Chromium / Chrome / Android
+  const browserInfo = useMemo(() => getBrowserInfo(), []);
+  const [isDiagnosticModalOpen, setIsDiagnosticModalOpen] = useState(false);
+  const [diagnosticReport, setDiagnosticReport] = useState<StorageDiagnosticResult | null>(null);
+  const [isTestingStorage, setIsTestingStorage] = useState(false);
+  const [storageTestResult, setStorageTestResult] = useState<{ success: boolean; message: string; timestamp: string } | null>(null);
+
+  // 1. Logs de diagnostic de montage et détection de navigateur (Chromium / Chrome Android & PC)
+  useEffect(() => {
+    const bInfo = getBrowserInfo();
+    const diag = getStorageDiagnosticInfo();
+    setDiagnosticReport(diag);
+
+    logChromeDiagnostic('AdminBackOffice Mount', 'Composant AdminBackOffice initialisé et monté', {
+      browser: bInfo,
+      storage: {
+        accessible: diag.isAccessible,
+        hoteliaKeysCount: diag.storageQuota.hoteliaKeys,
+        sizeKb: diag.storageQuota.estimatedSizeKb,
+        keys: diag.storageQuota.keysDetail
+      },
+      props: {
+        userNom: user?.nom,
+        userRole: user?.role,
+        initialTab,
+        activeTab
+      },
+      viewport: typeof window !== 'undefined' ? {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        dpr: window.devicePixelRatio,
+        isAndroid: bInfo.isAndroid,
+        isChrome: bInfo.isChrome
+      } : null
+    });
+
+    const handleGlobalError = (event: ErrorEvent) => {
+      logChromeDiagnostic('AdminBackOffice WindowError', 'Erreur interceptée par le runtime navigateur', {
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: event.error?.stack || event.error,
+        activeTab,
+        isMobileChrome: bInfo.isAndroid && bInfo.isChrome
+      });
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      logChromeDiagnostic('AdminBackOffice PromiseRejection', 'Rejet de promesse non intercepté (Audio / Storage / Network)', {
+        reason: event.reason?.message || event.reason,
+        stack: event.reason?.stack,
+        activeTab
+      });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('error', handleGlobalError);
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('error', handleGlobalError);
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      }
+      logChromeDiagnostic('AdminBackOffice Unmount', 'Composant AdminBackOffice démonté');
+    };
+  }, []);
+
+  // Identification du pôle actif parmi les 3 pôles principaux
+  const currentPole = useMemo<'hebergement' | 'restauration' | 'administration'>(() => {
+    if (['gantt', 'reservations', 'chambres', 'services', 'audit'].includes(activeTab)) {
+      return 'hebergement';
+    }
+    if (['restaurant', 'cuisine', 'pos', 'stock', 'stock_alerts'].includes(activeTab)) {
+      return 'restauration';
+    }
+    return 'administration';
+  }, [activeTab]);
+
+  // 2. Traçabilité des transitions d'onglets et intégrité de la page de réservations
+  useEffect(() => {
+    const bInfo = getBrowserInfo();
+    logChromeDiagnostic('AdminBackOffice Lifecycle', `Navigation vers l'onglet "${activeTab}"`, {
+      activeTab,
+      currentPole,
+      isChrome: bInfo.isChrome,
+      isAndroid: bInfo.isAndroid,
+      heapUsedMb: (typeof performance !== 'undefined' && (performance as any).memory)
+        ? Math.round((performance as any).memory.usedJSHeapSize / (1024 * 1024))
+        : 'N/A'
+    });
+
+    if (activeTab === 'reservations') {
+      const totalRes = Array.isArray(reservations) ? reservations.length : 0;
+      const invalidRecords = (Array.isArray(reservations) ? reservations : []).filter(
+        (r) => !r || !r.id || !r.clientNom || !r.dateDebut
+      );
+      logChromeDiagnostic('AdminBackOffice Reservations', 'Validation intégrité onglet Réservations (Chambres)', {
+        totalReservations: totalRes,
+        invalidCount: invalidRecords.length,
+        hasInvalid: invalidRecords.length > 0,
+        pendingCount: pendingReservationsCount,
+        completedCount: completedReservationsCount,
+        cancelledCount: cancelledReservationsCount,
+        storageStatus: isLocalStorageAvailable() ? 'Accessible' : 'Bloqué / Partitionné'
+      });
+    }
+  }, [activeTab, reservations, pendingReservationsCount, completedReservationsCount, cancelledReservationsCount, currentPole]);
+
+  // Fonction de test direct du stockage local pour le développeur
+  const handleTestStorageDirectly = () => {
+    setIsTestingStorage(true);
+    try {
+      const testKey = `hotelia_diag_probe_${Date.now()}`;
+      const payload = JSON.stringify({
+        probe: 'test_probe',
+        browser: getBrowserInfo(),
+        now: new Date().toISOString()
+      });
+      window.localStorage.setItem(testKey, payload);
+      const readBack = window.localStorage.getItem(testKey);
+      window.localStorage.removeItem(testKey);
+
+      if (readBack === payload) {
+        setStorageTestResult({
+          success: true,
+          message: 'Lecture & Écriture localStorage 100% opérationnelles sur ce navigateur Chromium/Chrome !',
+          timestamp: new Date().toLocaleTimeString('fr-FR')
+        });
+        logChromeDiagnostic('AdminBackOffice StorageTest', 'Test probe localStorage réussi avec succès');
+      } else {
+        throw new Error('Donnée lue non identique à la donnée écrite');
+      }
+    } catch (err: any) {
+      setStorageTestResult({
+        success: false,
+        message: `Erreur d'accès stockage local : ${err?.message || String(err)}`,
+        timestamp: new Date().toLocaleTimeString('fr-FR')
+      });
+      logChromeDiagnostic('AdminBackOffice StorageTest', 'Échec du test probe localStorage', { error: err });
+    } finally {
+      setIsTestingStorage(false);
+      setDiagnosticReport(getStorageDiagnosticInfo());
+    }
+  };
+
   useEffect(() => {
     if (initialTab) {
+      logChromeDiagnostic('AdminBackOffice PropsSync', `Application initialTab prop: "${initialTab}"`);
       setActiveTab(initialTab);
     }
   }, [initialTab, initialTabTimestamp]);
@@ -192,17 +350,6 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const [isAdministrationModalOpen, setIsAdministrationModalOpen] = useState(false);
   const [isDevToolsModalOpen, setIsDevToolsModalOpen] = useState(false);
   const [isConnectedEmployeesModalOpen, setIsConnectedEmployeesModalOpen] = useState(false);
-
-  // Identification du pôle actif parmi les 3 pôles principaux
-  const currentPole = useMemo<'hebergement' | 'restauration' | 'administration'>(() => {
-    if (['gantt', 'reservations', 'chambres', 'services', 'audit'].includes(activeTab)) {
-      return 'hebergement';
-    }
-    if (['restaurant', 'cuisine', 'pos', 'stock', 'stock_alerts'].includes(activeTab)) {
-      return 'restauration';
-    }
-    return 'administration';
-  }, [activeTab]);
 
   // Libellé et métadonnées de la vue courante
   const currentViewInfo = useMemo(() => {
@@ -260,8 +407,16 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
   // Synchroniser le profil de contexte avec l'utilisateur authentifié (user)
   useEffect(() => {
+    logChromeDiagnostic('AdminBackOffice RoleSync', `Synchronisation du rôle utilisateur: "${user?.role}"`, {
+      targetRole: user?.role,
+      currentRole: currentUserProfile?.role
+    });
     if (user?.role && switchUserRole) {
-      switchUserRole(user.role);
+      try {
+        switchUserRole(user.role);
+      } catch (err) {
+        logChromeDiagnostic('AdminBackOffice RoleSync', 'Échec switchUserRole', { error: err });
+      }
     }
   }, [user?.role, switchUserRole]);
 
@@ -317,6 +472,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       return;
     }
     if (isCaisseRestaurant && activeTab !== 'restaurant' && activeTab !== 'cuisine' && activeTab !== 'pos') {
+      logChromeDiagnostic('AdminBackOffice RoleGuard', `Redirection automatique Caisse Restaurant vers restaurant depuis "${activeTab}"`);
       setActiveTab('restaurant');
     } else if (
       isDirecteurRestaurant &&
@@ -326,13 +482,22 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       activeTab !== 'stock' &&
       activeTab !== 'services'
     ) {
+      logChromeDiagnostic('AdminBackOffice RoleGuard', `Redirection automatique Directeur Restaurant vers restaurant depuis "${activeTab}"`);
       setActiveTab('restaurant');
     } else if (isCaisse && activeTab !== 'reservations' && activeTab !== 'cuisine') {
+      logChromeDiagnostic('AdminBackOffice RoleGuard', `Redirection automatique Caisse Hôtel vers reservations depuis "${activeTab}"`);
       setActiveTab('reservations');
     }
   }, [isCaisseRestaurant, isDirecteurRestaurant, isCaisse, activeTab]);
 
   const handleTabClick = (tab: BackOfficeTab) => {
+    logChromeDiagnostic('AdminBackOffice Navigation', `Changement d'onglet demandé: "${tab}"`, {
+      targetTab: tab,
+      previousTab: activeTab,
+      userRole: currentUserProfile?.role,
+      userNom: currentUserProfile?.nom
+    });
+
     // 0. Le profil et module de gestion reste accessible
     if (tab === 'profile') {
       setActiveTab('profile');
@@ -528,6 +693,30 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[10px] flex items-center gap-1">
                     <Zap className="w-2.5 h-2.5 text-amber-400" />
                     <span>{connectedEmployeesCount} En Ligne</span>
+                  </span>
+                </div>
+              </button>
+
+              {/* Bouton Rapide : Diagnostic Chrome / Chromium & Quota Stockage */}
+              <button
+                type="button"
+                onClick={() => {
+                  setDiagnosticReport(getStorageDiagnosticInfo());
+                  setIsDiagnosticModalOpen(true);
+                }}
+                className="relative px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs bg-[#2A2925] hover:bg-[#383631] text-sky-300 hover:text-sky-200 border-sky-600/40 hover:border-sky-500/80"
+                title="Ouvrir le panneau de diagnostic Chromium / Chrome Mobile & Desktop et santé LocalStorage"
+              >
+                <div className="relative">
+                  <Cpu className="w-4 h-4 text-sky-400" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-sky-400 rounded-full animate-ping" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-white hidden md:inline">
+                    Diag Chrome
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono font-bold text-[10px]">
+                    Storage
                   </span>
                 </div>
               </button>
@@ -825,6 +1014,23 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               <span className="text-stone-200">Boîte à Outils</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/30 font-bold">
                 Dev / SQL
+              </span>
+            </button>
+
+            {/* Bouton Diag Chrome / Quota LocalStorage */}
+            <button
+              type="button"
+              onClick={() => {
+                setDiagnosticReport(getStorageDiagnosticInfo());
+                setIsDiagnosticModalOpen(true);
+              }}
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer bg-stone-800/90 hover:bg-stone-700 text-sky-300 border border-sky-700/60 shadow-sm"
+              title="Ouvrir le centre de diagnostic Chrome, cycles de vie et santé LocalStorage"
+            >
+              <Cpu className="w-4 h-4 text-sky-400" />
+              <span className="text-stone-200">Diag Chrome</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
+                Logs &amp; Quota
               </span>
             </button>
           </div>
@@ -1352,7 +1558,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       }}
                       className="px-2 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-[11px] font-semibold transition-colors cursor-pointer"
                     >
-                      Toutes ({reservations.length})
+                      Toutes ({Array.isArray(reservations) ? reservations.length : 0})
                     </button>
                   </div>
                 </div>
@@ -2187,6 +2393,13 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           setIsConnectedEmployeesModalOpen(false);
           setActiveTab('profile');
         }}
+      />
+
+      {/* 4c. MODALE DIAGNOSTIC CHROME & SANTÉ DU STOCKAGE LOCAL */}
+      <ChromeDiagnosticModal
+        isOpen={isDiagnosticModalOpen}
+        onClose={() => setIsDiagnosticModalOpen(false)}
+        onNavigateToTab={(tab) => handleTabClick(tab)}
       />
 
       {/* Modal d'Alerte : Accès Restreint par le Contrôle de Rôle (RBAC) */}
