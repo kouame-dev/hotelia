@@ -736,9 +736,9 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                     <span>Aperçu Réel Ticket</span>
                   </div>
 
-                  <div id="pos-thermal-ticket-screen" className="w-full bg-white text-black rounded-2xl shadow-2xl p-5 font-mono text-[11px] space-y-3 border border-stone-300">
+                  <div id="pos-thermal-ticket-screen" className="thermal-ticket-container w-full bg-white text-black rounded-2xl shadow-2xl p-5 font-mono text-[11px] space-y-3 border border-stone-300">
                     {/* En-tête Ticket */}
-                    <div className="text-center border-b border-dashed border-stone-400 pb-3">
+                    <div className="ticket-header center border-b border-dashed border-stone-400 pb-3">
                       <div className="font-bold text-xs uppercase tracking-wider text-black">
                         {thermalPrinterConfig.enteteHaut || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU'}
                       </div>
@@ -783,7 +783,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                     </div>
 
                     {/* Totaux & Règlements */}
-                    <div className="space-y-1 text-[11px] border-b border-dashed border-stone-400 pb-2">
+                    <div className="total-section space-y-1 text-[11px] border-b border-dashed border-stone-400 pb-2">
                       <div className="flex justify-between text-stone-700">
                         <span>Total Brut :</span>
                         <span>{formatPrice(sale.totalPartiel)}</span>
@@ -830,7 +830,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                     </div>
 
                     {/* Pied de ticket */}
-                    <div className="text-center text-[9px] text-stone-600 pt-1 space-y-0.5">
+                    <div className="ticket-footer center text-[9px] text-stone-600 pt-1 space-y-0.5">
                       <p className="font-medium text-stone-800">
                         {thermalPrinterConfig.messageBas || 'Merci de votre visite et à très bientôt !'}
                       </p>
@@ -1079,18 +1079,20 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
             {activePrintFormat === 'thermal' ? (
               /* --- REÇU THERMIQUE POUR IMPRIMANTE DE CAISSE (80MM / 58MM) --- */
               <div
+                className="thermal-ticket-container"
                 style={{
                   width: (thermalPrinterConfig.largeurPapier === '58mm' || thermalPrinterConfig.width === '58mm') ? '58mm' : '80mm',
                   margin: '0 auto',
-                  padding: '1mm 2mm',
-                  fontFamily: 'monospace',
-                  fontSize: '11px',
+                  padding: '5mm',
+                  fontFamily: "'Courier New', monospace",
+                  fontSize: '12px',
+                  textAlign: 'left',
                   color: '#000000',
                   background: '#ffffff'
                 }}
               >
                 {/* En-tête Ticket */}
-                <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
+                <div className="ticket-header center" style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
                   <div style={{ fontWeight: 'bold', fontSize: '13px', textTransform: 'uppercase' }}>
                     {thermalPrinterConfig.enteteHaut || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU'}
                   </div>
@@ -1128,7 +1130,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                 </div>
 
                 {/* Totaux & Paiements */}
-                <div style={{ borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
+                <div className="total-section" style={{ borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Total Brut :</span>
                     <span>{formatPrice(sale.totalPartiel)}</span>
@@ -1166,7 +1168,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                 </div>
 
                 {/* Pied de ticket */}
-                <div style={{ textAlign: 'center', fontSize: '9px', marginTop: '6px' }}>
+                <div className="ticket-footer center" style={{ textAlign: 'center', fontSize: '9px', marginTop: '6px' }}>
                   <div style={{ fontWeight: 'bold' }}>{thermalPrinterConfig.messageBas || 'Merci pour votre visite !'}</div>
                   <div>Hôtel Refuge Palmeraie de Bongouanou</div>
                 </div>

@@ -41,6 +41,89 @@ export interface ThermalReceiptData {
 }
 
 /**
+ * Style standardisé universel pour toutes les impressions thermiques (80mm auto)
+ */
+export const UNIFIED_THERMAL_CSS = `
+  @page {
+    margin: 0;
+    size: 80mm auto; /* Définit la largeur du papier à 80mm */
+  }
+
+  body {
+    width: 80mm;
+    margin: 0 auto;
+    padding: 5mm;
+    font-family: 'Courier New', monospace; /* Police à chasse fixe idéale pour les tickets */
+    font-size: 12px;
+    text-align: left; /* Par défaut aligné à gauche pour le texte/articles */
+    background: #ffffff !important;
+    color: #000000 !important;
+    line-height: 1.3 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Classes pour centrer spécifiquement des éléments */
+  .center {
+    text-align: center !important;
+  }
+
+  .ticket-header, 
+  .ticket-footer, 
+  .total-section {
+    text-align: center !important;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box !important;
+  }
+
+  .ticket-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  /* Règles de mise en page universelles pour tickets thermiques */
+  .flex { display: flex !important; }
+  .justify-between { justify-content: space-between !important; }
+  .justify-center { justify-content: center !important; }
+  .items-center { align-items: center !important; }
+  .items-start { align-items: flex-start !important; }
+  .flex-col { flex-direction: column !important; }
+  .text-center { text-align: center !important; }
+  .text-right { text-align: right !important; }
+  .text-left { text-align: left !important; }
+  .font-bold { font-weight: bold !important; }
+  .font-semibold { font-weight: 600 !important; }
+  .font-mono { font-family: 'Courier New', monospace !important; }
+  .uppercase { text-transform: uppercase !important; }
+  .truncate { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+  .border-b { border-bottom: 1px solid #000000 !important; }
+  .border-t { border-top: 1px solid #000000 !important; }
+  .border-dashed { border-style: dashed !important; }
+  .border-stone-300, .border-stone-400 { border-color: #000000 !important; }
+  .space-y-0\\.5 > * + * { margin-top: 2px !important; }
+  .space-y-1 > * + * { margin-top: 4px !important; }
+  .space-y-1\\.5 > * + * { margin-top: 6px !important; }
+  .space-y-2 > * + * { margin-top: 8px !important; }
+  .space-y-3 > * + * { margin-top: 12px !important; }
+  .py-0\\.5 { padding-top: 2px !important; padding-bottom: 2px !important; }
+  .py-1 { padding-top: 4px !important; padding-bottom: 4px !important; }
+  .py-2 { padding-top: 8px !important; padding-bottom: 8px !important; }
+  .pb-2 { padding-bottom: 8px !important; }
+  .pt-1 { padding-top: 4px !important; }
+  .w-full { width: 100% !important; }
+  img {
+    max-width: 80% !important;
+    height: auto !important;
+    filter: grayscale(100%) contrast(180%) !important;
+    margin: 0 auto 4px auto !important;
+    display: block !important;
+  }
+`;
+
+/**
  * Lance l'impression isolée via une iframe dédiée ou un conteneur d'impression global robuste
  */
 export function printThermalTicket(
@@ -48,10 +131,9 @@ export function printThermalTicket(
   rollWidth: '80mm' | '58mm' = '80mm',
   title: string = 'Ticket de Caisse'
 ) {
-  const widthCss = rollWidth === '58mm' ? '58mm' : '80mm';
   const htmlContent = typeof content === 'string' ? content : content.outerHTML;
 
-  // 1. Tenter d'abord l'impression via iframe isolée avec clonage complet des styles
+  // 1. Tenter d'abord l'impression via iframe isolée avec le style unifié
   try {
     const frameId = 'thermal-print-isolation-frame';
     let frame = document.getElementById(frameId) as HTMLIFrameElement | null;
@@ -86,69 +168,7 @@ export function printThermalTicket(
           <meta charset="utf-8">
           <title>${title}</title>
           <style>
-            @page {
-              size: ${widthCss} auto;
-              margin: 0mm !important;
-            }
-            *, *::before, *::after {
-              box-sizing: border-box !important;
-            }
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: ${widthCss} !important;
-              max-width: ${widthCss} !important;
-              background: #ffffff !important;
-              color: #000000 !important;
-              font-family: 'Courier New', Courier, monospace, monospace !important;
-              font-size: 11px !important;
-              line-height: 1.25 !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            .ticket-container {
-              width: ${widthCss} !important;
-              max-width: ${widthCss} !important;
-              padding: 2mm 3mm !important;
-              margin: 0 auto !important;
-            }
-            /* Règles de mise en page universelles */
-            .flex { display: flex !important; }
-            .justify-between { justify-content: space-between !important; }
-            .justify-center { justify-content: center !important; }
-            .items-center { align-items: center !important; }
-            .items-start { align-items: flex-start !important; }
-            .flex-col { flex-direction: column !important; }
-            .text-center { text-align: center !important; }
-            .text-right { text-align: right !important; }
-            .text-left { text-align: left !important; }
-            .font-bold { font-weight: bold !important; }
-            .font-semibold { font-weight: 600 !important; }
-            .font-mono { font-family: 'Courier New', Courier, monospace !important; }
-            .uppercase { text-transform: uppercase !important; }
-            .truncate { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
-            .border-b { border-bottom: 1px solid #000000 !important; }
-            .border-t { border-top: 1px solid #000000 !important; }
-            .border-dashed { border-style: dashed !important; }
-            .border-stone-300, .border-stone-400 { border-color: #000000 !important; }
-            .space-y-0\\.5 > * + * { margin-top: 2px !important; }
-            .space-y-1 > * + * { margin-top: 4px !important; }
-            .space-y-1\\.5 > * + * { margin-top: 6px !important; }
-            .space-y-2 > * + * { margin-top: 8px !important; }
-            .space-y-3 > * + * { margin-top: 12px !important; }
-            .py-0\\.5 { padding-top: 2px !important; padding-bottom: 2px !important; }
-            .py-1 { padding-top: 4px !important; padding-bottom: 4px !important; }
-            .py-2 { padding-top: 8px !important; padding-bottom: 8px !important; }
-            .pb-2 { padding-bottom: 8px !important; }
-            .pt-1 { padding-top: 4px !important; }
-            .w-full { width: 100% !important; }
-            img {
-              max-width: 80% !important;
-              height: auto !important;
-              filter: grayscale(100%) contrast(180%) !important;
-              margin: 0 auto 4px auto !important;
-              display: block !important;
-            }
+            ${UNIFIED_THERMAL_CSS}
           </style>
         </head>
         <body>
@@ -225,6 +245,11 @@ export function fallbackPrintDirect(content: HTMLElement | string, rollWidth: '8
       }
     }
     @media print {
+      @page {
+        margin: 0;
+        size: 80mm auto; /* Définit la largeur du papier à 80mm */
+      }
+
       body > *:not(#${containerId}) {
         display: none !important;
       }
@@ -234,23 +259,31 @@ export function fallbackPrintDirect(content: HTMLElement | string, rollWidth: '8
       #${containerId} {
         display: block !important;
         position: static !important;
-        width: ${widthCss} !important;
-        max-width: ${widthCss} !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
         margin: 0 auto !important;
-        padding: 2mm 3mm !important;
+        padding: 5mm !important;
+        font-family: 'Courier New', monospace !important;
+        font-size: 12px !important;
+        text-align: left !important;
         background: #ffffff !important;
         color: #000000 !important;
         box-shadow: none !important;
         border: none !important;
-        font-family: 'Courier New', Courier, monospace !important;
-        font-size: 11px !important;
-        line-height: 1.25 !important;
+        line-height: 1.3 !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      @page {
-        size: ${widthCss} auto;
-        margin: 0mm !important;
+
+      /* Classes pour centrer spécifiquement des éléments */
+      .center {
+        text-align: center !important;
+      }
+
+      .ticket-header, 
+      .ticket-footer, 
+      .total-section {
+        text-align: center !important;
       }
     }
   `;

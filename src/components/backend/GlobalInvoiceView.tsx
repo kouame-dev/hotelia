@@ -46,6 +46,7 @@ import {
   generateDgiSignature,
   formatDgiQrPayload
 } from '../../utils/fneIvoirienneHelper.ts';
+import { printThermalTicket } from '../../utils/thermalPrinter.ts';
 
 export const GlobalInvoiceView: React.FC = () => {
   const {
@@ -228,9 +229,41 @@ export const GlobalInvoiceView: React.FC = () => {
     printStyle.id = styleId;
 
     if (format === 'thermal') {
-      const rollWidth = thermalPrinterConfig.largeurPapier === '58mm' || thermalPrinterConfig.width === '58mm' ? '58mm' : '80mm';
+      const el = document.getElementById('printable-global-invoice');
+      if (el) {
+        printThermalTicket(el, '80mm', `Facture_${activeInvoice?.numeroFacture || 'Client'}`);
+        setPrintSuccessAlert(true);
+        setTimeout(() => setPrintSuccessAlert(false), 4000);
+        return;
+      }
+
       printStyle.innerHTML = `
         @media print {
+          @page {
+            margin: 0;
+            size: 80mm auto; /* Définit la largeur du papier à 80mm */
+          }
+
+          body {
+            width: 80mm;
+            margin: 0 auto;
+            padding: 5mm;
+            font-family: 'Courier New', monospace; /* Police à chasse fixe idéale pour les tickets */
+            font-size: 12px;
+            text-align: left; /* Par défaut aligné à gauche pour le texte/articles */
+          }
+
+          /* Classes pour centrer spécifiquement des éléments */
+          .center {
+            text-align: center;
+          }
+
+          .ticket-header, 
+          .ticket-footer, 
+          .total-section {
+            text-align: center;
+          }
+
           body * {
             visibility: hidden !important;
           }
@@ -238,20 +271,18 @@ export const GlobalInvoiceView: React.FC = () => {
             visibility: visible !important;
           }
           #printable-global-invoice {
-            position: fixed !important;
+            display: block !important;
+            position: absolute !important;
             left: 0 !important;
             top: 0 !important;
-            width: ${rollWidth} !important;
-            margin: 0 !important;
-            padding: 8px !important;
+            width: 80mm !important;
+            margin: 0 auto !important;
+            padding: 5mm !important;
             background: white !important;
             color: black !important;
-            font-size: 11px !important;
+            font-family: 'Courier New', monospace !important;
+            font-size: 12px !important;
             box-shadow: none !important;
-          }
-          @page {
-            size: ${rollWidth} auto;
-            margin: 0;
           }
         }
       `;
@@ -1287,10 +1318,10 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
               /* THERMAL TICKET FORMAT (80mm / 58mm) */
               <div
                 id="printable-global-invoice"
-                className="max-w-sm mx-auto bg-white text-stone-950 p-6 rounded-2xl shadow-2xl border border-stone-200 font-mono text-xs"
+                className="thermal-ticket-container max-w-sm mx-auto bg-white text-stone-950 p-6 rounded-2xl shadow-2xl border border-stone-200 font-mono text-xs"
               >
                 {/* Header Ticket */}
-                <div className="text-center pb-4 border-b border-dashed border-stone-400 space-y-1">
+                <div className="ticket-header center pb-4 border-b border-dashed border-stone-400 space-y-1">
                   <div className="font-serif font-bold text-lg uppercase tracking-wide">
                     {settings.hotelName || 'HOTELIA RESORT & SPA'}
                   </div>
@@ -1396,7 +1427,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
                 )}
 
                 {/* Totals Ticket */}
-                <div className="py-3 border-b-2 border-stone-900 space-y-1 text-xs">
+                <div className="total-section py-3 border-b-2 border-stone-900 space-y-1 text-xs">
                   <div className="flex justify-between">
                     <span>Total Brut :</span>
                     <span>{formatPrice(activeInvoice.totalBrut)}</span>
@@ -1423,7 +1454,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
 
                 {/* QR Code Ticket FNE */}
                 {activeInvoice.fneDetails?.isFne && (
-                  <div className="py-3 border-b border-dashed border-stone-400 flex flex-col items-center justify-center text-center">
+                  <div className="center py-3 border-b border-dashed border-stone-400 flex flex-col items-center justify-center text-center">
                     <DgiQrCodeRenderer
                       value={activeInvoice.fneDetails.qrCodeData || activeInvoice.fneDetails.numeroFne}
                       size={90}
@@ -1439,7 +1470,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
                 )}
 
                 {/* Footer Ticket */}
-                <div className="text-center pt-4 text-[10px] text-stone-600 space-y-1">
+                <div className="ticket-footer center pt-4 text-[10px] text-stone-600 space-y-1">
                   <p>{thermalPrinterConfig.footerMessage || 'Merci de votre séjour à l’Hôtel Refuge Palmeraie de Bongouanou !'}</p>
                   <p>Mobile Money : MTN / Moov / Orange</p>
                   <p className="text-[9px] text-stone-400">Réf : {activeInvoice.numeroFacture}</p>

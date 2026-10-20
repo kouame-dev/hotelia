@@ -64,9 +64,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   const handlePrint = () => {
     if (activeFormat === 'thermal') {
       const el = document.getElementById('thermal-ticket-content');
-      const rollWidth = printerSettings.width === '58mm' ? '58mm' : '80mm';
       if (el) {
-        printThermalTicket(el, rollWidth);
+        printThermalTicket(el, '80mm', `Facture_${invoiceNumber}`);
         setPrintSuccessAlert(true);
         setTimeout(() => setPrintSuccessAlert(false), 4000);
         return;
@@ -689,7 +688,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 )}
 
                 {/* En-tête personnalisé */}
-                <div className="text-center space-y-0.5 pb-2">
+                <div className="ticket-header center space-y-0.5 pb-2">
                   <div className="font-bold text-sm uppercase">
                     {settings.appName || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU'}
                   </div>
@@ -763,7 +762,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 </div>
 
                 {/* Totaux financiers */}
-                <div className="space-y-1 text-xs">
+                <div className="total-section space-y-1 text-xs">
                   {printerSettings.showTaxDetails && (
                     <>
                       <div className="flex justify-between text-stone-600">
@@ -805,14 +804,14 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     </div>
                   )}
 
-                  <div className="text-center font-bold text-xs pt-1.5 pb-0.5 text-emerald-800">
+                  <div className="text-center font-bold text-xs pt-1.5 pb-0.5 text-emerald-800 center">
                     *** PAYÉ / ACQUITTÉ ***
                   </div>
                 </div>
 
                 {/* Code-barres ou QR de contrôle */}
                 {printerSettings.showBarcode && (
-                  <div className="text-center pt-2 pb-1">
+                  <div className="text-center pt-2 pb-1 center">
                     <div className="inline-block p-1 border border-stone-800 bg-white">
                       <QrCode className="w-16 h-16 mx-auto text-stone-900" />
                     </div>
@@ -823,7 +822,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 )}
 
                 {/* Pied de ticket personnalisé */}
-                <div className="text-center space-y-1 pt-2 border-t border-stone-300 text-[10px] text-stone-600 whitespace-pre-line leading-normal">
+                <div className="ticket-footer center space-y-1 pt-2 border-t border-stone-300 text-[10px] text-stone-600 whitespace-pre-line leading-normal">
                   {printerSettings.footerMessage}
                 </div>
 

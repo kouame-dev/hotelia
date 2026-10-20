@@ -3073,8 +3073,8 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
             </div>
 
             {/* Aperçu Ticket Restaurant */}
-            <div id="restaurant-ticket-preview-box" className="bg-stone-50 border border-stone-300 rounded-xl p-4 font-mono text-xs text-stone-800 space-y-2 max-h-80 overflow-y-auto shadow-inner">
-              <div className="text-center border-b border-stone-300 pb-2">
+            <div id="restaurant-ticket-preview-box" className="thermal-ticket-container bg-stone-50 border border-stone-300 rounded-xl p-4 font-mono text-xs text-stone-800 space-y-2 max-h-80 overflow-y-auto shadow-inner">
+              <div className="ticket-header center border-b border-stone-300 pb-2">
                 <span className="font-bold text-sm block tracking-wider uppercase">HÔTEL REFUGE PALMERAIE DE BONGOUANOU</span>
                 <span className="font-bold text-xs block text-emerald-800 uppercase">RESTAURANT &amp; BAR LOUNGE</span>
                 <span className="text-[10px] text-stone-500 block">Bongouanou, Côte d'Ivoire • Tél: +225 07 00 00 00</span>
@@ -3132,7 +3132,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
               </div>
 
               {/* Totaux financiers & Déduction Acompte */}
-              <div className="space-y-1 pt-1 text-[11px]">
+              <div className="total-section space-y-1 pt-1 text-[11px]">
                 <div className="flex justify-between">
                   <span>Total Brut Articles :</span>
                   <span className="font-bold">{formatPrice(orderToPrint.totalBrut || orderToPrint.totalNet)}</span>
@@ -3180,7 +3180,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                 )}
               </div>
 
-              <div className="text-center pt-2 border-t border-dashed border-stone-300 text-[10px] text-stone-500">
+              <div className="ticket-footer center pt-2 border-t border-dashed border-stone-300 text-[10px] text-stone-500">
                 {orderToPrint.statutAddition === 'payee'
                   ? 'Merci de votre visite et bon appétit !'
                   : 'Document non libératoire de dette • Merci de régler en caisse'}

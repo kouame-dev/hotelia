@@ -11,7 +11,8 @@ import {
   X,
   ExternalLink,
   Layers,
-  ChevronRight
+  ChevronRight,
+  HardDrive
 } from 'lucide-react';
 import { SqlViewer } from '../SqlViewer.tsx';
 import { ErdDiagram } from '../ErdDiagram.tsx';
@@ -21,8 +22,10 @@ import { PricingFunctionPlayground } from '../PricingFunctionPlayground.tsx';
 import { ReservationFormShowcase } from '../ReservationFormShowcase.tsx';
 import { BoutiqueClientDashboard } from '../BoutiqueClientDashboard.tsx';
 import { UxDesignSystem } from '../UxDesignSystem.tsx';
+import { ChromeStorageDoctor } from '../dev_tools/ChromeStorageDoctor.tsx';
 
 export type DevToolSubTab =
+  | 'chromestorage'
   | 'sql'
   | 'erd'
   | 'antioverbooking'
@@ -55,6 +58,14 @@ export const DevToolsModal: React.FC<DevToolsModalProps> = ({
     badge: string;
     badgeColor: string;
   }[] = [
+    {
+      id: 'chromestorage',
+      title: 'Docteur Stockage Chrome & IDB',
+      description: 'Détection & réparation automatique du stockage local et IndexedDB pour Chrome',
+      icon: <HardDrive className="w-4 h-4 text-sky-400" />,
+      badge: 'Repair / Quota',
+      badgeColor: 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+    },
     {
       id: 'sql',
       title: 'Architecture SQL & DDL',
@@ -196,6 +207,7 @@ export const DevToolsModal: React.FC<DevToolsModalProps> = ({
         {/* Corps principal avec l'outil actif rendu en grand */}
         <div className="flex-1 overflow-y-auto bg-[#FAF9F5] text-stone-900 p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">
+            {activeTool === 'chromestorage' && <ChromeStorageDoctor />}
             {activeTool === 'sql' && <SqlViewer />}
             {activeTool === 'erd' && <ErdDiagram />}
             {activeTool === 'antioverbooking' && <AntiOverbookingCode />}

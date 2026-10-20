@@ -23,6 +23,7 @@ import {
 import { ReservationItem, PaiementPartiel, PaymentMethod } from '../../types.ts';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
+import { printThermalTicket } from '../../utils/thermalPrinter.ts';
 import { jsPDF } from 'jspdf';
 
 interface ClientPartialPaymentsModalProps {
@@ -175,15 +176,45 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
 
   // Impression Thermique (Ticket 80mm de l'état des paiements)
   const handlePrintThermal = () => {
+    const el = document.getElementById('partial-payments-thermal');
+    if (el) {
+      printThermalTicket(el, '80mm', `Recu_Paiements_${selectedReservation?.clientNom || 'Client'}`);
+      return;
+    }
+
     const existingStyle = document.getElementById('dynamic-partial-pay-style');
     if (existingStyle) existingStyle.remove();
 
-    const rollWidth = thermalPrinterConfig.largeurPapier === '58mm' ? '58mm' : '80mm';
     const printStyle = document.createElement('style');
     printStyle.id = 'dynamic-partial-pay-style';
 
     printStyle.innerHTML = `
       @media print {
+        @page {
+          margin: 0;
+          size: 80mm auto; /* Définit la largeur du papier à 80mm */
+        }
+
+        body {
+          width: 80mm;
+          margin: 0 auto;
+          padding: 5mm;
+          font-family: 'Courier New', monospace; /* Police à chasse fixe idéale pour les tickets */
+          font-size: 12px;
+          text-align: left; /* Par défaut aligné à gauche pour le texte/articles */
+        }
+
+        /* Classes pour centrer spécifiquement des éléments */
+        .center {
+          text-align: center;
+        }
+
+        .ticket-header, 
+        .ticket-footer, 
+        .total-section {
+          text-align: center;
+        }
+
         body * {
           visibility: hidden;
         }
@@ -191,22 +222,20 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
           visibility: visible;
         }
         #partial-payments-thermal {
+          display: block !important;
           position: absolute;
           left: 0;
           top: 0;
-          width: ${rollWidth} !important;
-          max-width: ${rollWidth} !important;
+          width: 80mm !important;
+          max-width: 80mm !important;
           margin: 0 !important;
-          padding: 4mm !important;
+          padding: 5mm !important;
           background: #fff !important;
           color: #000 !important;
-          font-size: 11px !important;
+          font-family: 'Courier New', monospace !important;
+          font-size: 12px !important;
           box-shadow: none !important;
           border: none !important;
-        }
-        @page {
-          size: ${rollWidth} auto;
-          margin: 0mm;
         }
       }
     `;
@@ -992,37 +1021,37 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
 
         {/* ================= CONTENEURS D'IMPRESSION ISOLÉS ================= */}
         {/* A. Ticket Thermique */}
-        <div id="partial-payments-thermal" className="hidden">
+        <div id="partial-payments-thermal" className="thermal-ticket-container hidden">
           {selectedReservation && (
-            <div className="p-2 text-black font-mono text-[11px] leading-tight space-y-2">
-              <div className="text-center border-b border-dashed border-black pb-2">
+            <div className="p-2 text-black font-mono text-[12px] leading-tight space-y-2">
+              <div className="ticket-header center border-b border-dashed border-black pb-2">
                 <div className="font-bold text-xs uppercase">{thermalPrinterConfig.enteteHaut || 'HOTELIA RESORT & SPA'}</div>
-                <div className="text-[9px]">{thermalPrinterConfig.adresseHotel || 'Abidjan, Côte d’Ivoire'}</div>
-                <div className="text-[9px]">Tél: {thermalPrinterConfig.telephoneHotel || '+225 07 00 00 00'}</div>
-                <div className="mt-1 font-bold text-[10px]">REÇU DE PAIEMENTS PARTIELS</div>
-                <div className="text-[9px]">Date: {new Date().toLocaleDateString('fr-FR')}</div>
+                <div className="text-[10px]">{thermalPrinterConfig.adresseHotel || 'Abidjan, Côte d’Ivoire'}</div>
+                <div className="text-[10px]">Tél: {thermalPrinterConfig.telephoneHotel || '+225 07 00 00 00'}</div>
+                <div className="mt-1 font-bold text-[11px]">REÇU DE PAIEMENTS PARTIELS</div>
+                <div className="text-[10px]">Date: {new Date().toLocaleDateString('fr-FR')}</div>
               </div>
 
-              <div className="border-b border-dashed border-black pb-1 space-y-0.5">
+              <div className="border-b border-dashed border-black pb-1 space-y-0.5 text-[11px]">
                 <div>Client: {selectedReservation.clientNom}</div>
                 <div>Chambre: {selectedReservation.chambreNumero} ({selectedReservation.chambreType})</div>
                 <div>Séjour: {selectedReservation.dateDebut} au {selectedReservation.dateFin}</div>
               </div>
 
               <div className="space-y-1 border-b border-dashed border-black pb-1">
-                <div className="font-bold text-[10px]">HISTORIQUE DES VERSEMENTS:</div>
+                <div className="font-bold text-[11px]">HISTORIQUE DES VERSEMENTS:</div>
                 {paiementsList.map((p, i) => (
-                  <div key={i} className="flex justify-between items-start text-[10px]">
+                  <div key={i} className="flex justify-between items-start text-[11px]">
                     <div>
                       {p.date} - {p.modePaiement}
-                      <div className="text-[9px] text-stone-600">{p.motif}</div>
+                      <div className="text-[10px] text-stone-600">{p.motif}</div>
                     </div>
                     <div className="font-bold whitespace-nowrap">+{formatPrice(p.montant)}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-0.5 text-[10px] pt-1 border-b border-black pb-1">
+              <div className="total-section space-y-0.5 text-[11px] pt-1 border-b border-black pb-1">
                 <div className="flex justify-between">
                   <span>Total Dossier:</span>
                   <span>{formatPrice(totalDossier)}</span>
@@ -1031,13 +1060,13 @@ export const ClientPartialPaymentsModal: React.FC<ClientPartialPaymentsModalProp
                   <span>Total Versé:</span>
                   <span>{formatPrice(totalPaye)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-[11px] pt-1">
+                <div className="flex justify-between font-bold text-xs pt-1">
                   <span>SOLDE RESTANT DÛ:</span>
                   <span>{formatPrice(resteDu)}</span>
                 </div>
               </div>
 
-              <div className="text-center text-[9px] pt-2">
+              <div className="ticket-footer center text-[10px] pt-2">
                 <p>{thermalPrinterConfig.messageBas || 'Merci pour votre confiance !'}</p>
               </div>
             </div>

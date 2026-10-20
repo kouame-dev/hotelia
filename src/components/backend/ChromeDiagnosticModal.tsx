@@ -15,7 +15,8 @@ import {
   Activity,
   Layers,
   HelpCircle,
-  Terminal
+  Terminal,
+  Wrench
 } from 'lucide-react';
 import {
   getStorageDiagnosticInfo,
@@ -28,6 +29,7 @@ import {
   StorageDiagnosticResult,
   DiagnosticLogEntry
 } from '../../utils/safeStorage.ts';
+import { ChromeStorageDoctor } from '../dev_tools/ChromeStorageDoctor.tsx';
 
 interface ChromeDiagnosticModalProps {
   isOpen: boolean;
@@ -40,7 +42,7 @@ export const ChromeDiagnosticModal: React.FC<ChromeDiagnosticModalProps> = ({
   onClose,
   onNavigateToTab
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'health' | 'logs' | 'guide'>('health');
+  const [activeSubTab, setActiveSubTab] = useState<'health' | 'doctor' | 'logs' | 'guide'>('health');
   const [diagInfo, setDiagInfo] = useState<StorageDiagnosticResult | null>(null);
   const [recentLogs, setRecentLogs] = useState<DiagnosticLogEntry[]>([]);
   const [probeResult, setProbeResult] = useState<{ success: boolean; message: string; timestamp: string } | null>(null);
@@ -190,6 +192,19 @@ export const ChromeDiagnosticModal: React.FC<ChromeDiagnosticModalProps> = ({
           >
             <HardDrive className="w-3.5 h-3.5" />
             <span>Santé Stockage &amp; Quotas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('doctor')}
+            className={`pb-3 px-3 font-semibold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              activeSubTab === 'doctor'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            <Wrench className="w-3.5 h-3.5 text-amber-400" />
+            <span>Docteur &amp; Réparation 1-Clic</span>
           </button>
 
           <button
@@ -382,6 +397,12 @@ export const ChromeDiagnosticModal: React.FC<ChromeDiagnosticModalProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeSubTab === 'doctor' && (
+            <div className="space-y-4">
+              <ChromeStorageDoctor />
             </div>
           )}
 

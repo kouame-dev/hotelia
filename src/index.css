@@ -68,3 +68,49 @@ textarea:focus {
   color: #F5F3FF !important;
   border-color: #6D28D9 !important;
 }
+
+/* ========================================================================= */
+/* UNIFORMISATION DU STYLE D'IMPRESSION THERMIQUE (80MM AUTO)               */
+/* ========================================================================= */
+@page {
+  margin: 0;
+  size: 80mm auto; /* Définit la largeur du papier à 80mm */
+}
+
+/* Classes pour centrer spécifiquement des éléments */
+.center {
+  text-align: center !important;
+}
+
+.ticket-header, 
+.ticket-footer, 
+.total-section {
+  text-align: center !important;
+}
+
+/* Conteneurs thermiques et tickets de caisse unifiés */
+.thermal-ticket-container,
+#thermal-ticket-content,
+#pos-thermal-ticket-screen,
+#restaurant-ticket-preview-box,
+#partial-payments-thermal,
+#printable-global-invoice {
+  width: 80mm;
+  margin: 0 auto;
+  padding: 5mm;
+  font-family: 'Courier New', monospace; /* Police à chasse fixe idéale pour les tickets */
+  font-size: 12px;
+  text-align: left; /* Par défaut aligné à gauche pour le texte/articles */
+}
+
+@media print {
+  body.printing-thermal {
+    width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 5mm !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 12px !important;
+    text-align: left !important;
+  }
+}
+
