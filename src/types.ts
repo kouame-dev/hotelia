@@ -98,6 +98,53 @@ export interface ChambreConfig {
   imageUrl?: string;
 }
 
+// =========================================================================
+// TYPES POUR LA GESTION DE MAINTENANCE & BLOCAGE DES CHAMBRES
+// =========================================================================
+export type MaintenancePriority = 'basse' | 'moyenne' | 'haute' | 'urgente';
+
+export type MaintenanceStatus =
+  | 'a_faire'
+  | 'en_cours'
+  | 'en_attente_pieces'
+  | 'termine'
+  | 'annule';
+
+export type MaintenanceCategory =
+  | 'Climatisation & VMC'
+  | 'Plomberie & Sanitaires'
+  | 'Électricité & Éclairage'
+  | 'Serrurerie & Contrôle d’accès'
+  | 'Peinture, Boiserie & Murs'
+  | 'Literie, Mobilier & Rideaux'
+  | 'Télévision, Câblage & Wi-Fi'
+  | 'Autre Réparation';
+
+export interface MaintenanceTicket {
+  id: string;
+  chambreId: string;
+  chambreNumero: string;
+  chambreTypeNom?: string;
+  titre: string;
+  description: string;
+  categorie: MaintenanceCategory;
+  priorite: MaintenancePriority;
+  statut: MaintenanceStatus;
+  bloquerChambre: boolean; // Si true, la chambre est automatiquement bloquée pour éviter les réservations
+  dateSignalement: string; // YYYY-MM-DD
+  heureSignalement: string; // HH:mm
+  dateDebutPrevue?: string;
+  dateFinPrevue?: string;
+  dateResolution?: string;
+  technicienAssigne?: string;
+  telephoneTechnicien?: string;
+  coutEstime?: number; // FCFA
+  coutReel?: number; // FCFA
+  notesTechniques?: string;
+  signalePar: string;
+  photosUrls?: string[];
+}
+
 // Profil utilisateur et rôles du système
 export type UserRole =
   | 'Admin'
@@ -500,7 +547,28 @@ export type MouvementType =
   | 'sortie_vente_pos'
   | 'sortie_consommation_interne'
   | 'ajustement_perte'
-  | 'inventaire';
+  | 'inventaire'
+  | 'transfert_inter_entrepot';
+
+export interface TransfertStockRecord {
+  id: string;
+  reference: string;
+  date: string;
+  heure: string;
+  articleId: string;
+  articleCode: string;
+  articleDesignation: string;
+  sourceEntrepotId: string;
+  sourceEntrepotNom: string;
+  destEntrepotId: string;
+  destEntrepotNom: string;
+  quantite: number;
+  unite: string;
+  valeurEstimee: number;
+  responsable: string;
+  motif: string;
+  statut: 'effectue' | 'en_transit';
+}
 
 export interface MouvementStock {
   id: string;

@@ -9,7 +9,8 @@ import {
   ServiceOrder,
   PosSale,
   RestaurantStockAlert,
-  ConsumableStockAlert
+  ConsumableStockAlert,
+  TransfertStockRecord
 } from '../types.ts';
 
 // 1. Catalogue initial des Services Payants
@@ -1015,6 +1016,67 @@ export const INITIAL_MOUVEMENTS_STOCK: MouvementStock[] = [
     referenceDoc: 'POS-2026-088',
     responsable: 'Mariam Diallo (Caisse)',
     motif: 'Ventes terrasse & room service'
+  }
+];
+
+// 6b. Historique initial des transferts inter-entrepôts
+export const INITIAL_TRANSFERTS_STOCK: TransfertStockRecord[] = [
+  {
+    id: 'trf-1',
+    reference: 'TRF-2026-001',
+    date: '2026-09-14',
+    heure: '11:15',
+    articleId: 'stk-1',
+    articleCode: 'BOI-EAU-01',
+    articleDesignation: 'Eau Minérale Céleste Prestige Verre 1L',
+    sourceEntrepotId: 'ent-1',
+    sourceEntrepotNom: 'Cave Principale & Bar Lounge',
+    destEntrepotId: 'ent-2',
+    destEntrepotNom: 'Économat & Réserve Restaurant',
+    quantite: 24,
+    unite: 'bouteille',
+    valeurEstimee: 28.8,
+    responsable: 'Koffi Kouadio (Chef Barman)',
+    motif: 'Réapprovisionnement service du midi en salle de restaurant',
+    statut: 'effectue'
+  },
+  {
+    id: 'trf-2',
+    reference: 'TRF-2026-002',
+    date: '2026-09-13',
+    heure: '15:40',
+    articleId: 'stk-3',
+    articleCode: 'BOI-CHAMP-02',
+    articleDesignation: 'Champagne Moët & Chandon Brut Impérial 75cl',
+    sourceEntrepotId: 'ent-1',
+    sourceEntrepotNom: 'Cave Principale & Bar Lounge',
+    destEntrepotId: 'ent-2',
+    destEntrepotNom: 'Économat & Réserve Restaurant',
+    quantite: 6,
+    unite: 'bouteille',
+    valeurEstimee: 330,
+    responsable: 'Chef Amadou Traoré',
+    motif: 'Dotation banquet VIP et cocktail de bienvenue',
+    statut: 'effectue'
+  },
+  {
+    id: 'trf-3',
+    reference: 'TRF-2026-003',
+    date: '2026-09-12',
+    heure: '08:30',
+    articleId: 'stk-srv-1',
+    articleCode: 'SRV-BAI-01',
+    articleDesignation: 'Draps de Bain & Grandes Serviettes 70x140cm 600g Blanc Pur Éponge',
+    sourceEntrepotId: 'ent-3',
+    sourceEntrepotNom: 'Lingerie Centrale & Produits d’Entretien',
+    destEntrepotId: 'ent-1',
+    destEntrepotNom: 'Cave Principale & Bar Lounge',
+    quantite: 10,
+    unite: 'pièce',
+    valeurEstimee: 65000,
+    responsable: 'Aminata Koné (Gouvernante)',
+    motif: 'Mise en place serviettes pour espace piscine & terrasse lounge',
+    statut: 'effectue'
   }
 ];
 

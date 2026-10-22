@@ -23,6 +23,7 @@ import {
   Code2,
   FileText,
   HelpCircle,
+  CalendarDays,
   X
 } from 'lucide-react';
 
@@ -52,7 +53,11 @@ export interface ChambreGantt {
   prixHeure: number;
 }
 
-export const AdminGanttDashboard: React.FC = () => {
+interface AdminGanttDashboardProps {
+  onNavigateToCalendar?: () => void;
+}
+
+export const AdminGanttDashboard: React.FC<AdminGanttDashboardProps> = ({ onNavigateToCalendar }) => {
   const { formatPrice } = useHotelSettings();
 
   // Navigation temporelle
@@ -346,6 +351,19 @@ export const AdminGanttDashboard: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Bouton vers Calendrier Mensuel */}
+          {onNavigateToCalendar && (
+            <button
+              type="button"
+              onClick={onNavigateToCalendar}
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-[#C5A880]/20 hover:bg-[#C5A880]/30 text-[#C5A880] border border-[#C5A880]/40 text-xs font-bold transition-all shadow-sm cursor-pointer"
+              title="Passer au calendrier mensuel d'occupation"
+            >
+              <CalendarDays className="w-4 h-4 text-[#C5A880]" />
+              <span>Calendrier Mensuel</span>
+            </button>
+          )}
+
           {/* Bouton Documentation & Structure des données */}
           <button
             type="button"
@@ -931,11 +949,20 @@ export const AdminGanttDashboard: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-stone-50 border-t border-stone-200 flex justify-end shrink-0">
+            <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-between shrink-0">
+              <a
+                href="/documentation.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C5A880]/20 hover:bg-[#C5A880]/30 text-[#927244] border border-[#C5A880]/50 font-bold text-xs transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Ouvrir la Documentation HTML Complète (avec Écrans)</span>
+              </a>
               <button
                 type="button"
                 onClick={() => setShowDocsModal(false)}
-                className="px-4 py-2 rounded-xl bg-[#1C1B18] text-white font-semibold text-xs"
+                className="px-4 py-2 rounded-xl bg-[#1C1B18] text-white font-semibold text-xs hover:bg-stone-800 transition-colors"
               >
                 Compris, Fermer
               </button>

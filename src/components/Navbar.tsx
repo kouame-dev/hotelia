@@ -163,8 +163,20 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             </button>
           </nav>
 
-          {/* Actions: Copy & Download */}
+          {/* Actions: Docs, Copy & Download */}
           <div className="flex items-center space-x-2">
+            <a
+              id="btn-doc-nav"
+              href="/documentation.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#C5A880]/15 hover:bg-[#C5A880]/25 text-[#C5A880] border border-[#C5A880]/30 text-xs font-semibold transition-all shadow-sm cursor-pointer"
+              title="Consulter le Manuel Utilisateur & Guide Visuel avec Écrans"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-[#C5A880]" />
+              <span className="hidden sm:inline">Guide &amp; Écrans</span>
+            </a>
+
             <button
               id="btn-copy-sql-nav"
               onClick={handleCopySql}

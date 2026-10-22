@@ -23,6 +23,8 @@ import { ConnectedEmployeesModal } from './ConnectedEmployeesModal.tsx';
 import { ChromeDiagnosticModal } from './ChromeDiagnosticModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
+import { RoomOccupancyCalendarTab } from './RoomOccupancyCalendarTab.tsx';
+import { MaintenanceDashboard } from './MaintenanceDashboard.tsx';
 import { SoundNotificationModal } from './SoundNotificationModal.tsx';
 import { ErrorBoundary } from '../common/ErrorBoundary.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
@@ -39,6 +41,7 @@ import {
   LayoutDashboard,
   BarChart3,
   Calendar,
+  CalendarDays,
   Bed,
   ShieldCheck,
   Calculator,
@@ -87,13 +90,17 @@ import {
   RotateCcw,
   Image as ImageIcon,
   Sliders,
-  Cpu
+  Cpu,
+  Wrench,
+  Hammer
 } from 'lucide-react';
 
 export type BackOfficeTab =
   | 'dashboard'
   | 'gantt'
+  | 'calendar'
   | 'reservations'
+  | 'maintenance'
   | 'restaurant'
   | 'cuisine'
   | 'pos'
@@ -151,7 +158,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     unreadConsumableAlertsCount,
     switchUserRole,
     hasPermission,
-    connectedEmployeesCount
+    connectedEmployeesCount,
+    blockedRoomsCount,
+    activeMaintenanceTicketsCount
   } = useHotelData();
 
   // Nombre de commandes restaurant actives en cuisine (En cours / Prêt) pour le badge KDS
@@ -248,7 +257,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
   // Identification du pôle actif parmi les 3 pôles principaux
   const currentPole = useMemo<'hebergement' | 'restauration' | 'administration'>(() => {
-    if (['gantt', 'reservations', 'chambres', 'services', 'audit'].includes(activeTab)) {
+    if (['gantt', 'calendar', 'reservations', 'chambres', 'services', 'audit', 'maintenance'].includes(activeTab)) {
       return 'hebergement';
     }
     if (['restaurant', 'cuisine', 'pos', 'stock', 'stock_alerts'].includes(activeTab)) {
@@ -357,11 +366,15 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       case 'dashboard':
         return { pole: 'Administration', title: 'Tableau de Bord des Revenus & Ventes', icon: <BarChart3 className="w-4 h-4 text-emerald-400" /> };
       case 'gantt':
-        return { pole: 'Hébergement', title: 'Tableau de Bord & Gantt', icon: <Calendar className="w-4 h-4 text-blue-400" /> };
+        return { pole: 'Hébergement', title: 'Tableau de Bord & Gantt 24h', icon: <Calendar className="w-4 h-4 text-blue-400" /> };
+      case 'calendar':
+        return { pole: 'Hébergement', title: 'Calendrier Mensuel d\'Occupation', icon: <CalendarDays className="w-4 h-4 text-[#C5A880]" /> };
       case 'reservations':
         return { pole: 'Hébergement', title: 'Gestion des Réservations', icon: <CalendarCheck className="w-4 h-4 text-[#FF9900]" /> };
       case 'chambres':
         return { pole: 'Hébergement', title: 'Inventaire des Chambres & Types', icon: <Bed className="w-4 h-4 text-emerald-400" /> };
+      case 'maintenance':
+        return { pole: 'Hébergement', title: 'Maintenance & Blocage des Chambres', icon: <Wrench className="w-4 h-4 text-amber-400" /> };
       case 'services':
         return { pole: 'Hébergement', title: 'Services Payants de l\'Hôtel', icon: <ShoppingBag className="w-4 h-4 text-[#C5A880]" /> };
       case 'audit':
@@ -823,6 +836,19 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                             {connectedEmployeesCount} en ligne
                           </span>
                         </button>
+                        <a
+                          href="/documentation.html"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="w-full flex items-center justify-between p-2 rounded-xl text-left transition-all hover:bg-stone-800 text-amber-200 text-xs font-semibold cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-[#C5A880]" />
+                            <span>Manuel Utilisateur &amp; Écrans</span>
+                          </div>
+                          <ExternalLink className="w-3 h-3 text-stone-400" />
+                        </a>
                         <button
                           type="button"
                           onClick={() => {
@@ -853,6 +879,19 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   </>
                 )}
               </div>
+
+              {/* Documentation Button */}
+              <a
+                href="/documentation.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-[#C5A880] border border-[#C5A880]/40 font-bold text-xs transition-all shadow-md cursor-pointer"
+                title="Consulter le Manuel Opérationnel & Guide Visuel avec Écrans"
+              >
+                <FileText className="w-3.5 h-3.5 text-[#C5A880]" />
+                <span className="hidden md:inline">Manuel &amp; Écrans</span>
+                <span className="md:hidden">Manuel</span>
+              </a>
 
               {/* View Front-end Button */}
               <button
@@ -1072,6 +1111,37 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {currentPole === 'hebergement' && (
+              <div className="flex items-center bg-stone-900 border border-stone-700/80 rounded-xl p-0.5 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('gantt')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    activeTab === 'gantt'
+                      ? 'bg-blue-600 text-white font-bold shadow-xs'
+                      : 'text-stone-300 hover:text-white'
+                  }`}
+                  title="Basculer vers le Gantt Journalier 24h"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Gantt 24h</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('calendar')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    activeTab === 'calendar'
+                      ? 'bg-[#C5A880] text-slate-950 font-bold shadow-xs'
+                      : 'text-stone-300 hover:text-white'
+                  }`}
+                  title="Basculer vers le Calendrier Mensuel"
+                >
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Calendrier Mois</span>
+                </button>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -1214,14 +1284,28 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {/* Tab 0 : Tableau de Bord des Revenus & Ventes (Quotidien & Mensuel) */}
         {activeTab === 'dashboard' && (
           <ErrorBoundary fallbackTitle="Erreur sur le tableau de bord des revenus">
-            <RevenueDashboardTab />
+            <RevenueDashboardTab onGoToFullStock={() => handleTabClick('stock')} />
           </ErrorBoundary>
         )}
 
         {/* Tab 1 : Planning Gantt */}
         {activeTab === 'gantt' && !isCaisse && !isCaisseRestaurant && (
           <ErrorBoundary fallbackTitle="Erreur sur le planning Gantt">
-            <AdminGanttDashboard />
+            <AdminGanttDashboard onNavigateToCalendar={() => setActiveTab('calendar')} />
+          </ErrorBoundary>
+        )}
+
+        {/* Tab 1b : Calendrier Mensuel d'Occupation des Chambres */}
+        {activeTab === 'calendar' && !isCaisse && !isCaisseRestaurant && (
+          <ErrorBoundary fallbackTitle="Erreur sur le calendrier d'occupation">
+            <RoomOccupancyCalendarTab
+              onNavigateToReservation={(resId) => {
+                setActiveTab('reservations');
+              }}
+              onNavigateToGantt={(date) => {
+                setActiveTab('gantt');
+              }}
+            />
           </ErrorBoundary>
         )}
 
@@ -1419,11 +1503,11 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       Pôle 1 : Hébergement &amp; Chambres
                     </h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                      5 Modules
+                      6 Modules
                     </span>
                   </div>
                   <p className="text-xs text-stone-400">
-                    Planning Gantt, réservations, inventaire des chambres, services payants et traçabilité d'audit
+                    Planning Gantt, calendrier mensuel, réservations, inventaire des chambres, services payants et audit
                   </p>
                 </div>
               </div>
@@ -1439,7 +1523,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
             {/* Grille des modules du Pôle Hébergement */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[75vh] overflow-y-auto">
-              {/* Module 1 : Planning Gantt */}
+              {/* Module 1 : Planning Gantt (24h) */}
               <div
                 onClick={() => {
                   handleTabClick('gantt');
@@ -1457,18 +1541,52 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       <Calendar className="w-5 h-5" />
                     </div>
                     <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-500/30">
-                      Temps Réel
+                      Vue 24h
                     </span>
                   </div>
                   <h4 className="font-bold text-sm text-white mb-1">
                     Tableau de Bord &amp; Planning Gantt
                   </h4>
                   <p className="text-xs text-stone-400 leading-relaxed">
-                    Vue chronologique interactive 24h/24 des chambres, des nuitées, du day-use et des statuts de nettoyage.
+                    Vue chronologique journalière 24h/24 des 6 chambres, créneaux horaires, nuitées et tampons ménage.
                   </p>
                 </div>
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-blue-300 font-semibold">
                   <span>Ouvrir le planning Gantt</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Module 1b : Calendrier Mensuel d'Occupation */}
+              <div
+                onClick={() => {
+                  handleTabClick('calendar');
+                  setIsHebergementModalOpen(false);
+                }}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                  activeTab === 'calendar'
+                    ? 'bg-[#C5A880]/20 border-[#C5A880] shadow-md ring-2 ring-[#C5A880]/30'
+                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-[#C5A880]/50'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880]">
+                      <CalendarDays className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
+                      Mois en Cours
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white mb-1">
+                    Calendrier Mensuel d'Occupation
+                  </h4>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Vue d'ensemble sur le mois : grille calendrier 30 jours, matrice PMS par chambre, taux d'occupation et réservation rapide.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
+                  <span>Ouvrir le calendrier mensuel</span>
                   <ChevronRight className="w-4 h-4" />
                 </div>
               </div>
@@ -2039,14 +2157,14 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                     </span>
                   </div>
                   <h4 className="font-bold text-sm text-white mb-1">
-                    Tableau de Bord des Revenus &amp; Ventes
+                    Tableau de Bord des Revenus &amp; KPIs Hôteliers
                   </h4>
                   <p className="text-xs text-stone-400 leading-relaxed">
-                    Pilotage visuel du chiffre d'affaires consolidé : projection graphique Recharts du <strong>CA prévisionnel pour les 30 prochains jours</strong> basé sur les réservations confirmées, graphiques journaliers et mensuels.
+                    Pilotage visuel complet : <strong>visualisation Recharts des KPIs hôteliers (taux d'occupation %, CA journalier, RevPAR, ADR)</strong>, projection graphique du <strong>CA prévisionnel 30J</strong>, graphiques journaliers et mensuels consolidés.
                   </p>
                 </div>
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
-                  <span>Ouvrir le tableau de bord des revenus &amp; prévisions DG</span>
+                  <span>Ouvrir les KPIs hôteliers &amp; tableau de bord des revenus</span>
                   <ChevronRight className="w-4 h-4" />
                 </div>
               </div>
@@ -2326,7 +2444,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   setIsAdministrationModalOpen(false);
                   setIsDevToolsModalOpen(true);
                 }}
-                className="p-4 rounded-2xl border border-[#C5A880]/50 bg-stone-900/90 hover:bg-stone-850 hover:border-[#C5A880] transition-all cursor-pointer text-left flex flex-col justify-between md:col-span-2 shadow-md"
+                className="p-4 rounded-2xl border border-[#C5A880]/50 bg-stone-900/90 hover:bg-stone-850 hover:border-[#C5A880] transition-all cursor-pointer text-left flex flex-col justify-between shadow-md"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -2334,7 +2452,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       <Code2 className="w-5 h-5" />
                     </div>
                     <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
-                      Outils SQL, ERD &amp; Simulateur
+                      SQL, ERD &amp; Simulateur
                     </span>
                   </div>
                   <h4 className="font-bold text-sm text-white mb-1">
@@ -2349,6 +2467,36 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   <ChevronRight className="w-4 h-4" />
                 </div>
               </div>
+
+              {/* Module 8 : Documentation Officielle & Guide Visuel avec Écrans */}
+              <a
+                href="/documentation.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setIsAdministrationModalOpen(false)}
+                className="p-4 rounded-2xl border border-blue-500/50 bg-stone-900/90 hover:bg-stone-850 hover:border-blue-400 transition-all cursor-pointer text-left flex flex-col justify-between shadow-md group"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-500/30">
+                      Manuel HTML &amp; Écrans
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white mb-1 group-hover:text-blue-300 transition-colors">
+                    Manuel Opérationnel &amp; Documentation avec Écrans
+                  </h4>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Guide utilisateur complet avec maquettes d'écrans détaillées : KPIs Recharts, Planning Gantt, Caisse POS, KDS Cuisine, Facturation FNE DGI et gabarit thermique 80mm unifié.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-blue-400 font-semibold">
+                  <span>Ouvrir la documentation interactive</span>
+                  <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </a>
             </div>
 
             {/* Footer */}

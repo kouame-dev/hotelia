@@ -50,7 +50,9 @@ import {
   FeaturePermissionConfig,
   AppRoleDefinition,
   ActiveUserSession,
-  EmailReminderLog
+  EmailReminderLog,
+  TransfertStockRecord,
+  MaintenanceTicket
 } from '../types.ts';
 import {
   generateConfirmationEmail,
@@ -70,7 +72,8 @@ import {
   INITIAL_REVENUES,
   INITIAL_RESERVATIONS,
   INITIAL_AUDIT_LOGS,
-  DEFAULT_THERMAL_PRINTER_CONFIG
+  DEFAULT_THERMAL_PRINTER_CONFIG,
+  INITIAL_MAINTENANCE_TICKETS
 } from '../data/mockHotelData.ts';
 import {
   INITIAL_PAID_SERVICES,
@@ -80,6 +83,7 @@ import {
   INITIAL_POS_PRODUCTS,
   INITIAL_MOUVEMENTS_STOCK,
   INITIAL_BONS_ACHAT,
+  INITIAL_TRANSFERTS_STOCK,
   INITIAL_SERVICE_ORDERS,
   INITIAL_POS_SALES,
   INITIAL_RESTAURANT_STOCK_ALERTS,
@@ -287,6 +291,15 @@ interface HotelDataContextType {
   addBonAchat: (newBon: Omit<BonAchat, 'id' | 'numero'>) => BonAchat;
   receptionnerBonAchat: (id: string) => void;
 
+  // 11-bis. Transferts Inter-Entrepôts Multi-Entrepôts
+  transfertsStock: TransfertStockRecord[];
+  transferStockBetweenWarehouses: (params: {
+    sourceItemId: string;
+    targetEntrepotId: string;
+    quantite: number;
+    motif?: string;
+  }) => boolean;
+
   // 11b. Alertes & Notifications de Stocks Restaurant (Seuils Critiques & Réapprovisionnements)
   restaurantStockAlerts: RestaurantStockAlert[];
   unreadStockAlertsCount: number;
@@ -384,6 +397,16 @@ interface HotelDataContextType {
     montantFacture?: number
   ) => void;
   debitLoyaltyPoints: (clientId: string, points: number, motif: string) => boolean;
+
+  // 15. Gestion des Travaux de Maintenance & Blocage des Chambres
+  maintenanceTickets: MaintenanceTicket[];
+  addMaintenanceTicket: (ticket: Omit<MaintenanceTicket, 'id' | 'dateSignalement' | 'heureSignalement'>) => MaintenanceTicket;
+  updateMaintenanceTicket: (id: string, updated: Partial<MaintenanceTicket>) => void;
+  deleteMaintenanceTicket: (id: string) => void;
+  toggleRoomMaintenanceBlock: (chambreNumero: string, block: boolean, ticketId?: string) => void;
+  resolveMaintenanceTicket: (ticketId: string, notes?: string, coutReel?: number) => void;
+  activeMaintenanceTicketsCount: number;
+  blockedRoomsCount: number;
 }
 
 const HotelDataContext = createContext<HotelDataContextType | undefined>(undefined);
@@ -2266,6 +2289,152 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return { ...item, quantite: newQty };
       })
     );
+  };
+
+  // 11-bis. Transferts Inter-Entrepôts Multi-Entrepôts
+  const [transfertsStock, setTransfertsStock] = useState<TransfertStockRecord[]>(() => {
+    try {
+      const saved = safeGetItem('hotelia_transferts_stock');
+      return saved ? JSON.parse(saved) : INITIAL_TRANSFERTS_STOCK;
+    } catch {
+      return INITIAL_TRANSFERTS_STOCK;
+    }
+  });
+
+  useEffect(() => {
+    safeSetItem('hotelia_transferts_stock', JSON.stringify(transfertsStock));
+  }, [transfertsStock]);
+
+  const transferStockBetweenWarehouses = ({
+    sourceItemId,
+    targetEntrepotId,
+    quantite,
+    motif
+  }: {
+    sourceItemId: string;
+    targetEntrepotId: string;
+    quantite: number;
+    motif?: string;
+  }): boolean => {
+    if (quantite <= 0) return false;
+    const sourceItem = stockItems.find((s) => s.id === sourceItemId);
+    const targetEntrepot = entrepots.find((e) => e.id === targetEntrepotId);
+    if (!sourceItem || !targetEntrepot || sourceItem.entrepotId === targetEntrepotId) {
+      return false;
+    }
+    if (sourceItem.quantite < quantite) {
+      return false;
+    }
+
+    const sourceEntrepotNom = sourceItem.entrepotNom || 'Entrepôt Source';
+    const targetEntrepotNom = targetEntrepot.nom;
+    const transferRef = `TRF-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+    const dateNow = new Date().toISOString().split('T')[0];
+    const heureNow = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const motifTexte = motif?.trim() || `Transfert inter-entrepôt : ${sourceEntrepotNom} ➔ ${targetEntrepotNom}`;
+
+    // 1. Déduire de l'entrepôt source et ajouter dans l'entrepôt cible
+    setStockItems((prev) => {
+      let updated = [...prev];
+      const srcIdx = updated.findIndex((s) => s.id === sourceItemId);
+      if (srcIdx >= 0) {
+        updated[srcIdx] = {
+          ...updated[srcIdx],
+          quantite: Math.max(0, updated[srcIdx].quantite - quantite)
+        };
+      }
+
+      const destIdx = updated.findIndex(
+        (s) => s.code === sourceItem.code && s.entrepotId === targetEntrepotId
+      );
+
+      if (destIdx >= 0) {
+        updated[destIdx] = {
+          ...updated[destIdx],
+          quantite: updated[destIdx].quantite + quantite,
+          dernierReassort: dateNow
+        };
+      } else {
+        const newItem: StockItem = {
+          id: `stk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          code: sourceItem.code,
+          designation: sourceItem.designation,
+          categorie: sourceItem.categorie,
+          entrepotId: targetEntrepotId,
+          entrepotNom: targetEntrepotNom,
+          quantite: quantite,
+          seuilAlerte: sourceItem.seuilAlerte,
+          prixAchatUnitaire: sourceItem.prixAchatUnitaire,
+          prixVenteUnitaire: sourceItem.prixVenteUnitaire,
+          unite: sourceItem.unite,
+          fournisseurId: sourceItem.fournisseurId,
+          fournisseurNom: sourceItem.fournisseurNom,
+          dernierReassort: dateNow,
+          imageUrl: sourceItem.imageUrl
+        };
+        updated.push(newItem);
+      }
+
+      return updated;
+    });
+
+    // 2. Mouvements de stock
+    addMouvementStock({
+      date: dateNow,
+      heure: heureNow,
+      articleId: sourceItem.id,
+      articleDesignation: sourceItem.designation,
+      entrepotId: sourceItem.entrepotId,
+      entrepotNom: sourceEntrepotNom,
+      type: 'transfert_inter_entrepot',
+      quantite: quantite,
+      prixUnitaire: sourceItem.prixAchatUnitaire,
+      valeurTotale: quantite * sourceItem.prixAchatUnitaire,
+      referenceDoc: transferRef,
+      responsable: currentUserProfile.nom,
+      motif: `[Sortie Transfert] ➔ ${targetEntrepotNom} : ${motifTexte}`
+    });
+
+    addMouvementStock({
+      date: dateNow,
+      heure: heureNow,
+      articleId: sourceItem.id,
+      articleDesignation: sourceItem.designation,
+      entrepotId: targetEntrepotId,
+      entrepotNom: targetEntrepotNom,
+      type: 'transfert_inter_entrepot',
+      quantite: quantite,
+      prixUnitaire: sourceItem.prixAchatUnitaire,
+      valeurTotale: quantite * sourceItem.prixAchatUnitaire,
+      referenceDoc: transferRef,
+      responsable: currentUserProfile.nom,
+      motif: `[Entrée Transfert]  ${sourceEntrepotNom} : ${motifTexte}`
+    });
+
+    // 3. Enregistrer dans l'historique des transferts
+    const newTransferRecord: TransfertStockRecord = {
+      id: `trf-${Date.now()}`,
+      reference: transferRef,
+      date: dateNow,
+      heure: heureNow,
+      articleId: sourceItem.id,
+      articleCode: sourceItem.code,
+      articleDesignation: sourceItem.designation,
+      sourceEntrepotId: sourceItem.entrepotId,
+      sourceEntrepotNom,
+      destEntrepotId: targetEntrepotId,
+      destEntrepotNom: targetEntrepotNom,
+      quantite,
+      unite: sourceItem.unite,
+      valeurEstimee: quantite * sourceItem.prixAchatUnitaire,
+      responsable: currentUserProfile.nom,
+      motif: motifTexte,
+      statut: 'effectue'
+    };
+
+    setTransfertsStock((prev) => [newTransferRecord, ...prev]);
+
+    return true;
   };
 
   const [bonsAchat, setBonsAchat] = useState<BonAchat[]>(() => {
@@ -4324,6 +4493,253 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return true;
   };
 
+  // --- 15. Gestion des Travaux de Maintenance & Blocage des Chambres ---
+  const [maintenanceTickets, setMaintenanceTickets] = useState<MaintenanceTicket[]>(() => {
+    try {
+      const saved = safeGetItem('hotelia_maintenance_tickets');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return INITIAL_MAINTENANCE_TICKETS;
+    } catch {
+      return INITIAL_MAINTENANCE_TICKETS;
+    }
+  });
+
+  useEffect(() => {
+    safeSetItem('hotelia_maintenance_tickets', JSON.stringify(maintenanceTickets));
+  }, [maintenanceTickets]);
+
+  // Synchronisation automatique : Si un ticket actif bloque une chambre, s'assurer que la chambre est verrouillée
+  useEffect(() => {
+    const blockedRooms = new Set(
+      maintenanceTickets
+        .filter((t) => t.bloquerChambre && t.statut !== 'termine' && t.statut !== 'annule')
+        .map((t) => t.chambreNumero)
+    );
+
+    setChambres((prevChambres) => {
+      let changed = false;
+      const updated = prevChambres.map((c) => {
+        const isBlocked = blockedRooms.has(c.numero);
+        if (isBlocked && c.statut !== 'Maintenance') {
+          changed = true;
+          return {
+            ...c,
+            statut: 'Maintenance' as const,
+            disponibleHeure: false,
+            disponibleNuit: false
+          };
+        }
+        if (!isBlocked && c.statut === 'Maintenance') {
+          changed = true;
+          return {
+            ...c,
+            statut: 'Disponible' as const,
+            disponibleHeure: true,
+            disponibleNuit: true
+          };
+        }
+        return c;
+      });
+      return changed ? updated : prevChambres;
+    });
+  }, [maintenanceTickets]);
+
+  const addMaintenanceTicket = (ticket: Omit<MaintenanceTicket, 'id' | 'dateSignalement' | 'heureSignalement'>): MaintenanceTicket => {
+    const today = new Date().toISOString().split('T')[0];
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const id = `maint-${Date.now()}`;
+
+    const newTicket: MaintenanceTicket = {
+      ...ticket,
+      id,
+      dateSignalement: today,
+      heureSignalement: nowTime
+    };
+
+    setMaintenanceTickets((prev) => [newTicket, ...prev]);
+
+    // Blocage immédiat de la chambre si demandé
+    if (newTicket.bloquerChambre) {
+      updateChambre(newTicket.chambreNumero, {
+        statut: 'Maintenance',
+        disponibleHeure: false,
+        disponibleNuit: false
+      });
+    }
+
+    addAuditLog({
+      action: 'modification_reservation',
+      actionLabel: `Intervention Maintenance Déclarée (${newTicket.chambreNumero})`,
+      reservationId: `maint-${newTicket.chambreNumero}`,
+      clientNom: `Chambre ${newTicket.chambreNumero}`,
+      clientTelephone: newTicket.telephoneTechnicien || 'Service Technique',
+      chambreNumero: newTicket.chambreNumero,
+      chambreType: newTicket.chambreTypeNom || 'Chambre',
+      montantTotal: newTicket.coutEstime || 0,
+      userName: currentUserProfile.nom,
+      userRole: currentUserProfile.role,
+      userEmail: currentUserProfile.email,
+      details: `Création du ticket [${newTicket.titre}] - Priorité: ${newTicket.priorite}. Chambre ${newTicket.bloquerChambre ? 'VERROUILLÉE pour réservation' : 'laissée disponible'}.`,
+      modifications: [
+        {
+          champ: 'statutChambre',
+          label: 'Statut Chambre',
+          ancienneValeur: 'Disponible',
+          nouvelleValeur: newTicket.bloquerChambre ? 'Maintenance' : 'Disponible'
+        }
+      ]
+    });
+
+    return newTicket;
+  };
+
+  const updateMaintenanceTicket = (id: string, updated: Partial<MaintenanceTicket>) => {
+    setMaintenanceTickets((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        const merged = { ...t, ...updated };
+
+        // Synchroniser le blocage si modifié
+        if (updated.bloquerChambre !== undefined) {
+          if (updated.bloquerChambre && merged.statut !== 'termine' && merged.statut !== 'annule') {
+            updateChambre(merged.chambreNumero, {
+              statut: 'Maintenance',
+              disponibleHeure: false,
+              disponibleNuit: false
+            });
+          } else if (!updated.bloquerChambre) {
+            updateChambre(merged.chambreNumero, {
+              statut: 'Disponible',
+              disponibleHeure: true,
+              disponibleNuit: true
+            });
+          }
+        }
+
+        return merged;
+      })
+    );
+  };
+
+  const deleteMaintenanceTicket = (id: string) => {
+    const target = maintenanceTickets.find((t) => t.id === id);
+    if (target && target.bloquerChambre) {
+      const otherBlocking = maintenanceTickets.filter(
+        (t) => t.id !== id && t.chambreNumero === target.chambreNumero && t.bloquerChambre && t.statut !== 'termine' && t.statut !== 'annule'
+      );
+      if (otherBlocking.length === 0) {
+        updateChambre(target.chambreNumero, {
+          statut: 'Disponible',
+          disponibleHeure: true,
+          disponibleNuit: true
+        });
+      }
+    }
+    setMaintenanceTickets((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const toggleRoomMaintenanceBlock = (chambreNumero: string, block: boolean, ticketId?: string) => {
+    if (block) {
+      updateChambre(chambreNumero, {
+        statut: 'Maintenance',
+        disponibleHeure: false,
+        disponibleNuit: false
+      });
+      setMaintenanceTickets((prev) =>
+        prev.map((t) => {
+          if (ticketId && t.id === ticketId) return { ...t, bloquerChambre: true };
+          if (!ticketId && t.chambreNumero === chambreNumero && t.statut !== 'termine' && t.statut !== 'annule') {
+            return { ...t, bloquerChambre: true };
+          }
+          return t;
+        })
+      );
+    } else {
+      updateChambre(chambreNumero, {
+        statut: 'Disponible',
+        disponibleHeure: true,
+        disponibleNuit: true
+      });
+      setMaintenanceTickets((prev) =>
+        prev.map((t) => {
+          if (ticketId && t.id === ticketId) return { ...t, bloquerChambre: false };
+          if (!ticketId && t.chambreNumero === chambreNumero) {
+            return { ...t, bloquerChambre: false };
+          }
+          return t;
+        })
+      );
+    }
+
+    addAuditLog({
+      action: 'modification_reservation',
+      actionLabel: block ? `Chambre ${chambreNumero} Bloquée (Maintenance)` : `Chambre ${chambreNumero} Débloquée`,
+      reservationId: `lock-${chambreNumero}`,
+      clientNom: `Chambre ${chambreNumero}`,
+      clientTelephone: 'PMS Hotelia',
+      chambreNumero,
+      chambreType: 'Chambre',
+      montantTotal: 0,
+      userName: currentUserProfile.nom,
+      userRole: currentUserProfile.role,
+      userEmail: currentUserProfile.email,
+      details: block
+        ? `Verrouillage immédiat de la chambre ${chambreNumero} pour intervention technique. Toute réservation est désactivée.`
+        : `Déverrouillage de la chambre ${chambreNumero}. Remise en disponibilité commerciale pour vente en ligne et réception.`
+    });
+  };
+
+  const resolveMaintenanceTicket = (ticketId: string, notes?: string, coutReel?: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    const ticket = maintenanceTickets.find((t) => t.id === ticketId);
+    if (!ticket) return;
+
+    updateMaintenanceTicket(ticketId, {
+      statut: 'termine',
+      dateResolution: today,
+      bloquerChambre: false,
+      ...(notes ? { notesTechniques: notes } : {}),
+      ...(coutReel !== undefined ? { coutReel } : {})
+    });
+
+    const remainingBlocking = maintenanceTickets.filter(
+      (t) => t.id !== ticketId && t.chambreNumero === ticket.chambreNumero && t.bloquerChambre && t.statut !== 'termine' && t.statut !== 'annule'
+    );
+    if (remainingBlocking.length === 0) {
+      updateChambre(ticket.chambreNumero, {
+        statut: 'Disponible',
+        disponibleHeure: true,
+        disponibleNuit: true
+      });
+    }
+
+    addAuditLog({
+      action: 'modification_reservation',
+      actionLabel: `Maintenance Terminée (Chambre ${ticket.chambreNumero})`,
+      reservationId: ticket.id,
+      clientNom: `Chambre ${ticket.chambreNumero}`,
+      clientTelephone: ticket.telephoneTechnicien || 'Service Technique',
+      chambreNumero: ticket.chambreNumero,
+      chambreType: ticket.chambreTypeNom || 'Chambre',
+      montantTotal: coutReel ?? ticket.coutEstime ?? 0,
+      userName: currentUserProfile.nom,
+      userRole: currentUserProfile.role,
+      userEmail: currentUserProfile.email,
+      details: `Clôture de l'intervention "${ticket.titre}". Chambre ${ticket.chambreNumero} débloquée et remise en service. Coût final: ${(coutReel ?? ticket.coutEstime ?? 0).toLocaleString('fr-FR')} FCFA.`
+    });
+  };
+
+  const activeMaintenanceTicketsCount = useMemo(() => {
+    return maintenanceTickets.filter((t) => t.statut !== 'termine' && t.statut !== 'annule').length;
+  }, [maintenanceTickets]);
+
+  const blockedRoomsCount = useMemo(() => {
+    return chambres.filter((c) => c.statut === 'Maintenance').length;
+  }, [chambres]);
+
   return (
     <HotelDataContext.Provider
       value={{
@@ -4438,6 +4854,9 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         bonsAchat,
         addBonAchat,
         receptionnerBonAchat,
+        // 11-bis. Transferts Inter-Entrepôts Multi-Entrepôts
+        transfertsStock,
+        transferStockBetweenWarehouses,
         // 11b. Alertes & Notifications de Stocks Restaurant
         restaurantStockAlerts,
         unreadStockAlertsCount,
@@ -4497,7 +4916,16 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sendCampaign,
         markClientNotificationAsRead,
         creditLoyaltyPoints,
-        debitLoyaltyPoints
+        debitLoyaltyPoints,
+        // 15. Gestion des Travaux de Maintenance & Blocage des Chambres
+        maintenanceTickets,
+        addMaintenanceTicket,
+        updateMaintenanceTicket,
+        deleteMaintenanceTicket,
+        toggleRoomMaintenanceBlock,
+        resolveMaintenanceTicket,
+        activeMaintenanceTicketsCount,
+        blockedRoomsCount
       }}
     >
       {children}

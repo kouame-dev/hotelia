@@ -5,6 +5,7 @@ import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { ForecastRevenueChart } from './ForecastRevenueChart.tsx';
 import { DailyExpensesChart } from './DailyExpensesChart.tsx';
 import { MobileMoneyVsExpensesChart } from './MobileMoneyVsExpensesChart.tsx';
+import { HotelKpisVisualization } from './HotelKpisVisualization.tsx';
 import {
   BarChart3,
   TrendingUp,
@@ -34,10 +35,13 @@ import {
   X,
   ShieldCheck,
   Check,
-  Smartphone
+  Smartphone,
+  Hotel,
+  Boxes
 } from 'lucide-react';
+import { MultiWarehouseStockDashboardWidget } from './MultiWarehouseStockDashboardWidget.tsx';
 
-export type GranularityView = 'consolidated' | 'daily' | 'monthly' | 'forecast' | 'expenses' | 'mobile_money_expenses';
+export type GranularityView = 'consolidated' | 'kpis' | 'daily' | 'monthly' | 'forecast' | 'expenses' | 'mobile_money_expenses' | 'multi_stock';
 export type RevenueStreamFilter = 'all' | 'reservations' | 'sales';
 export type ChartDisplayStyle = 'stacked' | 'grouped';
 
@@ -75,16 +79,29 @@ interface MonthRevenueData {
   growthRatePct: number | null; // % vs previous month
 }
 
-export const RevenueDashboardTab: React.FC = () => {
+interface RevenueDashboardTabProps {
+  onGoToFullStock?: () => void;
+}
+
+export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoToFullStock }) => {
   const {
     reservations,
     revenues,
     posSales,
     restaurantOrders,
     serviceOrders,
-    currentUserProfile
+    currentUserProfile,
+    stockItems
   } = useHotelData();
   const { formatPrice, settings } = useHotelSettings();
+
+  const criticalStockCount = useMemo(() => {
+    return stockItems.filter((i) => {
+      const q = i.quantite ?? 0;
+      const seuil = i.seuilAlerte > 0 ? i.seuilAlerte : 5;
+      return q <= seuil * 0.5;
+    }).length;
+  }, [stockItems]);
 
   // State controls
   const [granularity, setGranularity] = useState<GranularityView>('consolidated');
@@ -1435,6 +1452,22 @@ export const RevenueDashboardTab: React.FC = () => {
 
             <button
               type="button"
+              onClick={() => setGranularity('kpis')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                granularity === 'kpis'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-stone-950 font-extrabold shadow-md scale-[1.02] ring-1 ring-amber-300'
+                  : 'text-amber-400 hover:text-amber-200 hover:bg-stone-800/80'
+              }`}
+            >
+              <Hotel className="w-3.5 h-3.5 text-amber-500" />
+              <span>📊 KPIs Hôteliers (Occupation &amp; CA)</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 font-mono font-bold">
+                Recharts
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setGranularity('forecast')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 granularity === 'forecast'
@@ -1505,6 +1538,28 @@ export const RevenueDashboardTab: React.FC = () => {
             >
               <TrendingUp className="w-3.5 h-3.5" />
               <span>Focus Mensuel</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setGranularity('multi_stock')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                granularity === 'multi_stock'
+                  ? 'bg-gradient-to-r from-amber-500 to-[#C5A880] text-slate-950 font-extrabold shadow-md scale-[1.02] ring-1 ring-amber-300'
+                  : 'text-[#C5A880] hover:text-amber-200 hover:bg-stone-800/80'
+              }`}
+            >
+              <Boxes className="w-3.5 h-3.5 text-[#C5A880]" />
+              <span>📦 Stocks Multi-Entrepôts</span>
+              {criticalStockCount > 0 ? (
+                <span className="px-1.5 py-0.2 rounded text-[9px] bg-rose-500 text-white font-mono font-bold animate-pulse">
+                  {criticalStockCount}
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.2 rounded text-[9px] bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+                  OK
+                </span>
+              )}
             </button>
           </div>
 
@@ -1673,6 +1728,13 @@ export const RevenueDashboardTab: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
+      {/* 3a. MODULE RECHARTS DES KPIS HÔTELIERS : TAUX D'OCCUPATION & CA JOURNALIER */}
+      {/* ========================================================================= */}
+      {(granularity === 'consolidated' || granularity === 'kpis') && (
+        <HotelKpisVisualization initialMonth={selectedMonth} initialYear={selectedYear} />
+      )}
+
+      {/* ========================================================================= */}
       {/* 3b. VISUALISATION PRÉVISIONNELLE RECHARTS POUR LE DIRECTEUR GÉNÉRAL       */}
       {/* ========================================================================= */}
       {(granularity === 'consolidated' || granularity === 'forecast') && (
@@ -1694,9 +1756,16 @@ export const RevenueDashboardTab: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
+      {/* 3e. MODULE DE SURVEILLANCE STOCK MULTI-ENTREPÔTS & ALERTES SEUIL CRITIQUE */}
+      {/* ========================================================================= */}
+      {(granularity === 'consolidated' || granularity === 'multi_stock') && (
+        <MultiWarehouseStockDashboardWidget onGoToFullStock={onGoToFullStock} />
+      )}
+
+      {/* ========================================================================= */}
       {/* 4. GRAPHIQUE QUOTIDIEN EN BARRES (DAILY REVENUE BAR CHART)               */}
       {/* ========================================================================= */}
-      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && (granularity === 'consolidated' || granularity === 'daily') && (
+      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && granularity !== 'kpis' && granularity !== 'multi_stock' && (granularity === 'consolidated' || granularity === 'daily') && (
         <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div>
@@ -1948,7 +2017,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 5. GRAPHIQUE MENSUEL EN BARRES (MONTHLY REVENUE BAR CHART)               */}
       {/* ========================================================================= */}
-      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && (granularity === 'consolidated' || granularity === 'monthly') && (
+      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && granularity !== 'kpis' && granularity !== 'multi_stock' && (granularity === 'consolidated' || granularity === 'monthly') && (
         <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
             <div>
@@ -2124,7 +2193,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 6. INSPECTION DU JOUR SÉLECTIONNÉ & RÉPARTITION PAR CANAUX               */}
       {/* ========================================================================= */}
-      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && activeDayDetails && (
+      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && granularity !== 'multi_stock' && activeDayDetails && (
         <div className="bg-[#1C1B18] text-white rounded-3xl border border-stone-800 p-6 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-800">
             <div className="flex items-center space-x-3">
@@ -2219,7 +2288,7 @@ export const RevenueDashboardTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* 7. TABLEAU DÉTAILLÉ & JOURNAL DE BORD DU MOIS                           */}
       {/* ========================================================================= */}
-      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && (
+      {granularity !== 'forecast' && granularity !== 'expenses' && granularity !== 'mobile_money_expenses' && granularity !== 'kpis' && granularity !== 'multi_stock' && (
       <div className="bg-white rounded-3xl border border-stone-200 p-6 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
           <div>

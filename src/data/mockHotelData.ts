@@ -8,7 +8,8 @@ import {
   ReservationItem,
   ThermalPrinterConfig,
   AuditLogEntry,
-  ActiveUserSession
+  ActiveUserSession,
+  MaintenanceTicket
 } from '../types.ts';
 
 // 1. Types de chambre initiaux
@@ -1654,4 +1655,98 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     ]
   }
 ];
+
+// =========================================================================
+// 8. TICKETS DE MAINTENANCE & SUIVI DES TRAVAUX EN COURS
+// =========================================================================
+export const INITIAL_MAINTENANCE_TICKETS: MaintenanceTicket[] = [
+  {
+    id: 'maint-001',
+    chambreId: '102',
+    chambreNumero: '102',
+    chambreTypeNom: 'Confort Éco Standard',
+    titre: 'Remplacement compresseur climatiseur split 1.5 CV',
+    description: 'Le compresseur fait un bruit anormal et ne produit plus d’air froid. Pièce neuve commandée chez Carrier Abidjan.',
+    categorie: 'Climatisation & VMC',
+    priorite: 'haute',
+    statut: 'en_cours',
+    bloquerChambre: true,
+    dateSignalement: '2026-09-20',
+    heureSignalement: '09:15',
+    dateDebutPrevue: '2026-09-21',
+    dateFinPrevue: '2026-09-23',
+    technicienAssigne: 'M. Kouassi - Clim Pro Bongouanou',
+    telephoneTechnicien: '+225 07 48 99 11 22',
+    coutEstime: 65000,
+    coutReel: 62000,
+    notesTechniques: 'Démontage effectué le 21 sept. Installation du nouveau compresseur et recharge en gaz R410A en cours.',
+    signalePar: 'Mariam Diallo (Gouvernante)'
+  },
+  {
+    id: 'maint-002',
+    chambreId: '202',
+    chambreNumero: '202',
+    chambreTypeNom: 'Classique Supérieure',
+    titre: 'Révision mitigeur douche italienne & joint étanchéité',
+    description: 'Fuite légère d’eau sous la cabine de douche et bouton de réglage température entartré.',
+    categorie: 'Plomberie & Sanitaires',
+    priorite: 'moyenne',
+    statut: 'en_cours',
+    bloquerChambre: true,
+    dateSignalement: '2026-09-21',
+    heureSignalement: '14:30',
+    dateDebutPrevue: '2026-09-22',
+    dateFinPrevue: '2026-09-24',
+    technicienAssigne: 'Entreprise Sanitaire Moronou',
+    telephoneTechnicien: '+225 05 12 34 56 78',
+    coutEstime: 25000,
+    notesTechniques: 'Remplacement de la cartouche céramique Grohe et pose d’un nouveau joint silicone antibactérien.',
+    signalePar: 'Koffi Kouadio (Réceptionniste)'
+  },
+  {
+    id: 'maint-003',
+    chambreId: '301',
+    chambreNumero: '301',
+    chambreTypeNom: 'Suite Royale Panoramique VIP',
+    titre: 'Rénovation vernis terrasse teck & vérification pompe jacuzzi',
+    description: 'Entretien préventif semestriel du bois de la terrasse et détartrage du circuit hydromassant du jacuzzi privatif.',
+    categorie: 'Peinture, Boiserie & Murs',
+    priorite: 'basse',
+    statut: 'a_faire',
+    bloquerChambre: false,
+    dateSignalement: '2026-09-22',
+    heureSignalement: '11:00',
+    dateDebutPrevue: '2026-09-28',
+    dateFinPrevue: '2026-09-30',
+    technicienAssigne: 'Atelier Menuiserie & Déco Dekouassi',
+    telephoneTechnicien: '+225 01 98 76 54 32',
+    coutEstime: 45000,
+    notesTechniques: 'Intervention planifiée en début de semaine hors période d’affluence VIP.',
+    signalePar: 'Direction Générale'
+  },
+  {
+    id: 'maint-004',
+    chambreId: '101',
+    chambreNumero: '101',
+    chambreTypeNom: 'Deluxe Harmonie',
+    titre: 'Reprogrammation serrure électronique RFID porte d’entrée',
+    description: 'Le lecteur de carte magnétique ne clignotait plus en vert lors du passage du badge client.',
+    categorie: 'Serrurerie & Contrôle d’accès',
+    priorite: 'urgente',
+    statut: 'termine',
+    bloquerChambre: false,
+    dateSignalement: '2026-09-18',
+    heureSignalement: '08:00',
+    dateDebutPrevue: '2026-09-18',
+    dateFinPrevue: '2026-09-18',
+    dateResolution: '2026-09-18',
+    technicienAssigne: 'Sécurité Électronique CI',
+    telephoneTechnicien: '+225 07 11 22 33 44',
+    coutEstime: 15000,
+    coutReel: 15000,
+    notesTechniques: 'Piles lithium 4xAA remplacées et firmware du verrou VingCard synchronisé. Test validé avec 3 cartes.',
+    signalePar: 'Aminata Koné (Chef de Réception)'
+  }
+];
+
 

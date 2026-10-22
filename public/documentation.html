@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manuel Utilisateur & Documentation Opérationnelle - Hôtel Refuge Palmeraie (HOTELIA)</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <style>
+    /* ========================================================================= */
+    /* HOTELIA LUXURY DESIGN SYSTEM - STYLES GLOBAUX                             */
+    /* ========================================================================= */
+    :root {
+      --primary: #C5A880;
+      --primary-dark: #927244;
+      --primary-light: #F7F3EE;
+      --accent-blue: #2563EB;
+      --accent-emerald: #059669;
+      --accent-amber: #D97706;
+      --accent-rose: #E11D48;
+      --bg-dark: #1C1B18;
+      --bg-darker: #0F0E0C;
+      --card-dark: #2A2925;
+      --text-dark: #1E293B;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --sidebar-width: 290px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--text-dark);
+      background-color: #F8FAFC;
+      line-height: 1.6;
+      font-size: 14.5px;
+    }
+
+    /* En-tête Supérieur Fixe */
+    header.doc-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: linear-gradient(135deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+      color: #FFFFFF;
+      border-bottom: 2px solid var(--primary);
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(197, 168, 128, 0.2);
+      border: 1px solid rgba(197, 168, 128, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    .brand-titles h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-titles p {
+      font-size: 0.75rem;
+      color: #CBD5E1;
+      font-family: monospace;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: #1C1B18;
+    }
+    .btn-primary:hover {
+      background-color: #d8c2a3;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #FFFFFF;
+      border-color: rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.18);
+    }
+
+    /* Layout Principal avec Sidebar */
+    .doc-layout {
+      display: flex;
+      max-width: 1600px;
+      margin: 0 auto;
+      min-height: calc(100vh - 65px);
+    }
+
+    /* Sidebar de Navigation */
+    aside.doc-sidebar {
+      width: var(--sidebar-width);
+      background-color: #FFFFFF;
+      border-right: 1px solid var(--border-color);
+      position: sticky;
+      top: 65px;
+      height: calc(100vh - 65px);
+      overflow-y: auto;
+      padding: 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background-color: #F8FAFC;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-box input:focus {
+      border-color: var(--primary);
+      background-color: #FFFFFF;
+      box-shadow: 0 0 0 3px rgba(197, 168, 128, 0.2);
+    }
+
+    .nav-section-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+      padding-left: 0.5rem;
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .nav-item a {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #334155;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .nav-item a:hover {
+      background-color: #F1F5F9;
+      color: var(--primary-dark);
+      padding-left: 0.95rem;
+    }
+
+    .nav-item a.active {
+      background-color: rgba(197, 168, 128, 0.15);
+      color: var(--primary-dark);
+      border-left: 3px solid var(--primary);
+      font-weight: 800;
+    }
+
+    .nav-badge {
+      font-size: 0.65rem;
+      font-family: monospace;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      background: #E2E8F0;
+      color: #475569;
+      margin-left: auto;
+    }
+
+    /* Contenu Principal */
+    main.doc-content {
+      flex: 1;
+      padding: 2.5rem 3.5rem;
+      overflow-y: auto;
+    }
+
+    .doc-section {
+      margin-bottom: 4rem;
+      scroll-margin-top: 85px;
+    }
+
+    .section-header {
+      border-bottom: 2px solid #E2E8F0;
+      padding-bottom: 1rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .section-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-family: monospace;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+    .pill-blue { background: #DBEAFE; color: #1E40AF; }
+    .pill-emerald { background: #D1FAE5; color: #065F46; }
+    .pill-amber { background: #FEF3C7; color: #92400E; }
+    .pill-purple { background: #EDE9FE; color: #5B21B6; }
+
+    .section-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: #0F172A;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-desc {
+      font-size: 0.95rem;
+      color: #475569;
+      max-width: 900px;
+      line-height: 1.6;
+    }
+
+    /* Rôles Badges */
+    .roles-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 1rem 0 1.5rem 0;
+      flex-wrap: wrap;
+    }
+    .role-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: #FFFFFF;
+      border: 1px solid #CBD5E1;
+      color: #334155;
+    }
+
+    /* ========================================================================= */
+    /* CADRE D'ÉCRAN APPLICATIF RÉALISTE (WINDOW FRAME MOCKUP)                   */
+    /* ========================================================================= */
+    .screen-mockup {
+      background: #FFFFFF;
+      border-radius: 16px;
+      border: 1px solid #CBD5E1;
+      box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.08), 0 5px 15px rgba(0,0,0,0.04);
+      overflow: hidden;
+      margin: 2rem 0;
+      position: relative;
+    }
+
+    .screen-bar {
+      background: #0F172A;
+      padding: 0.65rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1E293B;
+    }
+
+    .screen-dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    .dot-red { background-color: #EF4444; }
+    .dot-yellow { background-color: #F59E0B; }
+    .dot-green { background-color: #10B981; }
+
+    .screen-url {
+      background: #1E293B;
+      color: #94A3B8;
+      padding: 0.25rem 1rem;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 0.72rem;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+      margin: 0 1rem;
+    }
+
+    .screen-viewport {
+      padding: 1.5rem;
+      background: #FAF8F5;
+      position: relative;
+    }
+
+    /* Éléments Interactifs et Numéros Callout */
+    .callout-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      background-color: var(--accent-rose);
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 0.75rem;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(225, 29, 72, 0.4);
+      margin-right: 0.4rem;
+      flex-shrink: 0;
+    }
+
+    .screen-callout-marker {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: #E11D48;
+      color: white;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.3);
+      cursor: help;
+      z-index: 10;
+      animation: pulseMarker 2s infinite;
+    }
+
+    @keyframes pulseMarker {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    /* Grille d'explications pas-à-pas */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .step-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+      position: relative;
+    }
+    .step-card:hover {
+      border-color: var(--primary);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+    .step-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .step-desc {
+      font-size: 0.85rem;
+      color: #475569;
+      line-height: 1.5;
+    }
+
+    /* Boîtes Astuces & Alertes */
+    .tip-box {
+      background-color: #F0FDF4;
+      border-left: 4px solid #10B981;
+      padding: 1rem 1.25rem;
+      border-radius: 0 10px 10px 0;
+      margin: 1.5rem 0;
+      font-size: 0.85rem;
+      color: #166534;
+    }
+    .alert-box {
+      background-color: #FFF1F2;
+      border-left: 4px solid #E11D48;
+      padding: 1rem 1.25rem;
+      border-radius: 0 10px 10px 0;
+      margin: 1.5rem 0;
+      font-size: 0.85rem;
+      color: #9F1239;
+    }
+
+    /* Simulation de composants UI dans les écrans */
+    .mini-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .mini-kpi-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 0.75rem;
+      text-align: left;
+    }
+    .mini-kpi-label { font-size: 0.68rem; color: #64748B; font-weight: 600; text-transform: uppercase; }
+    .mini-kpi-value { font-size: 1.15rem; font-weight: 800; font-family: monospace; color: #0F172A; margin-top: 0.2rem; }
+
+    .mini-chart-box {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 1rem;
+      position: relative;
+    }
+
+    /* Table styling inside screens */
+    .mock-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      background: #FFFFFF;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #E2E8F0;
+    }
+    .mock-table th {
+      background: #F8FAFC;
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+      font-weight: 700;
+      color: #475569;
+      border-bottom: 1px solid #E2E8F0;
+    }
+    .mock-table td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid #F1F5F9;
+      color: #1E293B;
+    }
+
+    /* Badge de statut */
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: monospace;
+    }
+    .badge-success { background: #D1FAE5; color: #065F46; }
+    .badge-warning { background: #FEF3C7; color: #92400E; }
+    .badge-info { background: #DBEAFE; color: #1E40AF; }
+    .badge-danger { background: #FFE4E6; color: #9F1239; }
+
+    /* CADRE MOBILE RÉALISTE (SMARTPHONE MOCKUP POUR L'ESPACE CLIENT) */
+    .phone-mockup-wrapper {
+      display: flex;
+      justify-content: center;
+      margin: 1.5rem 0;
+      position: relative;
+    }
+    .phone-mockup {
+      width: 375px;
+      max-width: 100%;
+      background: #0F172A;
+      border-radius: 46px;
+      padding: 12px;
+      box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.4), 0 0 0 2px #334155;
+      position: relative;
+    }
+    .phone-notch {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 24px;
+      background: #020617;
+      border-radius: 14px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 14px;
+    }
+    .phone-notch .lens {
+      width: 10px;
+      height: 10px;
+      background: #1E293B;
+      border-radius: 50%;
+      border: 1px solid #334155;
+    }
+    .phone-notch .speaker {
+      width: 44px;
+      height: 4px;
+      background: #334155;
+      border-radius: 2px;
+    }
+    .phone-screen {
+      background: #FAF8F5;
+      border-radius: 36px;
+      overflow: hidden;
+      min-height: 620px;
+      position: relative;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+    }
+    .phone-status-bar {
+      height: 46px;
+      background: #FFFFFF;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0 22px 8px 22px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #0F172A;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .phone-home-indicator {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 130px;
+      height: 4px;
+      background: #0F172A;
+      border-radius: 2px;
+      opacity: 0.6;
+      z-index: 25;
+    }
+
+    /* CODE BANNER & HIGHLIGHTING POUR LES RÈGLES THERMIQUES */
+    .code-banner {
+      background: #0B1120;
+      color: #F8FAFC;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      border: 1px solid #1E293B;
+      position: relative;
+      overflow-x: auto;
+      margin: 1.25rem 0;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .code-banner .keyword { color: #F472B6; font-weight: bold; }
+    .code-banner .selector { color: #38BDF8; font-weight: bold; }
+    .code-banner .property { color: #A78BFA; }
+    .code-banner .value { color: #34D399; }
+    .code-banner .comment { color: #94A3B8; font-style: italic; }
+
+    /* JAUGES ET INDICATEURS VISUELS DE STOCK */
+    .stock-gauge-bar {
+      height: 8px;
+      background: #E2E8F0;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .stock-gauge-fill {
+      height: 100%;
+      border-radius: 4px;
+    }
+    .stock-fill-red { background: #EF4444; width: 25%; }
+    .stock-fill-amber { background: #F59E0B; width: 45%; }
+    .stock-fill-green { background: #10B981; width: 85%; }
+
+    /* DIAGRAMME SCHÉMATIQUE DU TICKET THERMIQUE */
+    .thermal-annotated-wrapper {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+      margin: 2rem 0;
+      background: #FFFFFF;
+      padding: 1.5rem;
+      border-radius: 16px;
+      border: 1px solid #CBD5E1;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+    }
+    @media (max-width: 900px) {
+      .thermal-annotated-wrapper {
+        flex-direction: column;
+      }
+    }
+
+    /* Impression */
+    @media print {
+      header.doc-header, aside.doc-sidebar, .header-actions {
+        display: none !important;
+      }
+      .doc-layout {
+        display: block !important;
+      }
+      main.doc-content {
+        padding: 0 !important;
+      }
+      .screen-mockup, .phone-mockup {
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #94A3B8;
+      }
+      body {
+        background: #FFFFFF !important;
+        font-size: 12pt;
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      aside.doc-sidebar {
+        display: none;
+      }
+      main.doc-content {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================= -->
+  <!-- 1. EN-TÊTE FIXE DU MANUEL                                                 -->
+  <!-- ========================================================================= -->
+  <header class="doc-header">
+    <div class="brand-group">
+      <div class="brand-logo">★</div>
+      <div class="brand-titles">
+        <h1>
+          <span>Hôtel Refuge Palmeraie de Bongouanou</span>
+          <span style="font-size: 0.75rem; background: rgba(197,168,128,0.2); border: 1px solid var(--primary); padding: 0.1rem 0.5rem; border-radius: 4px; color: var(--primary);">PMS & POS v2.6</span>
+        </h1>
+        <p>Documentation Utilisateur Officielle • Guide Visuel avec Écrans Explicatifs</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <a href="/" class="btn btn-secondary">
+        <span>← Retour à l'Application</span>
+      </a>
+      <button onclick="window.print()" class="btn btn-primary">
+        <span>🖨️ Imprimer / Sauvegarder PDF</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="doc-layout">
+    <!-- ========================================================================= -->
+    <!-- 2. SIDEBAR DE NAVIGATION INTERACTIVE                                      -->
+    <!-- ========================================================================= -->
+    <aside class="doc-sidebar">
+      <div class="search-box">
+        <input type="text" id="docSearchInput" placeholder="🔍 Rechercher dans le guide..." onkeyup="filterDocs()">
+      </div>
+
+      <nav>
+        <div class="nav-section-title">Introduction & Rôles</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#intro" class="active">Vue d'ensemble & 3 Pôles <span class="nav-badge">Général</span></a></li>
+          <li class="nav-item"><a href="#roles">Matrice des Rôles (RBAC) <span class="nav-badge">Accès</span></a></li>
+        </ul>
+
+        <div class="nav-section-title" style="margin-top: 1rem;">Écrans & Procédures</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#ecran-kpi">Écran 1 : KPIs Hôteliers (Recharts) <span class="nav-badge">DG</span></a></li>
+          <li class="nav-item"><a href="#ecran-gantt">Écran 2 : Planning Gantt Chambres <span class="nav-badge">Réception</span></a></li>
+          <li class="nav-item"><a href="#ecran-pos">Écran 3 : Caisse Point de Vente <span class="nav-badge">Restaurant</span></a></li>
+          <li class="nav-item"><a href="#ecran-kds">Écran 4 : KDS Écran Cuisine <span class="nav-badge">Cuisine</span></a></li>
+          <li class="nav-item"><a href="#ecran-fne">Écran 5 : Facturation FNE & 80mm <span class="nav-badge">DGI</span></a></li>
+          <li class="nav-item"><a href="#ecran-client">Écran 6 : Espace Client Mobile <span class="nav-badge">Web</span></a></li>
+          <li class="nav-item"><a href="#ecran-stocks">Écran 7 : Stocks & Alertes <span class="nav-badge">Économat</span></a></li>
+          <li class="nav-item"><a href="#ecran-diagnostic">Écran 8 : Outil Diagnostic Chrome <span class="nav-badge">Système</span></a></li>
+        </ul>
+
+        <div class="nav-section-title" style="margin-top: 1rem;">Ressources & Dépannage</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#thermal-printing">Guide Impression Thermique 80mm <span class="nav-badge">ESC/POS</span></a></li>
+          <li class="nav-item"><a href="#faq">F.A.Q & Dépannage 1-Clic <span class="nav-badge">Aide</span></a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- ========================================================================= -->
+    <!-- 3. CONTENU DÉTAILLÉ DE LA DOCUMENTATION                                   -->
+    <!-- ========================================================================= -->
+    <main class="doc-content">
+
+      <!-- SECTION 0 : INTRODUCTION -->
+      <section id="intro" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-amber">Système Intégré PMS & POS</span>
+          <h2 class="section-title">Manuel Opérationnel HOTELIA</h2>
+          <p class="section-desc">
+            Bienvenue dans le manuel d'utilisation de la plateforme de gestion intégrée de l'<strong>Hôtel Refuge Palmeraie de Bongouanou</strong> (Côte d'Ivoire). Cette application tout-en-un rassemble la gestion des séjours en hébergement (nuitées et passages horaires), la restauration/bar, la cuisine en direct, les approvisionnements et la conformité fiscale normalisée FNE DGI.
+          </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;">
+          <div style="background: white; border: 1px solid #E2E8F0; border-top: 4px solid var(--accent-blue); padding: 1.25rem; border-radius: 10px;">
+            <h3 style="font-size: 1rem; color: var(--accent-blue); margin-bottom: 0.5rem;">Pôle 1 : Hébergement & Réception</h3>
+            <p style="font-size: 0.85rem; color: #64748B;">Planning visuel Gantt, gestion des 6 chambres physiques, formules Nuitée & Formules Passage (day-use) avec chronomètre en direct, acomptes et check-in/check-out.</p>
+          </div>
+          <div style="background: white; border: 1px solid #E2E8F0; border-top: 4px solid var(--accent-emerald); padding: 1.25rem; border-radius: 10px;">
+            <h3 style="font-size: 1rem; color: var(--accent-emerald); margin-bottom: 0.5rem;">Pôle 2 : Restauration & Caisse POS</h3>
+            <p style="font-size: 0.85rem; color: #64748B;">Point de Vente tactile, plan des tables, KDS Cuisine en direct chronométré, encaissements Mobile Money (Orange, MTN, Moov, Wave) et billets thermiques 80mm.</p>
+          </div>
+          <div style="background: white; border: 1px solid #E2E8F0; border-top: 4px solid var(--primary); padding: 1.25rem; border-radius: 10px;">
+            <h3 style="font-size: 1rem; color: var(--primary-dark); margin-bottom: 0.5rem;">Pôle 3 : Direction & Finances FNE</h3>
+            <p style="font-size: 0.85rem; color: #64748B;">Tableaux de bord des KPIs avec Recharts (Taux d'occupation, CA journalier, RevPAR, ADR), facturation consolidée FNE avec QR code officiel et gestion des stocks.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 1 : ÉCRAN KPIS HÔTELIERS RECHARTS -->
+      <section id="ecran-kpi" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-amber">Direction Générale & Finance</span>
+          <h2 class="section-title">Écran 1 : Visualisation des KPIs Hôteliers (Recharts)</h2>
+          <p class="section-desc">
+            Ce module fournit une analyse visuelle de la rentabilité hôtelière en combinant l'évolution du <strong>taux d'occupation journalier (%)</strong> et du <strong>chiffre d'affaires consolidé (FCFA)</strong> avec les métriques internationales du yield management.
+          </p>
+        </div>
+
+        <div class="roles-bar">
+          <span style="font-size: 0.8rem; font-weight: 700; color: #64748B;">Rôles autorisés :</span>
+          <span class="role-tag">👑 Directeur Général</span>
+          <span class="role-tag">🏨 Chef de Réception</span>
+          <span class="role-tag">📊 Responsable Administratif & Financier</span>
+        </div>
+
+        <!-- MOCKUP ÉCRAN 1 -->
+        <div class="screen-mockup">
+          <div class="screen-bar">
+            <div class="screen-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="screen-url">https://hotelia.refuge-palmeraie.ci/admin/dashboard?view=kpis</div>
+            <div style="font-size: 0.7rem; color: #64748B; font-family: monospace;">HOTELIA • Recharts v3</div>
+          </div>
+
+          <div class="screen-viewport">
+            <!-- Marqueurs Callout sur l'écran -->
+            <div class="screen-callout-marker" style="top: 25px; left: 25px;">1</div>
+            <div class="screen-callout-marker" style="top: 25px; right: 25px;">2</div>
+            <div class="screen-callout-marker" style="top: 140px; left: 50%;">3</div>
+            <div class="screen-callout-marker" style="bottom: 25px; right: 35px;">4</div>
+
+            <!-- Simulation de l'interface KPIs -->
+            <div style="background: #1C1B18; border-radius: 14px; padding: 1.25rem; color: white; margin-bottom: 1.25rem; border: 1px solid #332F28;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                  <span style="font-size: 0.65rem; color: var(--primary); font-family: monospace; font-weight: bold; text-transform: uppercase;">Direction Générale • Yield Management</span>
+                  <h3 style="font-size: 1.25rem; font-weight: 800; color: white;">Visualisation des KPIs Hôteliers</h3>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                  <span style="background: var(--primary); color: #000; padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">30 Jours</span>
+                  <span style="background: #2A2925; color: #CCC; padding: 0.3rem 0.75rem; border-radius: 6px; font-size: 0.75rem;">Mois Civil</span>
+                </div>
+              </div>
+
+              <!-- Cartes KPIs -->
+              <div class="mini-kpi-grid">
+                <div class="mini-kpi-card" style="background: #25231F; border-color: #3D3933;">
+                  <div class="mini-kpi-label" style="color: #F59E0B;">Taux d'Occupation</div>
+                  <div class="mini-kpi-value" style="color: white;">68.4%</div>
+                  <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 0.2rem;">4.1 / 6 ch. louées</div>
+                </div>
+                <div class="mini-kpi-card" style="background: #25231F; border-color: #3D3933;">
+                  <div class="mini-kpi-label" style="color: #10B981;">CA Journalier Moyen</div>
+                  <div class="mini-kpi-value" style="color: white;">185 400 <span style="font-size: 0.75rem;">FCFA</span></div>
+                  <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 0.2rem;">Cumul : 5 562 000 FCFA</div>
+                </div>
+                <div class="mini-kpi-card" style="background: #25231F; border-color: #3D3933;">
+                  <div class="mini-kpi-label" style="color: #3B82F6;">RevPAR Moyen</div>
+                  <div class="mini-kpi-value" style="color: white;">30 900 <span style="font-size: 0.75rem;">FCFA</span></div>
+                  <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 0.2rem;">Rendement / ch. dispo</div>
+                </div>
+                <div class="mini-kpi-card" style="background: #25231F; border-color: #3D3933;">
+                  <div class="mini-kpi-label" style="color: #C5A880;">ADR (Prix Moyen)</div>
+                  <div class="mini-kpi-value" style="color: white;">45 200 <span style="font-size: 0.75rem;">FCFA</span></div>
+                  <div style="font-size: 0.7rem; color: #94A3B8; margin-top: 0.2rem;">Par ch. occupée</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Simulation Graphique ComposedChart Recharts -->
+            <div class="mini-chart-box">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <span style="font-size: 0.85rem; font-weight: bold; color: #0F172A;">Corrélation CA Journalier (FCFA) & Taux d'Occupation (%)</span>
+                <div style="display: flex; gap: 0.75rem; font-size: 0.72rem; font-weight: 600;">
+                  <span style="color: #2563EB;">■ CA Chambres</span>
+                  <span style="color: #10B981;">■ CA POS / Resto</span>
+                  <span style="color: #D97706;">● Taux d'Occupation (%)</span>
+                </div>
+              </div>
+
+              <!-- Barres et courbe SVG simulées -->
+              <svg width="100%" height="160" viewBox="0 0 800 160" preserveAspectRatio="none">
+                <!-- Lignes de repères -->
+                <line x1="40" y1="20" x2="780" y2="20" stroke="#F1F5F9" stroke-width="1" />
+                <line x1="40" y1="60" x2="780" y2="60" stroke="#F1F5F9" stroke-width="1" />
+                <line x1="40" y1="100" x2="780" y2="100" stroke="#F1F5F9" stroke-width="1" />
+                <line x1="40" y1="140" x2="780" y2="140" stroke="#E2E8F0" stroke-width="1" />
+
+                <!-- Barres d'exemple -->
+                <rect x="70" y="70" width="22" height="70" fill="#2563EB" rx="3" />
+                <rect x="70" y="45" width="22" height="25" fill="#10B981" rx="3" />
+
+                <rect x="140" y="50" width="22" height="90" fill="#2563EB" rx="3" />
+                <rect x="140" y="30" width="22" height="20" fill="#10B981" rx="3" />
+
+                <rect x="210" y="85" width="22" height="55" fill="#2563EB" rx="3" />
+                <rect x="210" y="65" width="22" height="20" fill="#10B981" rx="3" />
+
+                <rect x="280" y="40" width="22" height="100" fill="#2563EB" rx="3" />
+                <rect x="280" y="20" width="22" height="20" fill="#10B981" rx="3" />
+
+                <rect x="350" y="60" width="22" height="80" fill="#2563EB" rx="3" />
+                <rect x="350" y="35" width="22" height="25" fill="#10B981" rx="3" />
+
+                <rect x="420" y="90" width="22" height="50" fill="#2563EB" rx="3" />
+                <rect x="420" y="75" width="22" height="15" fill="#10B981" rx="3" />
+
+                <rect x="490" y="35" width="22" height="105" fill="#2563EB" rx="3" />
+                <rect x="490" y="15" width="22" height="20" fill="#10B981" rx="3" />
+
+                <rect x="560" y="45" width="22" height="95" fill="#2563EB" rx="3" />
+                <rect x="560" y="25" width="22" height="20" fill="#10B981" rx="3" />
+
+                <!-- Courbe d'occupation Recharts -->
+                <polyline fill="none" stroke="#D97706" stroke-width="3" points="81,55 151,35 221,70 291,25 361,45 431,80 501,20 571,30" />
+                <circle cx="81" cy="55" r="4" fill="#D97706" stroke="#FFF" stroke-width="2" />
+                <circle cx="151" cy="35" r="4" fill="#D97706" stroke="#FFF" stroke-width="2" />
+                <circle cx="221" cy="70" r="4" fill="#D97706" stroke="#FFF" stroke-width="2" />
+                <circle cx="291" cy="25" r="5" fill="#D97706" stroke="#FFF" stroke-width="2" />
+                <circle cx="361" cy="45" r="4" fill="#D97706" stroke="#FFF" stroke-width="2" />
+                <circle cx="431" cy="80" r="4" fill="#D97706" stroke="#FFF" stroke-width="2" />
+                <circle cx="501" cy="20" r="5" fill="#D97706" stroke="#FFF" stroke-width="2" />
+                <circle cx="571" cy="30" r="4" fill="#D97706" stroke="#FFF" stroke-width="2" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- GUIDE DES CALLOUTS ÉCRAN 1 -->
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">1</span>
+              <span class="step-title">Cartes de Synthèse Exécutives</span>
+            </div>
+            <p class="step-desc">
+              Visualisation instantanée des 4 indicateurs fondamentaux : taux d'occupation moyen avec jauge d'objectif, CA journalier moyen, <strong>RevPAR</strong> (CA hébergement / 6 chambres) et <strong>ADR</strong> (prix moyen payé par chambre louée).
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">2</span>
+              <span class="step-title">Sélecteurs de Plage Temporelle</span>
+            </div>
+            <p class="step-desc">
+              Basculez en 1 clic entre les <strong>7 derniers jours</strong> (analyse court terme), <strong>14 jours</strong>, <strong>30 jours</strong> ou sélectionnez un <strong>mois civil complet</strong> (Janvier à Décembre) pour les bilans mensuels.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">3</span>
+              <span class="step-title">Graphique Composé Recharts</span>
+            </div>
+            <p class="step-desc">
+              Double axe Y synchronisé : barres bleues (Hébergement) et vertes (Ventes POS) sur l'axe gauche en FCFA, couplées à la courbe ambrée du taux d'occupation sur l'axe droit en %. Cliquez sur une barre pour voir les chambres louées ce jour.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">4</span>
+              <span class="step-title">Filtre Semaine vs Week-end & Export CSV</span>
+            </div>
+            <p class="step-desc">
+              Bouton dédié pour comparer la rentabilité en semaine versus les week-ends. Bouton <strong>Export CSV</strong> pour télécharger le tableur Excel complet avec toutes les formules pour le conseil d'administration.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2 : ÉCRAN GANTT & CHAMBRES -->
+      <section id="ecran-gantt" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-blue">Hébergement & Réception</span>
+          <h2 class="section-title">Écran 2 : Planning Gantt & Gestion des Réservations</h2>
+          <p class="section-desc">
+            Le cœur opérationnel de la réception : visualisation horizontale du planning des 6 chambres, décompte en temps réel des séjours, check-in, check-out, attribution des clés et formules au passage (day-use).
+          </p>
+        </div>
+
+        <div class="roles-bar">
+          <span style="font-size: 0.8rem; font-weight: 700; color: #64748B;">Rôles autorisés :</span>
+          <span class="role-tag">👑 Directeur Général</span>
+          <span class="role-tag">🏨 Chef de Réception</span>
+          <span class="role-tag">🛎️ Réceptionniste</span>
+        </div>
+
+        <!-- MOCKUP ÉCRAN 2 -->
+        <div class="screen-mockup">
+          <div class="screen-bar">
+            <div class="screen-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="screen-url">https://hotelia.refuge-palmeraie.ci/admin/gantt</div>
+            <div style="font-size: 0.7rem; color: #64748B; font-family: monospace;">HOTELIA • Gantt Chrono</div>
+          </div>
+
+          <div class="screen-viewport">
+            <div class="screen-callout-marker" style="top: 20px; left: 20px;">1</div>
+            <div class="screen-callout-marker" style="top: 20px; right: 25px;">2</div>
+            <div class="screen-callout-marker" style="top: 130px; left: 40%;">3</div>
+
+            <!-- Widget Décompte Live -->
+            <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748B;">Décompte en Direct des Chambres</span>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-top: 0.2rem;">
+                  <span style="color: #059669;">4 Chambres Occupées</span> • <span style="color: #64748B;">2 Disponibles</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-info">101 : M. Kouassi (Nuitée)</span>
+                <span class="badge badge-warning">201 : Mme Bamba (Passage 3h - Reste 42 min)</span>
+              </div>
+            </div>
+
+            <!-- Tableau Gantt simulé -->
+            <table class="mock-table">
+              <thead>
+                <tr>
+                  <th style="width: 140px;">Chambre</th>
+                  <th>Lun 12 Oct</th>
+                  <th>Mar 13 Oct</th>
+                  <th>Mer 14 Oct</th>
+                  <th>Jeu 15 Oct</th>
+                  <th>Ven 16 Oct</th>
+                  <th>Sam 17 Oct</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Ch. 101</strong> (Suite Royale)</td>
+                  <td colspan="3" style="background: #DBEAFE; color: #1E40AF; border-radius: 6px; font-weight: bold; padding: 0.4rem;">
+                    🔒 M. Kouassi Yves (Solde Payé)
+                  </td>
+                  <td>—</td>
+                  <td colspan="2" style="background: #DBEAFE; color: #1E40AF; border-radius: 6px; font-weight: bold; padding: 0.4rem;">
+                    🔒 M. Traoré (Acompte)
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Ch. 102</strong> (Suite Exécutive)</td>
+                  <td>—</td>
+                  <td colspan="4" style="background: #D1FAE5; color: #065F46; border-radius: 6px; font-weight: bold; padding: 0.4rem;">
+                    ✓ Dr. Koffi (Séjour Confirmé)
+                  </td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td><strong>Ch. 201</strong> (Deluxe)</td>
+                  <td style="background: #FEF3C7; color: #92400E; border-radius: 6px; font-weight: bold;">
+                    ⏱️ Passage (14h-17h)
+                  </td>
+                  <td>—</td>
+                  <td colspan="2" style="background: #DBEAFE; color: #1E40AF; border-radius: 6px; font-weight: bold;">
+                    🔒 M. N'Dri
+                  </td>
+                  <td>—</td>
+                  <td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">1</span>
+              <span class="step-title">Créer une Réservation Nuitée / Passage</span>
+            </div>
+            <p class="step-desc">
+              Cliquez sur le bouton <strong>"Nouvelle Réservation"</strong>. Choisissez entre <em>Nuitée classique</em> (dates d'arrivée et départ) ou <em>Formule Passage</em> (day-use avec durée en heures et heure de fin calculée automatiquement).
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">2</span>
+              <span class="step-title">Check-in & Attribution de Clé</span>
+            </div>
+            <p class="step-desc">
+              À l'arrivée du client, validez le <strong>Check-in</strong>. Le système passe la chambre en statut <em>Occupée</em>, enregistre l'identité du client et permet d'imprimer la fiche d'accueil ou le reçu d'acompte.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">3</span>
+              <span class="step-title">Check-out & Reste à Payer</span>
+            </div>
+            <p class="step-desc">
+              Lors du départ, le système vérifie si des consommations au bar/restaurant ont été imputées sur la chambre. Après encaissement du solde restant dû, cliquez sur <strong>"Libérer la Chambre"</strong> : la gouvernante reçoit l'alerte pour le ménage.
+            </p>
+          </div>
+        </div>
+
+        <div class="tip-box" style="margin-top: 1.5rem;">
+          <strong>📅 Nouveauté : Vue Calendrier Mensuel Interactif :</strong>
+          Pour une vision stratégique sur l'ensemble du mois en cours, activez le bouton <strong>"Calendrier Mois"</strong> dans la barre supérieure ou depuis le pôle Hébergement. Il offre 3 modes d'affichage : <em>Grille Mensuelle</em> avec taux d'occupation quotidien (%), <em>Matrice PMS par Chambre</em> avec défilement des 30/31 jours, et <em>Agenda Chronologique</em> des séjours avec réservation rapide en 1-clic.
+        </div>
+      </section>
+
+      <!-- SECTION 3 : POINT DE VENTE & CAISSE POS -->
+      <section id="ecran-pos" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-emerald">Restauration & Bar Lounge</span>
+          <h2 class="section-title">Écran 3 : Point de Vente (POS Caisse)</h2>
+          <p class="section-desc">
+            Prise de commande tactile ultra-rapide pour le bar et le restaurant gastronomique. Gestion des tables, encaissements immédiats ou transfert sur note de chambre d'hôtel.
+          </p>
+        </div>
+
+        <div class="roles-bar">
+          <span style="font-size: 0.8rem; font-weight: 700; color: #64748B;">Rôles autorisés :</span>
+          <span class="role-tag">👑 Directeur Général</span>
+          <span class="role-tag">💳 Caissier Restaurant</span>
+          <span class="role-tag">🍽️ Directeur Restaurant</span>
+          <span class="role-tag">🛎️ Réceptionniste</span>
+        </div>
+
+        <!-- MOCKUP ÉCRAN 3 -->
+        <div class="screen-mockup">
+          <div class="screen-bar">
+            <div class="screen-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="screen-url">https://hotelia.refuge-palmeraie.ci/admin/pos</div>
+            <div style="font-size: 0.7rem; color: #64748B; font-family: monospace;">HOTELIA • Point de Vente Caisse</div>
+          </div>
+
+          <div class="screen-viewport">
+            <div class="screen-callout-marker" style="top: 25px; left: 30px;">1</div>
+            <div class="screen-callout-marker" style="top: 25px; right: 180px;">2</div>
+            <div class="screen-callout-marker" style="bottom: 35px; right: 40px;">3</div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+              <!-- Catalogue Articles -->
+              <div style="background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem;">
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                  <span style="background: #0F172A; color: white; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">Tous</span>
+                  <span style="background: #F1F5F9; color: #334155; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem;">Boissons & Vins</span>
+                  <span style="background: #F1F5F9; color: #334155; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem;">Plats Chauds</span>
+                  <span style="background: #F1F5F9; color: #334155; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem;">Desserts</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem;">
+                  <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 0.6rem; text-align: center; cursor: pointer; background: #FAF5EE;">
+                    <div style="font-size: 1.25rem;">🍗</div>
+                    <div style="font-weight: bold; font-size: 0.8rem; margin: 0.2rem 0;">Poulet Braisé Palmeraie</div>
+                    <div style="color: var(--accent-amber); font-weight: bold; font-family: monospace; font-size: 0.85rem;">6 500 FCFA</div>
+                  </div>
+                  <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 0.6rem; text-align: center; cursor: pointer;">
+                    <div style="font-size: 1.25rem;">🐟</div>
+                    <div style="font-weight: bold; font-size: 0.8rem; margin: 0.2rem 0;">Carpe Braisée Attieké</div>
+                    <div style="color: var(--accent-amber); font-weight: bold; font-family: monospace; font-size: 0.85rem;">8 000 FCFA</div>
+                  </div>
+                  <div style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 0.6rem; text-align: center; cursor: pointer;">
+                    <div style="font-size: 1.25rem;">🍹</div>
+                    <div style="font-weight: bold; font-size: 0.8rem; margin: 0.2rem 0;">Cocktail Palmeraie Spécial</div>
+                    <div style="color: var(--accent-amber); font-weight: bold; font-family: monospace; font-size: 0.85rem;">4 000 FCFA</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ticket en cours -->
+              <div style="background: white; border: 1px solid #CBD5E1; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <div style="border-bottom: 1px dashed #CBD5E1; padding-bottom: 0.5rem; margin-bottom: 0.5rem; text-align: center;">
+                    <span style="font-weight: 800; font-size: 0.85rem;">TICKET #TKT-089</span>
+                    <div style="font-size: 0.7rem; color: #64748B;">Table 04 • Caisse Bar</div>
+                  </div>
+
+                  <div style="font-size: 0.78rem; space-y: 0.4rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                      <span>1x Poulet Braisé Palmeraie</span>
+                      <span style="font-family: monospace; font-weight: bold;">6 500</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                      <span>2x Cocktail Palmeraie</span>
+                      <span style="font-family: monospace; font-weight: bold;">8 000</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="border-top: 2px solid #0F172A; padding-top: 0.5rem;">
+                  <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 1rem; margin-bottom: 0.5rem;">
+                    <span>TOTAL :</span>
+                    <span style="color: #059669; font-family: monospace;">14 500 FCFA</span>
+                  </div>
+                  <button style="width: 100%; background: #059669; color: white; border: none; padding: 0.6rem; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer;">
+                    Valider & Encaisser
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">1</span>
+              <span class="step-title">Sélection des Articles & Catégories</span>
+            </div>
+            <p class="step-desc">
+              Cliquez ou appuyez sur l'écran tactile pour ajouter les boissons ou plats au panier. La quantité s'incrémente automatiquement avec calcul instantané du sous-total.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">2</span>
+              <span class="step-title">Attribution Table ou Chambre</span>
+            </div>
+            <p class="step-desc">
+              Attribuez la commande à une <strong>Table (1 à 12)</strong> ou rattachez-la directement au <strong>Numéro de Chambre</strong> du client résident pour un paiement au check-out.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">3</span>
+              <span class="step-title">Modes de Règlement & Impression</span>
+            </div>
+            <p class="step-desc">
+              Choix du paiement : <strong>Espèces</strong> (avec calculateur de monnaie), <strong>Orange Money</strong>, <strong>MTN MoMo</strong>, <strong>Moov</strong> ou <strong>Wave</strong>. Le ticket 80mm sort instantanément sur l'imprimante thermique.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4 : KDS CUISINE -->
+      <section id="ecran-kds" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-amber">Production Cuisine</span>
+          <h2 class="section-title">Écran 4 : KDS Cuisine (Kitchen Display System)</h2>
+          <p class="section-desc">
+            Écran tactile dédié au chef de cuisine et à sa brigade. Les commandes prises en salle ou au bar apparaissent immédiatement avec chronomètre d'attente et sonnerie d'alerte.
+          </p>
+        </div>
+
+        <div class="roles-bar">
+          <span style="font-size: 0.8rem; font-weight: 700; color: #64748B;">Rôles autorisés :</span>
+          <span class="role-tag">👨‍🍳 Chef Cuisinier</span>
+          <span class="role-tag">👑 Directeur Général</span>
+          <span class="role-tag">🍽️ Directeur Restaurant</span>
+        </div>
+
+        <!-- MOCKUP ÉCRAN 4 -->
+        <div class="screen-mockup">
+          <div class="screen-bar">
+            <div class="screen-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="screen-url">https://hotelia.refuge-palmeraie.ci/admin/cuisine</div>
+            <div style="font-size: 0.7rem; color: #64748B; font-family: monospace;">KDS CUISINE • Temps Réel</div>
+          </div>
+
+          <div class="screen-viewport" style="background: #0F172A;">
+            <div class="screen-callout-marker" style="top: 25px; left: 30px;">1</div>
+            <div class="screen-callout-marker" style="top: 25px; right: 50%;">2</div>
+            <div class="screen-callout-marker" style="bottom: 30px; left: 250px;">3</div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+              <!-- Carte KDS 1 (En attente) -->
+              <div style="background: #1E293B; border-radius: 12px; border: 2px solid #F59E0B; padding: 1rem; color: white;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                  <span style="font-weight: 800; font-size: 0.9rem;">TABLE 02 • CMD #401</span>
+                  <span style="background: #F59E0B; color: black; font-weight: bold; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px;">⏱️ 08 min</span>
+                </div>
+                <ul style="list-style: none; font-size: 0.85rem; space-y: 0.4rem; margin-bottom: 1rem;">
+                  <li>▪ <strong>2x</strong> Kedjenou de Pintade</li>
+                  <li>▪ <strong>1x</strong> Riz blanc parfumé</li>
+                  <li style="color: #F87171; font-size: 0.75rem;">⚠️ Note : Piment à part</li>
+                </ul>
+                <button style="width: 100%; background: #3B82F6; color: white; border: none; padding: 0.5rem; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
+                  ▶ Lancer Préparation
+                </button>
+              </div>
+
+              <!-- Carte KDS 2 (En préparation) -->
+              <div style="background: #1E293B; border-radius: 12px; border: 2px solid #3B82F6; padding: 1rem; color: white;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                  <span style="font-weight: 800; font-size: 0.9rem;">TABLE 05 • CMD #402</span>
+                  <span style="background: #3B82F6; color: white; font-weight: bold; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px;">🔥 14 min</span>
+                </div>
+                <ul style="list-style: none; font-size: 0.85rem; space-y: 0.4rem; margin-bottom: 1rem;">
+                  <li>▪ <strong>1x</strong> Carpe Braisée 1kg</li>
+                  <li>▪ <strong>1x</strong> Portion Alloco</li>
+                </ul>
+                <button style="width: 100%; background: #10B981; color: white; border: none; padding: 0.5rem; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
+                  ✓ Prêt au Pass !
+                </button>
+              </div>
+
+              <!-- Carte KDS 3 (Prêt à servir) -->
+              <div style="background: #1E293B; border-radius: 12px; border: 2px solid #10B981; padding: 1rem; color: white;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                  <span style="font-weight: 800; font-size: 0.9rem;">CH. 101 • ROOM SERVICE</span>
+                  <span style="background: #10B981; color: white; font-weight: bold; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px;">🔔 PRÊT</span>
+                </div>
+                <ul style="list-style: none; font-size: 0.85rem; space-y: 0.4rem; margin-bottom: 1rem;">
+                  <li>▪ <strong>1x</strong> Club Sandwich VIP</li>
+                  <li>▪ <strong>1x</strong> Frites Maison</li>
+                </ul>
+                <button style="width: 100%; background: #475569; color: white; border: none; padding: 0.5rem; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer;">
+                  🚀 Servi par le Garçon
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">1</span>
+              <span class="step-title">Réception Sonore & Visuelle</span>
+            </div>
+            <p class="step-desc">
+              Dès qu'un serveur valide une commande au POS, un carillon retentit et la commande s'affiche en orange avec la table et les remarques du client (cuisson, sans sel, etc.).
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">2</span>
+              <span class="step-title">Chronomètre de Service</span>
+            </div>
+            <p class="step-desc">
+              Le KDS mesure le temps écoulé depuis la prise de commande. Si le délai dépasse 20 minutes, le badge clignote en rouge pour alerter le chef et prioriser la préparation.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">3</span>
+              <span class="step-title">Validation "Prêt" & Appel Serveur</span>
+            </div>
+            <p class="step-desc">
+              Un simple appui sur <strong>"Prêt au Pass !"</strong> envoie une notification visuelle au bar et à la caisse pour que les serveurs viennent dresser et livrer les plats chauds.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 5 : FACTURATION FNE & IMPRESSION 80MM -->
+      <section id="ecran-fne" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-purple">Conformité DGI & Impression</span>
+          <h2 class="section-title">Écran 5 : Facturation FNE & Tickets Thermiques 80mm</h2>
+          <p class="section-desc">
+            Production de factures normalisées électroniques (FNE) conformes à la Direction Générale des Impôts de Côte d'Ivoire, avec QR Code sécurisé et édition sur rouleau thermique 80mm.
+          </p>
+        </div>
+
+        <!-- MOCKUP ÉCRAN 5 -->
+        <div class="screen-mockup">
+          <div class="screen-bar">
+            <div class="screen-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="screen-url">https://hotelia.refuge-palmeraie.ci/admin/facture-globale</div>
+            <div style="font-size: 0.7rem; color: #64748B; font-family: monospace;">FACTURATION FNE DGI • 80mm & A4</div>
+          </div>
+
+          <div class="screen-viewport" style="display: flex; gap: 2rem; justify-content: center;">
+            <div class="screen-callout-marker" style="top: 25px; left: 180px;">1</div>
+            <div class="screen-callout-marker" style="top: 150px; left: 45%;">2</div>
+            <div class="screen-callout-marker" style="bottom: 40px; right: 280px;">3</div>
+
+            <!-- Aperçu Ticket 80mm -->
+            <div style="width: 320px; background: white; border: 1px solid #CBD5E1; padding: 1.25rem; font-family: 'Courier New', monospace; font-size: 11px; box-shadow: 0 4px 15px rgba(0,0,0,0.06);">
+              <div style="text-align: center; border-bottom: 1px dashed black; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="font-weight: bold; font-size: 12px;">HÔTEL REFUGE PALMERAIE</div>
+                <div style="font-size: 9px;">Bongouanou, Côte d'Ivoire</div>
+                <div style="font-size: 9px;">NCC : 202684931 DGI CI</div>
+                <div style="margin-top: 4px; font-weight: bold; background: #EEE; padding: 2px;">*** FACTURE NORMALISÉE FNE ***</div>
+                <div style="font-weight: bold; margin-top: 2px;">N° FNE-2026-00481</div>
+                <div style="font-size: 9px;">Date: 15/10/2026 14:32</div>
+              </div>
+
+              <div style="border-bottom: 1px dashed black; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <div>Client : M. Kouassi Yves</div>
+                <div>Chambre : 101 (Suite Royale)</div>
+              </div>
+
+              <div style="border-bottom: 1px dashed black; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span>1x Nuitée Suite Royale</span>
+                  <span style="font-weight: bold;">55 000</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span>1x Dîner Restaurant</span>
+                  <span style="font-weight: bold;">14 500</span>
+                </div>
+              </div>
+
+              <div style="border-bottom: 1px dashed black; padding-bottom: 0.5rem; margin-bottom: 0.5rem; font-weight: bold;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span>TOTAL TTC :</span>
+                  <span>69 500 FCFA</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #444;">
+                  <span>Dont TVA (18%) :</span>
+                  <span>10 601 FCFA</span>
+                </div>
+              </div>
+
+              <!-- Simulation QR Code FNE -->
+              <div style="text-align: center; padding-top: 0.5rem;">
+                <div style="width: 70px; height: 70px; border: 2px solid black; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold;">
+                  QR DGI CI
+                </div>
+                <div style="font-size: 8px; margin-top: 4px;">CONTRÔLE FISCAL ÉLECTRONIQUE</div>
+                <div style="font-size: 9px; font-weight: bold; margin-top: 4px;">Merci pour votre séjour !</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">1</span>
+              <span class="step-title">Facture Globale Consolidée</span>
+            </div>
+            <p class="step-desc">
+              Le module regroupe sur un document unique l'hébergement et l'ensemble des tickets de restaurant consommés pendant le séjour, évitant les erreurs de double facturation.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">2</span>
+              <span class="step-title">Normes FNE Côte d'Ivoire</span>
+            </div>
+            <p class="step-desc">
+              Génération automatique du <strong>Numéro FNE officiel</strong>, signature numérique cryptographique et QR Code prêt pour contrôle par les inspecteurs de la DGI.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">3</span>
+              <span class="step-title">Style Thermique 80mm Unifié</span>
+            </div>
+            <p class="step-desc">
+              Mise en page calibrée à <code>80mm auto</code> avec police <code>'Courier New', monospace</code>. Compatible avec les imprimantes Epson, Xprinter, Sunmi et Star Micronics.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6 : ESPACE CLIENT & MOBILE -->
+      <section id="ecran-client" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-blue">Visiteurs & Clients</span>
+          <h2 class="section-title">Écran 6 : Espace Client & Réservation Mobile</h2>
+          <p class="section-desc">
+            Portail grand public haut de gamme permettant aux clients de réserver directement une chambre (en Nuitée ou en Passage horaire) ou une table gastronomique depuis leur smartphone, avec paiement Mobile Money instantané et installation PWA hors-ligne.
+          </p>
+        </div>
+
+        <div class="roles-bar">
+          <span style="font-size: 0.8rem; font-weight: 700; color: #64748B;">Accès :</span>
+          <span class="role-tag">📱 Visiteurs Grand Public</span>
+          <span class="role-tag">🛎️ Clients de l'Hôtel</span>
+          <span class="role-tag">🏨 Réceptionnistes (Prise d'appel téléphonique)</span>
+        </div>
+
+        <!-- MOCKUP SMARTPHONE ÉCRAN 6 -->
+        <div class="phone-mockup-wrapper">
+          <div class="phone-mockup">
+            <!-- Dynamic Island / Notch -->
+            <div class="phone-notch">
+              <span class="lens"></span>
+              <span class="speaker"></span>
+            </div>
+
+            <!-- Callout Markers sur le Téléphone -->
+            <div class="screen-callout-marker" style="top: 85px; left: -15px;">1</div>
+            <div class="screen-callout-marker" style="top: 155px; right: -15px;">2</div>
+            <div class="screen-callout-marker" style="top: 360px; left: -15px;">3</div>
+            <div class="screen-callout-marker" style="bottom: 70px; right: -15px;">4</div>
+
+            <!-- Écran Téléphone Interne -->
+            <div class="phone-screen">
+              <!-- Barre d'état iOS -->
+              <div class="phone-status-bar">
+                <span>09:41</span>
+                <span style="display: flex; gap: 4px; align-items: center;">
+                  <span>5G</span>
+                  <span>100%</span>
+                </span>
+              </div>
+
+              <!-- En-tête de l'application Mobile -->
+              <div style="background: linear-gradient(135deg, #1C1B18 0%, #0F0E0C 100%); color: white; padding: 1rem 1rem 1.25rem 1rem; border-bottom: 2px solid var(--primary);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.1rem; color: var(--primary);">★</span>
+                    <span style="font-weight: 800; font-size: 0.9rem; letter-spacing: -0.02em;">REFUGE PALMERAIE</span>
+                  </div>
+                  <span style="background: rgba(197, 168, 128, 0.2); color: var(--primary); font-size: 0.65rem; padding: 0.15rem 0.45rem; border-radius: 12px; font-weight: bold; border: 1px solid rgba(197,168,128,0.4);">Bongouanou</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #CBD5E1;">Réservez votre séjour de prestige ou votre passage express</div>
+              </div>
+
+              <!-- Contenu du Formulaire Client -->
+              <div style="padding: 1rem; flex: 1; display: flex; flex-direction: column; gap: 0.85rem; overflow-y: auto;">
+                
+                <!-- Toggle Formule : Nuitée vs Passage (Heures) -->
+                <div style="background: #E2E8F0; padding: 3px; border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; font-weight: 700; font-size: 0.75rem;">
+                  <div style="background: white; color: #0F172A; text-align: center; padding: 0.4rem; border-radius: 9px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    🌙 Nuitée (Séjour)
+                  </div>
+                  <div style="color: #64748B; text-align: center; padding: 0.4rem; border-radius: 9px;">
+                    ⏱️ Passage (Heures)
+                  </div>
+                </div>
+
+                <!-- Carte Chambre Recommandée -->
+                <div style="background: white; border-radius: 14px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                  <div style="height: 100px; background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.6)), #334155; display: flex; align-items: flex-end; padding: 0.6rem; color: white;">
+                    <div>
+                      <span style="font-size: 0.65rem; background: var(--primary); color: #000; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: bold;">Chambre 101</span>
+                      <h4 style="font-size: 0.95rem; font-weight: bold;">Deluxe Harmonie</h4>
+                    </div>
+                  </div>
+                  <div style="padding: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+                      <span style="font-size: 0.7rem; color: #64748B;">Lit King-size • Clim • Wifi</span>
+                      <span style="font-weight: 800; font-size: 0.95rem; color: #0F172A;">15 000 <span style="font-size: 0.7rem; font-weight: normal;">FCFA / nuit</span></span>
+                    </div>
+                    <div style="display: flex; gap: 0.35rem; font-size: 0.65rem;">
+                      <span style="background: #F1F5F9; padding: 0.2rem 0.4rem; border-radius: 4px;">Option Heures : 2 500 F/h</span>
+                      <span style="background: #ECFDF5; color: #065F46; padding: 0.2rem 0.4rem; border-radius: 4px; font-weight: bold;">Disponible</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sélecteur de Dates & Créneaux -->
+                <div style="background: white; border-radius: 12px; border: 1px solid #E2E8F0; padding: 0.75rem;">
+                  <div style="font-size: 0.7rem; font-weight: bold; color: #64748B; margin-bottom: 0.4rem; text-transform: uppercase;">Dates du Séjour</div>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <div style="flex: 1; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; padding: 0.4rem 0.6rem;">
+                      <div style="font-size: 0.6rem; color: #64748B;">Arrivée</div>
+                      <div style="font-weight: bold; font-size: 0.75rem; color: #0F172A;">Aujourd'hui, 14:00</div>
+                    </div>
+                    <div style="flex: 1; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; padding: 0.4rem 0.6rem;">
+                      <div style="font-size: 0.6rem; color: #64748B;">Départ</div>
+                      <div style="font-weight: bold; font-size: 0.75rem; color: #0F172A;">Demain, 12:00</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Mode de Règlement Mobile Money Instantané -->
+                <div style="background: white; border-radius: 12px; border: 1px solid #E2E8F0; padding: 0.75rem;">
+                  <div style="font-size: 0.7rem; font-weight: bold; color: #64748B; margin-bottom: 0.4rem; text-transform: uppercase;">Paiement Sécurisé Côte d'Ivoire</div>
+                  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; font-size: 0.68rem; font-weight: bold; text-align: center;">
+                    <div style="border: 2px solid #F97316; background: #FFF7ED; color: #C2410C; padding: 0.35rem; border-radius: 6px;">
+                      Orange Money
+                    </div>
+                    <div style="border: 1px solid #CBD5E1; background: #F8FAFC; color: #475569; padding: 0.35rem; border-radius: 6px;">
+                      Wave CI
+                    </div>
+                    <div style="border: 1px solid #CBD5E1; background: #F8FAFC; color: #475569; padding: 0.35rem; border-radius: 6px;">
+                      MTN Money
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Bouton Confirmation Instantané -->
+                <button style="background: var(--primary); color: #1C1B18; font-weight: 800; font-size: 0.85rem; padding: 0.75rem; border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(197, 168, 128, 0.4); cursor: pointer; text-align: center; margin-top: auto;">
+                  Confirmer la Réservation (15 000 FCFA)
+                </button>
+
+                <!-- Bandeau Install PWA -->
+                <div style="background: #F1F5F9; border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.68rem; color: #475569;">
+                  <span>📲 Installer l'application sur l'écran d'accueil</span>
+                  <span style="font-weight: bold; color: #2563EB;">Installer</span>
+                </div>
+
+              </div>
+
+              <!-- Indicateur Barre Home iOS -->
+              <div class="phone-home-indicator"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GUIDE DES CALLOUTS ÉCRAN 6 -->
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">1</span>
+              <span class="step-title">Formule Nuitée vs Passage Express</span>
+            </div>
+            <p class="step-desc">
+              L'utilisateur bascule en un clic entre la location standard pour la nuit (14h à 12h le lendemain) et la formule horaire discrète (par tranche de 2 500 FCFA/h) avec calcul transparent et immédiat.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">2</span>
+              <span class="step-title">Catalogue des 6 Chambres & Commodités</span>
+            </div>
+            <p class="step-desc">
+              Fiche détaillée avec photos, équipements (climatisation réversible, Wi-Fi très haut débit, literie hôtelière haut de gamme) et disponibilité garantie en temps réel grâce au moteur anti-surbooking.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">3</span>
+              <span class="step-title">Multi-Règlement Mobile Money</span>
+            </div>
+            <p class="step-desc">
+              Prise en charge intégrée des principaux réseaux ivoiriens : Orange Money, Wave CI et MTN Mobile Money. L'acompte est sécurisé et le reçu numérique est téléchargeable sur le smartphone.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">4</span>
+              <span class="step-title">PWA Progressive Web App</span>
+            </div>
+            <p class="step-desc">
+              Le site peut être installé directement sur Android et iPhone sans passer par les stores. L'icône se loge sur l'écran d'accueil avec mise en cache des réservations en mode déconnecté.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 7 : GESTION MULTI-ENTREPÔTS & ALERTES DE SEUIL CRITIQUE -->
+      <section id="ecran-stocks" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-amber">Logistique, Économat & Multi-Entrepôts</span>
+          <h2 class="section-title">Écran 7 : Gestion Multi-Entrepôts & Alertes de Seuil Critique</h2>
+          <p class="section-desc">
+            Pilotage centralisé et multi-sites des denrées et consommables de l'hôtel (Cave Principale & Bar, Économat Restaurant, Lingerie Centrale & Blanchisserie). Comprend la matrice de répartition, les transferts physiques inter-entrepôts avec traçabilité et les alertes visuelles de seuil critique avec réassort express 1-clic.
+          </p>
+        </div>
+
+        <div class="roles-bar">
+          <span style="font-size: 0.8rem; font-weight: 700; color: #64748B;">Rôles autorisés :</span>
+          <span class="role-tag">👑 Directeur Général</span>
+          <span class="role-tag">📦 Responsable Économat & Multi-Entrepôts</span>
+          <span class="role-tag">👨‍🍳 Chef Cuisinier</span>
+          <span class="role-tag">🧺 Gouvernante Générale</span>
+          <span class="role-tag">🍽️ Maître d'Hôtel & Barman</span>
+        </div>
+
+        <!-- MOCKUP ÉCRAN 7 -->
+        <div class="screen-mockup">
+          <div class="screen-bar">
+            <div class="screen-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="screen-url">https://hotelia.refuge-palmeraie.ci/admin/stocks?tab=multi_entrepots</div>
+            <div style="font-size: 0.7rem; color: #64748B; font-family: monospace;">HOTELIA • Multi-Entrepôts & Alertes Critiques</div>
+          </div>
+
+          <div class="screen-viewport">
+            <div class="screen-callout-marker" style="top: 25px; left: 35px;">1</div>
+            <div class="screen-callout-marker" style="top: 25px; right: 40px;">2</div>
+            <div class="screen-callout-marker" style="top: 155px; left: 60%;">3</div>
+            <div class="screen-callout-marker" style="bottom: 30px; right: 80px;">4</div>
+
+            <!-- Tableau de Bord Synthétique des Stocks Multi-Entrepôts -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.25rem;">
+              <div style="background: white; border: 1px solid #E2E8F0; padding: 0.85rem; border-radius: 10px; border-left: 4px solid #EF4444;">
+                <div style="font-size: 0.7rem; color: #64748B; font-weight: bold; text-transform: uppercase;">Articles en Rupture (&lt; 25%)</div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #EF4444; font-family: monospace;">2 <span style="font-size: 0.75rem; color: #64748B;">références</span></div>
+                <div style="font-size: 0.68rem; color: #EF4444; font-weight: 600; margin-top: 0.2rem;">Rupture imminente détectée</div>
+              </div>
+              <div style="background: white; border: 1px solid #E2E8F0; padding: 0.85rem; border-radius: 10px; border-left: 4px solid #F59E0B;">
+                <div style="font-size: 0.7rem; color: #64748B; font-weight: bold; text-transform: uppercase;">Sous Seuil Critique</div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #D97706; font-family: monospace;">5 <span style="font-size: 0.75rem; color: #64748B;">références</span></div>
+                <div style="font-size: 0.68rem; color: #D97706; font-weight: 600; margin-top: 0.2rem;">Dépannage interne ou achat</div>
+              </div>
+              <div style="background: white; border: 1px solid #E2E8F0; padding: 0.85rem; border-radius: 10px; border-left: 4px solid #3B82F6;">
+                <div style="font-size: 0.7rem; color: #64748B; font-weight: bold; text-transform: uppercase;">Entrepôts Actifs</div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #2563EB; font-family: monospace;">3 <span style="font-size: 0.75rem; color: #64748B;">sites</span></div>
+                <div style="font-size: 0.68rem; color: #2563EB; font-weight: 600; margin-top: 0.2rem;">Cave, Économat, Lingerie</div>
+              </div>
+              <div style="background: white; border: 1px solid #E2E8F0; padding: 0.85rem; border-radius: 10px; border-left: 4px solid var(--primary);">
+                <div style="font-size: 0.7rem; color: #64748B; font-weight: bold; text-transform: uppercase;">Transferts Enregistrés</div>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #0F172A; font-family: monospace;">14 <span style="font-size: 0.75rem;">mouvements</span></div>
+                <div style="font-size: 0.68rem; color: #64748B; margin-top: 0.2rem;">Traçabilité 100% horodatée</div>
+              </div>
+            </div>
+
+            <!-- Barre d'Action et Filtres Multi-Entrepôts -->
+            <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid #E2E8F0; margin-bottom: 1rem;">
+              <div style="display: flex; gap: 0.5rem; font-size: 0.75rem; font-weight: bold;">
+                <span style="background: #0F172A; color: white; padding: 0.35rem 0.75rem; border-radius: 6px;">Articles en Stock (48)</span>
+                <span style="background: #06B6D4; color: #082F49; padding: 0.35rem 0.75rem; border-radius: 6px;">Matrice Multi-Entrepôts</span>
+                <span style="background: #3B82F6; color: white; padding: 0.35rem 0.75rem; border-radius: 6px;">Transferts Inter-Entrepôts</span>
+                <span style="background: #F43F5E; color: white; padding: 0.35rem 0.75rem; border-radius: 6px;">Alertes Seuils Critiques (7)</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button style="background: #2563EB; color: white; border: none; padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer;">
+                  🔄 Nouveau Transfert
+                </button>
+                <button style="background: var(--primary); color: #0F172A; border: none; padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.75rem; font-weight: bold; cursor: pointer;">
+                  📝 Bon d'Achat Fournisseur
+                </button>
+              </div>
+            </div>
+
+            <!-- Table des Articles et Jauges de Stock -->
+            <table class="mock-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Désignation Article</th>
+                  <th>Catégorie</th>
+                  <th>Stock Actuel</th>
+                  <th>Seuil Min</th>
+                  <th>Jauge de Niveau</th>
+                  <th>Statut</th>
+                  <th style="text-align: right;">Action Rapide</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background: #FFF1F2;">
+                  <td><code>RES-POUL-01</code></td>
+                  <td><strong>Poulet de Chair Fermier (Bongouanou)</strong></td>
+                  <td>Restaurant</td>
+                  <td><strong style="color: #EF4444;">2.5 kg</strong></td>
+                  <td>15.0 kg</td>
+                  <td style="width: 140px;">
+                    <div style="font-size: 0.65rem; color: #EF4444; font-weight: bold;">16% du seuil</div>
+                    <div class="stock-gauge-bar"><div class="stock-gauge-fill stock-fill-red"></div></div>
+                  </td>
+                  <td><span class="badge badge-danger">Rupture Imminente</span></td>
+                  <td style="text-align: right;">
+                    <button style="background: #EF4444; color: white; border: none; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer;">Commander 20 kg</button>
+                  </td>
+                </tr>
+                <tr style="background: #FFFBEB;">
+                  <td><code>BAR-VIN-04</code></td>
+                  <td><strong>Vin Rouge Bandama Réserve (75cl)</strong></td>
+                  <td>Bar & Lounge</td>
+                  <td><strong style="color: #D97706;">4 bouteilles</strong></td>
+                  <td>12 bouteilles</td>
+                  <td style="width: 140px;">
+                    <div style="font-size: 0.65rem; color: #D97706; font-weight: bold;">33% du seuil</div>
+                    <div class="stock-gauge-bar"><div class="stock-gauge-fill stock-fill-amber"></div></div>
+                  </td>
+                  <td><span class="badge badge-warning">Alerte Réassort</span></td>
+                  <td style="text-align: right;">
+                    <button style="background: #D97706; color: white; border: none; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: bold; cursor: pointer;">Réassort 1-Clic</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>HOT-SAV-10</code></td>
+                  <td><strong>Savonnettes d'Accueil Végétales 30g</strong></td>
+                  <td>Hébergement</td>
+                  <td><strong>180 unités</strong></td>
+                  <td>50 unités</td>
+                  <td style="width: 140px;">
+                    <div style="font-size: 0.65rem; color: #059669; font-weight: bold;">95% optimal</div>
+                    <div class="stock-gauge-bar"><div class="stock-gauge-fill stock-fill-green"></div></div>
+                  </td>
+                  <td><span class="badge badge-success">Conforme</span></td>
+                  <td style="text-align: right;">
+                    <button style="background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">Ajuster</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>HOT-DRAP-01</code></td>
+                  <td><strong>Draps Blancs 100% Coton 240x300cm</strong></td>
+                  <td>Linge de Chambre</td>
+                  <td><strong>24 paires</strong></td>
+                  <td>12 paires</td>
+                  <td style="width: 140px;">
+                    <div style="font-size: 0.65rem; color: #059669; font-weight: bold;">80% optimal</div>
+                    <div class="stock-gauge-bar"><div class="stock-gauge-fill stock-fill-green"></div></div>
+                  </td>
+                  <td><span class="badge badge-success">Conforme</span></td>
+                  <td style="text-align: right;">
+                    <button style="background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">Ajuster</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- GUIDE DES CALLOUTS ÉCRAN 7 -->
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">1</span>
+              <span class="step-title">Indicateurs Exécutifs de Rupture</span>
+            </div>
+            <p class="step-desc">
+              Cartes en tête de page alertant immédiatement sur le nombre de denrées épuisées ou approchant de la rupture, avec valorisation marchande globale du stock restant.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">2</span>
+              <span class="step-title">Filtres Spécialisés Hébergement & Resto</span>
+            </div>
+            <p class="step-desc">
+              Ségrégation nette entre le stock denrées périssables de la cuisine, les bouteilles de la cave/bar et les consommables des chambres d'hôtel pour faciliter les inventaires tournants.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">3</span>
+              <span class="step-title">Jauges Visuelles Dynamiques</span>
+            </div>
+            <p class="step-desc">
+              Barre de progression colorée automatique (Vert > 60%, Ambre 30-60%, Rouge &lt; 30%) calculée selon le ratio entre la quantité physique disponible et le stock de sécurité configuré.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">4</span>
+              <span class="step-title">Génération de Bon de Réassort 1-Clic</span>
+            </div>
+            <p class="step-desc">
+              Un simple clic sur le bouton d'action pré-remplit un bon de commande au fournisseur attitré (ex: éleveurs locaux de Bongouanou, grossistes boisson) avec quantité recommandée.
+            </p>
+          </div>
+
+          <div class="step-card" style="border-top: 3px solid #C5A880;">
+            <div class="step-header">
+              <span class="callout-dot" style="background: #C5A880; color: #1C1B18;">5</span>
+              <span class="step-title">Intégration Directe Tableau de Bord DG</span>
+            </div>
+            <p class="step-desc">
+              Le module complet de surveillance multi-entrepôts est affiché dès l'ouverture du <strong>Tableau de Bord Back-Office</strong> (Vue Complète &amp; Onglet dédié 📦 Stocks Multi-Entrepôts) avec jauges visuelles en direct et déclenchement de transferts de secours inter-entrepôts.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 8 : OUTIL DOCTEUR STOCKAGE & DIAGNOSTIC CHROME -->
+      <section id="ecran-diagnostic" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-emerald">Support Technique & Stabilité</span>
+          <h2 class="section-title">Écran 8 : Outil Diagnostic & Réparation Chrome</h2>
+          <p class="section-desc">
+            Module utilitaire haute fiabilité accessible depuis le Back-Office (bouton <strong>Diag Chrome</strong>) pour inspecter l'état du stockage LocalStorage/IndexedDB, auditer les clés de données, mesurer les latences et résoudre en un clic les anomalies de cache sur Google Chrome et navigateurs mobiles.
+          </p>
+        </div>
+
+        <div class="roles-bar">
+          <span style="font-size: 0.8rem; font-weight: 700; color: #64748B;">Rôles autorisés :</span>
+          <span class="role-tag">👑 Directeur Général</span>
+          <span class="role-tag">🛠️ Administrateur Système & PMS</span>
+          <span class="role-tag">🏨 Tout Collaborateur en cas de ralentissement</span>
+        </div>
+
+        <!-- MOCKUP ÉCRAN 8 -->
+        <div class="screen-mockup">
+          <div class="screen-bar">
+            <div class="screen-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="screen-url">https://hotelia.refuge-palmeraie.ci/admin/diagnostic?tool=chrome-doctor</div>
+            <div style="font-size: 0.7rem; color: #10B981; font-family: monospace;">● SONDE DE SANTÉ ACTIVE</div>
+          </div>
+
+          <div class="screen-viewport">
+            <div class="screen-callout-marker" style="top: 25px; left: 30px;">1</div>
+            <div class="screen-callout-marker" style="top: 150px; right: 40px;">2</div>
+            <div class="screen-callout-marker" style="bottom: 30px; left: 45%;">3</div>
+
+            <!-- Boîte Modale Simulation Chrome Doctor -->
+            <div style="background: #1C1B18; border-radius: 14px; padding: 1.5rem; color: white; border: 1px solid #332F28;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2E2B25; padding-bottom: 1rem; margin-bottom: 1.25rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                    🛡️
+                  </div>
+                  <div>
+                    <h3 style="font-size: 1.15rem; font-weight: 800; color: white;">Docteur Stockage Local & Diagnostic Chrome</h3>
+                    <p style="font-size: 0.72rem; color: #94A3B8;">Inspection automatisée • Protection intégrité zéro-perte de données</p>
+                  </div>
+                </div>
+                <span style="background: #065F46; color: #A7F3D0; font-size: 0.72rem; font-weight: bold; padding: 0.3rem 0.75rem; border-radius: 20px;">
+                  ● Système Prêt & Sain
+                </span>
+              </div>
+
+              <!-- Cartes des Sondes de Performance -->
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.25rem;">
+                <div style="background: #25231F; border: 1px solid #3D3933; border-radius: 10px; padding: 0.75rem;">
+                  <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase;">Latence Écriture Sonde</div>
+                  <div style="font-size: 1.3rem; font-weight: 800; color: #10B981; font-family: monospace;">2.4 ms</div>
+                  <div style="font-size: 0.65rem; color: #10B981;">Vitesse excellente</div>
+                </div>
+                <div style="background: #25231F; border: 1px solid #3D3933; border-radius: 10px; padding: 0.75rem;">
+                  <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase;">Quota LocalStorage</div>
+                  <div style="font-size: 1.3rem; font-weight: 800; color: #38BDF8; font-family: monospace;">342 KB <span style="font-size: 0.7rem; color: #94A3B8;">/ 5 MB</span></div>
+                  <div style="font-size: 0.65rem; color: #38BDF8;">6.8% utilisé (Sécurisé)</div>
+                </div>
+                <div style="background: #25231F; border: 1px solid #3D3933; border-radius: 10px; padding: 0.75rem;">
+                  <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase;">Conflit d'Identifiants</div>
+                  <div style="font-size: 1.3rem; font-weight: 800; color: #10B981; font-family: monospace;">0 anomalie</div>
+                  <div style="font-size: 0.65rem; color: #10B981;">6 chambres synchronisées</div>
+                </div>
+                <div style="background: #25231F; border: 1px solid #3D3933; border-radius: 10px; padding: 0.75rem;">
+                  <div style="font-size: 0.68rem; color: #94A3B8; text-transform: uppercase;">Navigateur Détecté</div>
+                  <div style="font-size: 0.85rem; font-weight: 800; color: #F59E0B; margin-top: 0.3rem;">Chrome 131.0</div>
+                  <div style="font-size: 0.65rem; color: #94A3B8;">Windows 64-bit PWA</div>
+                </div>
+              </div>
+
+              <!-- Journal d'Inspection et Clés Protégées -->
+              <div style="background: #11100E; border: 1px solid #2B2822; border-radius: 10px; padding: 0.85rem; font-family: monospace; font-size: 0.72rem; color: #A1A1AA; margin-bottom: 1.25rem; line-height: 1.7;">
+                <div><span style="color: #10B981;">[✓] PASS</span> Clé <code>hotelia_reservations_v2</code> : 18 enregistrements valides, intégrité vérifiée</div>
+                <div><span style="color: #10B981;">[✓] PASS</span> Clé <code>hotelia_fne_tax_config</code> : Conformité fiscale DGI Côte d'Ivoire (18% TVA, 5% AIRSI)</div>
+                <div><span style="color: #10B981;">[✓] PASS</span> Clé <code>hotelia_printer_thermal_settings</code> : Calibrage 80mm uniforme actif</div>
+                <div><span style="color: #38BDF8;">[i] INFO</span> Purge préventive : 0 corruption de type [object Object] détectée</div>
+              </div>
+
+              <!-- Bouton d'Action Réparation 1-Clic -->
+              <div style="display: flex; justify-content: space-between; align-items: center; background: #25231F; padding: 0.85rem 1.25rem; border-radius: 10px; border: 1px solid #3D3933;">
+                <div>
+                  <div style="font-size: 0.82rem; font-weight: bold; color: white;">Besoin d'une optimisation ou en cas d'écran blanc sous Chrome ?</div>
+                  <div style="font-size: 0.7rem; color: #94A3B8;">La réparation nettoie les fragments temporaires sans toucher à vos réservations ni à vos factures.</div>
+                </div>
+                <button style="background: #10B981; color: #022C22; font-weight: 800; font-size: 0.85rem; padding: 0.65rem 1.25rem; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
+                  <span>⚡ Lancer la Réparation & Purge en 1-Clic</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GUIDE DES CALLOUTS ÉCRAN 8 -->
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">1</span>
+              <span class="step-title">Sonde de Latence en Millisecondes</span>
+            </div>
+            <p class="step-desc">
+              Teste en direct le temps de réponse du disque dur et de la mémoire de l'ordinateur/tablette pour s'assurer que les enregistrements de réservation sont instantanés.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">2</span>
+              <span class="step-title">Audit d'Intégrité des Clés Métier</span>
+            </div>
+            <p class="step-desc">
+              Vérifie qu'aucun module externe n'a corrompu les réservations, les tarifs horaires (2 500 FCFA/h) ou les paramètres de facturation normalisée FNE.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-header">
+              <span class="callout-dot">3</span>
+              <span class="step-title">Réparation Automatisée Sans Risque</span>
+            </div>
+            <p class="step-desc">
+              Le bouton vert effectue une purge préventive intelligente des caches orphelins tout en verrouillant et conservant 100% des données hôtelières réelles.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION DÉDIÉE : GUIDE IMPRESSION THERMIQUE 80MM -->
+      <section id="thermal-printing" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-amber">Standardisation Technique</span>
+          <h2 class="section-title">Guide Exclusif : Impression Thermique 80mm & Uniformisation CSS</h2>
+          <p class="section-desc">
+            Spécifications officielles du gabarit d'impression thermique 80mm utilisé pour tous les reçus de caisse POS, notes de bar, bons de préparation cuisine et factures normalisées FNE.
+          </p>
+        </div>
+
+        <div class="tip-box">
+          <strong>📐 Règle d'or de mise en page :</strong> Tous les tickets thermiques de l'hôtel sont calibrés selon la directive CSS normalisée ci-dessous. Les éléments de contenu sont alignés à gauche par défaut (idéal pour les désignations d'articles) tandis que les en-têtes, totaux et pieds de page sont strictement centrés via les classes dédiées.
+        </div>
+
+        <!-- BLOC DE CODE CSS OFFICIEL UNIFORMISÉ -->
+        <div class="code-banner">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid #1E293B; padding-bottom: 0.5rem;">
+            <span style="font-weight: bold; color: var(--primary); font-size: 0.75rem;">CSS OFFICIEL UNIFIÉ — TOUTES IMPRESSIONS THERMIQUES (HOTELIA)</span>
+            <span style="font-size: 0.65rem; color: #94A3B8;">ESC/POS • Rouleau Standard 80mm</span>
+          </div>
+<pre style="margin: 0;"><code><span class="keyword">@page</span> {
+  <span class="property">margin</span>: <span class="value">0</span>;
+  <span class="property">size</span>: <span class="value">80mm auto</span>; <span class="comment">/* Définit la largeur du papier à 80mm */</span>
+}
+
+<span class="selector">body</span> {
+  <span class="property">width</span>: <span class="value">80mm</span>;
+  <span class="property">margin</span>: <span class="value">0 auto</span>;
+  <span class="property">padding</span>: <span class="value">5mm</span>;
+  <span class="property">font-family</span>: <span class="value">'Courier New', monospace</span>; <span class="comment">/* Police à chasse fixe idéale pour les tickets */</span>
+  <span class="property">font-size</span>: <span class="value">12px</span>;
+  <span class="property">text-align</span>: <span class="value">left</span>; <span class="comment">/* Par défaut aligné à gauche pour le texte/articles */</span>
+}
+
+<span class="comment">/* Classes pour centrer spécifiquement des éléments */</span>
+<span class="selector">.center</span> {
+  <span class="property">text-align</span>: <span class="value">center</span>;
+}
+
+<span class="selector">.ticket-header</span>, 
+<span class="selector">.ticket-footer</span>, 
+<span class="selector">.total-section</span> {
+  <span class="property">text-align</span>: <span class="value">center</span>;
+}</code></pre>
+        </div>
+
+        <!-- DIAGRAMME ANATOMIQUE DU TICKET THERMIQUE 80MM -->
+        <div class="thermal-annotated-wrapper">
+          <!-- Modèle Visuel Ticket -->
+          <div style="width: 300px; flex-shrink: 0; background: white; border: 1px solid #CBD5E1; padding: 5mm; font-family: 'Courier New', monospace; font-size: 11px; box-shadow: 0 5px 20px rgba(0,0,0,0.06); border-radius: 4px;">
+            <!-- Zone 1 : Ticket Header (Centré) -->
+            <div style="text-align: center; border: 1px dashed #2563EB; background: #EFF6FF; padding: 4px; margin-bottom: 6px;">
+              <div style="font-size: 8px; color: #2563EB; font-weight: bold;">[Zone 1 : .ticket-header .center]</div>
+              <div style="font-weight: bold; font-size: 12px;">HÔTEL REFUGE PALMERAIE</div>
+              <div style="font-size: 9px;">Bongouanou • Tél: +225 07 00 00 00</div>
+              <div style="font-size: 8px;">NCC: 202684931 • DGI CI</div>
+            </div>
+
+            <!-- Zone 2 : Métadonnées & Lignes (Aligné Gauche par défaut) -->
+            <div style="text-align: left; border: 1px dashed #059669; background: #ECFDF5; padding: 4px; margin-bottom: 6px;">
+              <div style="font-size: 8px; color: #059669; font-weight: bold;">[Zone 2 : body (text-align: left)]</div>
+              <div>Ticket N° : POS-2026-0891</div>
+              <div>Date : 21/10/2026 13:45</div>
+              <div>Table : Salon VIP 2 (Serveur: Jean)</div>
+              <div style="border-top: 1px solid black; margin: 4px 0;"></div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>1x Poulet Braisé</span>
+                <span style="font-weight: bold;">6 500</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>1x Alloco Spécial</span>
+                <span style="font-weight: bold;">1 500</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>2x Bandama Rouge</span>
+                <span style="font-weight: bold;">4 000</span>
+              </div>
+            </div>
+
+            <!-- Zone 3 : Total Section (Centré) -->
+            <div style="text-align: center; border: 1px dashed #D97706; background: #FFFBEB; padding: 4px; margin-bottom: 6px;">
+              <div style="font-size: 8px; color: #D97706; font-weight: bold;">[Zone 3 : .total-section .center]</div>
+              <div style="font-size: 10px; font-weight: bold;">TOTAL À PAYER</div>
+              <div style="font-size: 14px; font-weight: 800;">12 000 FCFA</div>
+              <div style="font-size: 8px;">Dont TVA 18% (1 830 FCFA) • Espèces</div>
+            </div>
+
+            <!-- Zone 4 : Ticket Footer (Centré) -->
+            <div style="text-align: center; border: 1px dashed #7C3AED; background: #F5F3FF; padding: 4px;">
+              <div style="font-size: 8px; color: #7C3AED; font-weight: bold;">[Zone 4 : .ticket-footer .center]</div>
+              <div style="font-size: 9px; font-weight: bold;">Merci de votre visite !</div>
+              <div style="width: 50px; height: 50px; border: 1px solid black; margin: 4px auto; display: flex; align-items: center; justify-content: center; font-size: 8px;">QR CODE</div>
+              <div style="font-size: 8px;">Conservez ce reçu pour tout contrôle</div>
+            </div>
+          </div>
+
+          <!-- Tableau Explicatif des Paramètres Navigateur -->
+          <div style="flex: 1;">
+            <h3 style="font-size: 1.1rem; font-weight: bold; color: #0F172A; margin-bottom: 0.75rem;">Réglages d'Impression Navigateur (Chrome / Edge / Windows / Android)</h3>
+            <p style="font-size: 0.85rem; color: #475569; margin-bottom: 1rem;">
+              Pour éviter les sauts de page inutiles ou le rétrécissement du texte, configurez la boîte de dialogue d'impression système selon ces 4 règles obligatoires :
+            </p>
+
+            <table class="mock-table" style="margin-bottom: 1rem;">
+              <thead>
+                <tr>
+                  <th>Paramètre Navigateur</th>
+                  <th>Valeur Impérative</th>
+                  <th>Pourquoi ce réglage ?</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Destination</strong></td>
+                  <td><span class="badge badge-info">Votre Imprimante 80mm</span></td>
+                  <td>Sélectionner l'imprimante thermique USB/Réseau/Bluetooth (ex: EPSON TM, Sunmi, Xprinter).</td>
+                </tr>
+                <tr>
+                  <td><strong>Marges (Margins)</strong></td>
+                  <td><span class="badge badge-success">Aucune (None) / 0 mm</span></td>
+                  <td>Empêche Chrome d'ajouter 10mm de bordures blanches qui réduiraient le ticket.</td>
+                </tr>
+                <tr>
+                  <td><strong>Échelle (Scale)</strong></td>
+                  <td><span class="badge badge-success">100% (Par défaut)</span></td>
+                  <td>Préserve la netteté de la police fixe <code>Courier New</code> à 12px.</td>
+                </tr>
+                <tr>
+                  <td><strong>Graphiques d'arrière-plan</strong></td>
+                  <td><span class="badge badge-success">☑ Cochée (Actif)</span></td>
+                  <td>Permet l'impression nette des logos d'hôtel, séparateurs et QR codes fiscaux DGI.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="tip-box">
+              <strong>🖨️ Imprimantes Compatibles Testées :</strong> Epson TM-T20III / TM-T88VI, Xprinter XP-N160II / XP-Q800, Sunmi V2 Pro / T2s, Star Micronics TSP143, Bixolon SRP-330II.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 9 : MATRICE DES RÔLES -->
+      <section id="roles" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-purple">Sécurité & Contrôle d'Accès</span>
+          <h2 class="section-title">Matrice des Rôles & Permissions (RBAC)</h2>
+          <p class="section-desc">
+            Chaque collaborateur dispose d'un profil sécurisé adapté à ses attributions dans l'hôtel.
+          </p>
+        </div>
+
+        <table class="mock-table" style="font-size: 0.85rem;">
+          <thead>
+            <tr>
+              <th>Rôle</th>
+              <th>Pôle 1 : Hébergement</th>
+              <th>Pôle 2 : Resto & POS</th>
+              <th>Pôle 3 : Finance & FNE</th>
+              <th>Supervision</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>👑 Directeur Général</strong></td>
+              <td><span class="badge badge-success">Accès Total</span></td>
+              <td><span class="badge badge-success">Accès Total</span></td>
+              <td><span class="badge badge-success">Accès Total + KPIs</span></td>
+              <td>Super Admin</td>
+            </tr>
+            <tr>
+              <td><strong>🏨 Chef de Réception</strong></td>
+              <td><span class="badge badge-success">Gestion Complète</span></td>
+              <td><span class="badge badge-info">Lecture Seule</span></td>
+              <td><span class="badge badge-info">Reçus Chambres</span></td>
+              <td>Équipe Réception</td>
+            </tr>
+            <tr>
+              <td><strong>🛎️ Réceptionniste</strong></td>
+              <td><span class="badge badge-success">Saisie & Check-in</span></td>
+              <td><span class="badge badge-warning">Notes Chambres</span></td>
+              <td><span class="badge badge-warning">Acomptes Uniquement</span></td>
+              <td>Opérationnel</td>
+            </tr>
+            <tr>
+              <td><strong>🍽️ Directeur Restaurant</strong></td>
+              <td><span class="badge badge-danger">Bloqué</span></td>
+              <td><span class="badge badge-success">Gestion Totale POS</span></td>
+              <td><span class="badge badge-info">Recettes Bar/Resto</span></td>
+              <td>Équipe Salle & Bar</td>
+            </tr>
+            <tr>
+              <td><strong>💳 Caissier Restaurant</strong></td>
+              <td><span class="badge badge-danger">Bloqué</span></td>
+              <td><span class="badge badge-success">Encaissements POS</span></td>
+              <td><span class="badge badge-warning">Tickets 80mm</span></td>
+              <td>Caisse Directe</td>
+            </tr>
+            <tr>
+              <td><strong>👨‍🍳 Chef Cuisinier</strong></td>
+              <td><span class="badge badge-danger">Bloqué</span></td>
+              <td><span class="badge badge-success">Écran KDS Direct</span></td>
+              <td><span class="badge badge-danger">Bloqué</span></td>
+              <td>Cuisine & Pass</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- SECTION 10 : FAQ & DÉPANNAGE -->
+      <section id="faq" class="doc-section">
+        <div class="section-header">
+          <span class="section-pill pill-emerald">Support & Assistance</span>
+          <h2 class="section-title">F.A.Q & Dépannage Rapide</h2>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="background: white; border: 1px solid #E2E8F0; padding: 1.25rem; border-radius: 10px;">
+            <h4 style="font-weight: bold; color: #0F172A; margin-bottom: 0.3rem;">❓ Que faire si l'imprimante thermique coupe mal le papier ou saute des lignes ?</h4>
+            <p style="font-size: 0.85rem; color: #475569;">
+              Vérifiez que le papier est bien un rouleau thermique standard de <strong>80mm de largeur</strong>. Dans les paramètres d'impression du navigateur, vérifiez que les marges sont réglées sur <em>"Aucune"</em> ou <em>"Personnalisées : 0mm"</em> et que l'option <em>"Graphiques d'arrière-plan"</em> est cochée.
+            </p>
+          </div>
+
+          <div style="background: white; border: 1px solid #E2E8F0; padding: 1.25rem; border-radius: 10px;">
+            <h4 style="font-weight: bold; color: #0F172A; margin-bottom: 0.3rem;">❓ Que faire si le message "Erreur dans le tableau de bord Back-Office" apparaît sous Chrome ?</h4>
+            <p style="font-size: 0.85rem; color: #475569;">
+              Cliquez sur le bouton <strong>"Réparer & Vider le cache local"</strong> présent sur la bannière de sécurité, ou cliquez sur le bouton <strong>"Diag Chrome"</strong> dans l'en-tête pour lancer l'audit et la réparation automatique 1-clic.
+            </p>
+          </div>
+
+          <div style="background: white; border: 1px solid #E2E8F0; padding: 1.25rem; border-radius: 10px;">
+            <h4 style="font-weight: bold; color: #0F172A; margin-bottom: 0.3rem;">❓ Comment fonctionne l'application en cas de coupure de connexion internet ?</h4>
+            <p style="font-size: 0.85rem; color: #475569;">
+              L'application est une <strong>Progressive Web App (PWA)</strong>. Elle continue de fonctionner en local hors-ligne. Dès que la connexion internet est rétablie, les écritures et encaissements sont automatiquement synchronisés.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // Filtrage dynamique de la documentation via la barre de recherche
+    function filterDocs() {
+      const input = document.getElementById('docSearchInput');
+      const filter = input.value.toLowerCase();
+      const sections = document.querySelectorAll('.doc-section');
+
+      sections.forEach(sec => {
+        const text = sec.innerText.toLowerCase();
+        if (text.includes(filter)) {
+          sec.style.display = "";
+        } else {
+          sec.style.display = "none";
+        }
+      });
+    }
+
+    // Gestion de l'état actif des liens dans la sidebar
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('.doc-section');
+      const navLinks = document.querySelectorAll('.nav-item a');
+
+      let currentSection = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop - 120;
+        if (pageYOffset >= sectionTop) {
+          currentSection = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + currentSection) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
