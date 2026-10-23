@@ -378,3 +378,41 @@ function downloadBlob(blob: Blob, filename: string) {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Exporte un jeu de données en fichier CSV universel (séparateur point-virgule et BOM UTF-8 pour Excel)
+ */
+export function exportToCSV<T = any>({
+  filename,
+  columns,
+  data
+}: {
+  filename: string;
+  columns: ExportColumn<T>[];
+  data: T[];
+}) {
+  const safeFilename = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+  const headerLine = columns.map((c) => `"${c.header.replace(/"/g, '""')}"`).join(';');
+
+  const dataLines = data.map((item) => {
+    return columns
+      .map((col) => {
+        let val: any;
+        if (typeof col.key === 'string' && col.key.includes('.')) {
+          val = col.key.split('.').reduce((acc, part) => (acc ? acc[part] : ''), item);
+        } else {
+          val = (item as any)[col.key];
+        }
+        if (col.format) {
+          val = col.format(val, item);
+        }
+        return `"${String(val ?? '').replace(/"/g, '""')}"`;
+      })
+      .join(';');
+  });
+
+  const csvContent = '\uFEFF' + [headerLine, ...dataLines].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  downloadBlob(blob, safeFilename);
+}
+

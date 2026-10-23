@@ -2031,6 +2031,129 @@ export const INITIAL_POS_SALES: PosSale[] = [
     modePaiement: 'MTN Money',
     statutPaiement: 'paye',
     estRattacheChambre: false
+  },
+  // Ventes du 23 Octobre 2026 - Shift Matinée (Mariam Diallo)
+  {
+    id: 'pos-sale-oct23-01',
+    numeroTicket: 'TKT-2026-OCT23-01',
+    date: '2026-10-23',
+    heure: '12:30',
+    serveurNom: 'Mariam Diallo',
+    clientNom: 'M. Touré Amadou',
+    items: [
+      { productId: 'pos-food-1', nom: 'Garba Prestige & Thon Braisé Minute', categorie: 'nourriture', prixUnitaire: 8500, quantite: 2, totalLigne: 17000 },
+      { productId: 'pos-bev-3', nom: 'Cocktail Signature « Ivoire Sunset »', categorie: 'boisson', prixUnitaire: 6000, quantite: 3, totalLigne: 18000 }
+    ],
+    totalPartiel: 35000,
+    remise: 0,
+    totalGlobal: 35000,
+    montantEncaisse: 35000,
+    resteAPayer: 0,
+    modePaiement: 'Orange Money',
+    statutPaiement: 'paye',
+    estRattacheChambre: false
+  },
+  {
+    id: 'pos-sale-oct23-02',
+    numeroTicket: 'TKT-2026-OCT23-02',
+    date: '2026-10-23',
+    heure: '13:45',
+    serveurNom: 'Mariam Diallo',
+    clientNom: 'Mme Bamba Fatou',
+    items: [
+      { productId: 'pos-food-2', nom: 'Poulet Fermier Braisé & Alloco Doré', categorie: 'nourriture', prixUnitaire: 9500, quantite: 2, totalLigne: 19000 },
+      { productId: 'pos-bev-7', nom: 'Bière Locale Ivoire Spéciale 50cl', categorie: 'boisson', prixUnitaire: 2500, quantite: 4, totalLigne: 10000 }
+    ],
+    totalPartiel: 29000,
+    remise: 0,
+    totalGlobal: 29000,
+    montantEncaisse: 29000,
+    resteAPayer: 0,
+    modePaiement: 'Wave',
+    statutPaiement: 'paye',
+    estRattacheChambre: false
+  },
+  {
+    id: 'pos-sale-oct23-03',
+    numeroTicket: 'TKT-2026-OCT23-03',
+    date: '2026-10-23',
+    heure: '14:20',
+    serveurNom: 'Mariam Diallo',
+    clientNom: 'Délégation Ministère',
+    chambreNumero: '101',
+    items: [
+      { productId: 'pos-food-3', nom: 'Filet de Capitaine Sauce Moyo & Riz Parfumé', categorie: 'nourriture', prixUnitaire: 14000, quantite: 2, totalLigne: 28000 },
+      { productId: 'pos-bev-2', nom: 'Jus Artisanal de Bissap Glacé', categorie: 'boisson', prixUnitaire: 2500, quantite: 4, totalLigne: 10000 }
+    ],
+    totalPartiel: 38000,
+    remise: 0,
+    totalGlobal: 38000,
+    montantEncaisse: 38000,
+    resteAPayer: 0,
+    modePaiement: 'MOOV Money',
+    statutPaiement: 'paye',
+    estRattacheChambre: true
+  },
+  {
+    id: 'pos-sale-oct23-04',
+    numeroTicket: 'TKT-2026-OCT23-04',
+    date: '2026-10-23',
+    heure: '15:10',
+    serveurNom: 'Mariam Diallo',
+    clientNom: 'Client Bar Lounge',
+    items: [
+      { productId: 'pos-bev-5', nom: 'Champagne Moët & Chandon Brut', categorie: 'boisson', prixUnitaire: 45000, quantite: 1, totalLigne: 45000 }
+    ],
+    totalPartiel: 45000,
+    remise: 0,
+    totalGlobal: 45000,
+    montantEncaisse: 45000,
+    resteAPayer: 0,
+    modePaiement: 'Espèces / Caisse',
+    statutPaiement: 'paye',
+    estRattacheChambre: false
+  },
+  // Ventes du 23 Octobre 2026 - Shift Soirée (Aïcha Traoré)
+  {
+    id: 'pos-sale-oct23-05',
+    numeroTicket: 'TKT-2026-OCT23-05',
+    date: '2026-10-23',
+    heure: '19:40',
+    serveurNom: 'Aïcha Traoré',
+    clientNom: 'Table VIP 4 - Soirée Dégustation',
+    items: [
+      { productId: 'pos-food-8', nom: 'Brochettes Géantes de Gambas Assinie', categorie: 'nourriture', prixUnitaire: 16000, quantite: 4, totalLigne: 64000 },
+      { productId: 'pos-bev-4', nom: 'Champagne Ruinart Blanc de Blancs', categorie: 'boisson', prixUnitaire: 75000, quantite: 1, totalLigne: 75000 }
+    ],
+    totalPartiel: 139000,
+    remise: 9000,
+    totalGlobal: 130000,
+    montantEncaisse: 130000,
+    resteAPayer: 0,
+    modePaiement: 'Orange Money',
+    statutPaiement: 'paye',
+    estRattacheChambre: false
+  },
+  {
+    id: 'pos-sale-oct23-06',
+    numeroTicket: 'TKT-2026-OCT23-06',
+    date: '2026-10-23',
+    heure: '21:15',
+    serveurNom: 'Aïcha Traoré',
+    clientNom: 'M. Soro Guillaume',
+    chambreNumero: '201',
+    items: [
+      { productId: 'pos-food-6', nom: 'Entrecôte Grillée Black Angus', categorie: 'nourriture', prixUnitaire: 18000, quantite: 2, totalLigne: 36000 },
+      { productId: 'pos-bev-6', nom: 'Château Saint-Émilion Grand Cru', categorie: 'boisson', prixUnitaire: 28000, quantite: 1, totalLigne: 28000 }
+    ],
+    totalPartiel: 64000,
+    remise: 0,
+    totalGlobal: 64000,
+    montantEncaisse: 64000,
+    resteAPayer: 0,
+    modePaiement: 'Wave',
+    statutPaiement: 'paye',
+    estRattacheChambre: true
   }
 ];
 

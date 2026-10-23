@@ -25,6 +25,7 @@ import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
 import { RoomOccupancyCalendarTab } from './RoomOccupancyCalendarTab.tsx';
 import { MaintenanceDashboard } from './MaintenanceDashboard.tsx';
+import { CashRegisterManagementTab } from './CashRegisterManagementTab.tsx';
 import { SoundNotificationModal } from './SoundNotificationModal.tsx';
 import { ErrorBoundary } from '../common/ErrorBoundary.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
@@ -92,7 +93,8 @@ import {
   Sliders,
   Cpu,
   Wrench,
-  Hammer
+  Hammer,
+  Coins
 } from 'lucide-react';
 
 export type BackOfficeTab =
@@ -112,6 +114,7 @@ export type BackOfficeTab =
   | 'loyalty'
   | 'chambres'
   | 'finance'
+  | 'versements'
   | 'expenses'
   | 'profile'
   | 'settings'
@@ -405,6 +408,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         return { pole: 'Administration', title: 'Facture Globale Consolidée & FNE DGI', icon: <Receipt className="w-4 h-4 text-amber-400" /> };
       case 'finance':
         return { pole: 'Administration', title: 'Rapports Financiers & Encaissements', icon: <PieChart className="w-4 h-4 text-purple-400" /> };
+      case 'versements':
+        return { pole: 'Administration', title: 'Gestion des Caisses & Versements par Shift', icon: <Coins className="w-4 h-4 text-amber-400" /> };
       case 'expenses':
         return { pole: 'Administration', title: 'Dépenses d\'Exploitation & Ménage', icon: <TrendingUp className="w-4 h-4 text-rose-400" /> };
       case 'loyalty':
@@ -481,7 +486,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   // Guard de routage : Si un utilisateur restreint tente d'accéder à un onglet interdit,
   // Dashboard Revenus, Facture Globale, Journal d'Audit, Alertes Stocks et Profil restent 100% ACCESSIBLES ET GARANTIS POUR TOUS LES RÔLES.
   useEffect(() => {
-    if (activeTab === 'dashboard' || activeTab === 'facture_globale' || activeTab === 'profile' || activeTab === 'audit' || activeTab === 'stock_alerts') {
+    if (activeTab === 'dashboard' || activeTab === 'facture_globale' || activeTab === 'profile' || activeTab === 'audit' || activeTab === 'stock_alerts' || activeTab === 'versements') {
       return;
     }
     if (isCaisseRestaurant && activeTab !== 'restaurant' && activeTab !== 'cuisine' && activeTab !== 'pos') {
@@ -517,12 +522,19 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       return;
     }
 
+    // 0b. Versements de caisse accessible pour Chef de Réception, DG et Caissiers
+    if (tab === 'versements') {
+      setActiveTab('versements');
+      return;
+    }
+
     // 1. Contrôle dynamique par la Matrice de Permissions RBAC (hasPermission)
     const featureMap: Record<string, AppFeatureId> = {
       dashboard: 'dashboard',
       gantt: 'gantt',
       reservations: 'reservations',
       chambres: 'chambres',
+      maintenance: 'chambres',
       services: 'services',
       facture_globale: 'facture_globale',
       pos: 'pos',
@@ -531,6 +543,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       stock: 'stock',
       stock_alerts: 'stock_alerts',
       finance: 'finance',
+      versements: 'finance',
       expenses: 'expenses',
       loyalty: 'loyalty',
       audit: 'audit',
@@ -1024,6 +1037,54 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               )}
             </button>
 
+            {/* Onglet Direct : Maintenance & Réparations (Chambres Bloquées) */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('maintenance')}
+              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                activeTab === 'maintenance'
+                  ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
+                  : blockedRoomsCount > 0
+                  ? 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
+                  : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
+              }`}
+              title="Tableau de bord de maintenance, chambres en réparation et blocage des réservations"
+            >
+              <Wrench className={`w-4 h-4 ${blockedRoomsCount > 0 ? 'text-amber-400 animate-pulse' : 'text-stone-400'}`} />
+              <span>Maintenance</span>
+              {blockedRoomsCount > 0 ? (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500 text-stone-950 font-black animate-pulse flex items-center gap-1">
+                  <span>{blockedRoomsCount} bloquée{blockedRoomsCount > 1 ? 's' : ''}</span>
+                </span>
+              ) : activeMaintenanceTicketsCount > 0 ? (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  {activeMaintenanceTicketsCount} actif{activeMaintenanceTicketsCount > 1 ? 's' : ''}
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  0 bloquée
+                </span>
+              )}
+            </button>
+
+            {/* Onglet Direct : Versements de Caisse (Matin & Soir) */}
+            <button
+              type="button"
+              onClick={() => handleTabClick('versements')}
+              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                activeTab === 'versements'
+                  ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
+                  : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
+              }`}
+              title="Gestion des versements de caisse par shift (Matinée 07h-17h & Soirée 17h-06h)"
+            >
+              <Coins className="w-4 h-4 text-amber-400" />
+              <span>Versements Caisses</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                Matin &amp; Soir
+              </span>
+            </button>
+
             {/* Séparateur discret */}
             <div className="h-6 w-px bg-stone-800 shrink-0 hidden sm:block" />
 
@@ -1202,6 +1263,14 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               >
                 <Receipt className="w-4 h-4 stroke-[2.5]" />
                 <span>Facture Globale &amp; FNE</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('versements')}
+                className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-850 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all border border-amber-500/40"
+              >
+                <Coins className="w-4 h-4 stroke-[2.5] text-amber-400" />
+                <span>Mes Versements</span>
               </button>
             </div>
           </div>
@@ -1396,10 +1465,27 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </ErrorBoundary>
         )}
 
+        {/* Tab 2b : Maintenance, Réparations & Blocage des Chambres */}
+        {activeTab === 'maintenance' && !isCaisse && !isCaisseRestaurant && (
+          <ErrorBoundary fallbackTitle="Erreur sur le tableau de bord de maintenance">
+            <MaintenanceDashboard
+              onNavigateToRooms={() => setActiveTab('chambres')}
+              onNavigateToCalendar={() => setActiveTab('calendar')}
+            />
+          </ErrorBoundary>
+        )}
+
         {/* Tab 3 : Rapports Financiers */}
         {activeTab === 'finance' && isDG && (
           <ErrorBoundary fallbackTitle="Erreur sur les rapports financiers">
             <FinancialReportTab onGoToRevenueDashboard={() => handleTabClick('dashboard')} />
+          </ErrorBoundary>
+        )}
+
+        {/* Tab 3b : Gestion des Caisses & Clôtures de Shift (Matin & Soir) */}
+        {activeTab === 'versements' && (
+          <ErrorBoundary fallbackTitle="Erreur sur la gestion des caisses et versements">
+            <CashRegisterManagementTab />
           </ErrorBoundary>
         )}
 
@@ -1750,13 +1836,47 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 </div>
               </div>
 
-              {/* Module 5 : Journal d'Audit & Traçabilité */}
+              {/* Module 5 : Maintenance, Réparations & Blocage des Chambres */}
+              <div
+                onClick={() => {
+                  handleTabClick('maintenance');
+                  setIsHebergementModalOpen(false);
+                }}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                  activeTab === 'maintenance'
+                    ? 'bg-amber-950/40 border-amber-500 shadow-md ring-2 ring-amber-500/30'
+                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                      <Wrench className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                      {blockedRoomsCount > 0 ? `${blockedRoomsCount} chambres bloquées` : `${activeMaintenanceTicketsCount} tickets actifs`}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white mb-1">
+                    Maintenance &amp; Blocage des Chambres
+                  </h4>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Suivi des travaux de réparation, assignation des techniciens, coûts et blocage strict des chambres pour empêcher toute réservation en ligne ou en caisse.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                  <span>Gérer la maintenance &amp; blocages</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Module 6 : Journal d'Audit & Traçabilité */}
               <div
                 onClick={() => {
                   handleTabClick('audit');
                   setIsHebergementModalOpen(false);
                 }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between md:col-span-2 ${
+                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
                   activeTab === 'audit'
                     ? 'bg-amber-950/40 border-amber-500 shadow-md ring-2 ring-amber-500/30'
                     : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
@@ -2233,6 +2353,40 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 </div>
                 <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-purple-300 font-semibold">
                   <span>Consulter le rapport financier</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Module 2b : Gestion des Caisses & Versements par Shift */}
+              <div
+                onClick={() => {
+                  handleTabClick('versements');
+                  setIsAdministrationModalOpen(false);
+                }}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                  activeTab === 'versements'
+                    ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                      <Coins className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                      Matin &amp; Soir
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-sm text-white mb-1">
+                    Gestion des Caisses &amp; Versements par Shift
+                  </h4>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Saisie, rapprochement et validation des versements journaliers (Espèces, Orange, Moov, MTN, Wave). Génération de reçus thermiques (80mm), bordereaux A4, PDF et CSV.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                  <span>Accéder à la gestion des caisses</span>
                   <ChevronRight className="w-4 h-4" />
                 </div>
               </div>

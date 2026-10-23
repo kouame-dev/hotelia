@@ -37,7 +37,9 @@ import {
   Check,
   X,
   MessageSquare,
-  History
+  History,
+  Lock,
+  Wrench
 } from 'lucide-react';
 import { ReservationAuditLogTab } from './ReservationAuditLogTab.tsx';
 
@@ -123,9 +125,13 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
   const [formClientNom, setFormClientNom] = useState('');
   const [formClientTel, setFormClientTel] = useState('+225 ');
   const [formClientEmail, setFormClientEmail] = useState('');
-  const [formChambreNumero, setFormChambreNumero] = useState(
-    Array.isArray(chambres) && chambres.length > 0 && chambres[0]?.numero ? chambres[0].numero : '101'
-  );
+  const [formChambreNumero, setFormChambreNumero] = useState(() => {
+    if (Array.isArray(chambres) && chambres.length > 0) {
+      const firstAvailable = chambres.find((c) => c.statut !== 'Maintenance');
+      return firstAvailable?.numero || chambres[0]?.numero || '101';
+    }
+    return '101';
+  });
   const [formDateDebut, setFormDateDebut] = useState(
     new Date().toISOString().split('T')[0]
   );
@@ -283,6 +289,12 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     // En formule Nuitée, le nom du client est obligatoire. En Day-Use, il est optionnel (valeur de secours automatique)
     if (formMode === 'nuit' && !formClientNom.trim()) {
       alert('Veuillez renseigner le nom du client pour une réservation à la nuitée.');
+      return;
+    }
+
+    const targetChambre = Array.isArray(chambres) ? chambres.find((c) => c.numero === formChambreNumero) : null;
+    if (targetChambre && targetChambre.statut === 'Maintenance') {
+      alert(`Impossible de créer la réservation : la Chambre ${formChambreNumero} est actuellement en maintenance/réparation et bloquée.`);
       return;
     }
 
@@ -1144,30 +1156,47 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {(Array.isArray(chambres) ? chambres : []).map((c) => {
                   const isSelected = formChambreNumero === c.numero;
+                  const isMaintenance = c.statut === 'Maintenance';
                   return (
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setFormChambreNumero(c.numero)}
-                      className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-[#C5A880] bg-[#C5A880]/15 ring-2 ring-[#C5A880]/40'
-                          : 'border-stone-200 hover:border-stone-300 bg-white'
+                      disabled={isMaintenance}
+                      onClick={() => !isMaintenance && setFormChambreNumero(c.numero)}
+                      title={isMaintenance ? `Chambre ${c.numero} en maintenance : réservations bloquées` : `Attribuer la Chambre ${c.numero}`}
+                      className={`p-3.5 rounded-xl border text-left transition-all ${
+                        isMaintenance
+                          ? 'border-amber-400/80 bg-amber-50/80 cursor-not-allowed opacity-80'
+                          : isSelected
+                          ? 'border-[#C5A880] bg-[#C5A880]/15 ring-2 ring-[#C5A880]/40 cursor-pointer'
+                          : 'border-stone-200 hover:border-stone-300 bg-white cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-stone-900 font-mono text-base">
-                          Chambre {c.numero}
+                        <span className="font-bold text-stone-900 font-mono text-base flex items-center gap-1.5">
+                          <span>Chambre {c.numero}</span>
+                          {isMaintenance && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500 text-stone-950 font-black flex items-center gap-1">
+                              <Lock className="w-2.5 h-2.5" /> Maintenance
+                            </span>
+                          )}
                         </span>
                         <span className="text-[11px] px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 font-medium">
                           Étage {c.etage}
                         </span>
                       </div>
                       <span className="text-xs text-stone-600 font-semibold block">{c.typeNom}</span>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-stone-500 font-mono border-t border-stone-100 pt-1.5">
-                        <span>{formatPrice(c.prixNuit)} / nuit</span>
-                        <span>{formatPrice(c.prixHeure)} / h</span>
-                      </div>
+                      {isMaintenance ? (
+                        <div className="mt-2 text-[11px] text-amber-900 font-semibold border-t border-amber-200/80 pt-1.5 flex items-center gap-1">
+                          <Wrench className="w-3 h-3 text-amber-700 shrink-0" />
+                          <span>🚫 Bloquée pour travaux</span>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-stone-500 font-mono border-t border-stone-100 pt-1.5">
+                          <span>{formatPrice(c.prixNuit)} / nuit</span>
+                          <span>{formatPrice(c.prixHeure)} / h</span>
+                        </div>
+                      )}
                     </button>
                   );
                 })}

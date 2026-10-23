@@ -150,12 +150,19 @@ export const ReservationForm: React.FC<ReservationFormProps> = ({
     setIsSubmitted(true);
     setLastSubmission(payload);
     
+    // Sélection d'une chambre physique disponible qui n'est pas bloquée pour maintenance
+    const availableRoom = (Array.isArray(chambres) ? chambres : []).find(
+      (c) => c.statut !== 'Maintenance' && (!roomNom || c.typeNom.toLowerCase().includes(roomNom.toLowerCase()) || roomNom.toLowerCase().includes(c.typeNom.toLowerCase()))
+    ) || (Array.isArray(chambres) ? chambres.find((c) => c.statut !== 'Maintenance') : null);
+
+    const targetRoomNumero = availableRoom?.numero || (chambres.length > 0 ? chambres[0].numero : '101');
+
     // Enregistre la réservation dans le système avec statut 'en_attente'
     addReservation({
       clientNom: 'Client En Ligne (Site Web)',
       clientTelephone: '+225 07 48 12 34 56',
       clientEmail: 'reservation.web@hotelia.ci',
-      chambreNumero: chambres.length > 0 ? chambres[0].numero : '101',
+      chambreNumero: targetRoomNumero,
       chambreType: roomNom || 'Deluxe Harmonie',
       typeReservation: mode === 'nuitee' ? 'nuit' : 'heure',
       dateDebut: mode === 'nuitee' ? dateArrivee : dateHeures,

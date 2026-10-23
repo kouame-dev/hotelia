@@ -52,7 +52,9 @@ import {
   ActiveUserSession,
   EmailReminderLog,
   TransfertStockRecord,
-  MaintenanceTicket
+  MaintenanceTicket,
+  VersementCaisse,
+  ShiftType
 } from '../types.ts';
 import {
   generateConfirmationEmail,
@@ -73,7 +75,8 @@ import {
   INITIAL_RESERVATIONS,
   INITIAL_AUDIT_LOGS,
   DEFAULT_THERMAL_PRINTER_CONFIG,
-  INITIAL_MAINTENANCE_TICKETS
+  INITIAL_MAINTENANCE_TICKETS,
+  INITIAL_VERSEMENTS_CAISSE
 } from '../data/mockHotelData.ts';
 import {
   INITIAL_PAID_SERVICES,
@@ -407,6 +410,14 @@ interface HotelDataContextType {
   resolveMaintenanceTicket: (ticketId: string, notes?: string, coutReel?: number) => void;
   activeMaintenanceTicketsCount: number;
   blockedRoomsCount: number;
+
+  // 16. Système de Gestion des Versements de Caisse (Matin / Soir)
+  versementsCaisse: VersementCaisse[];
+  addVersementCaisse: (
+    versement: Omit<VersementCaisse, 'id' | 'numeroRecu' | 'dateCreation' | 'montantTotal'>
+  ) => VersementCaisse;
+  updateVersementCaisse: (id: string, updated: Partial<VersementCaisse>) => void;
+  deleteVersementCaisse: (id: string) => void;
 }
 
 const HotelDataContext = createContext<HotelDataContextType | undefined>(undefined);
@@ -4571,7 +4582,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     addAuditLog({
-      action: 'modification_reservation',
+      action: 'maintenance',
       actionLabel: `Intervention Maintenance Déclarée (${newTicket.chambreNumero})`,
       reservationId: `maint-${newTicket.chambreNumero}`,
       clientNom: `Chambre ${newTicket.chambreNumero}`,
@@ -4675,7 +4686,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     addAuditLog({
-      action: 'modification_reservation',
+      action: 'maintenance',
       actionLabel: block ? `Chambre ${chambreNumero} Bloquée (Maintenance)` : `Chambre ${chambreNumero} Débloquée`,
       reservationId: `lock-${chambreNumero}`,
       clientNom: `Chambre ${chambreNumero}`,
@@ -4717,7 +4728,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
 
     addAuditLog({
-      action: 'modification_reservation',
+      action: 'maintenance',
       actionLabel: `Maintenance Terminée (Chambre ${ticket.chambreNumero})`,
       reservationId: ticket.id,
       clientNom: `Chambre ${ticket.chambreNumero}`,
@@ -4739,6 +4750,140 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const blockedRoomsCount = useMemo(() => {
     return chambres.filter((c) => c.statut === 'Maintenance').length;
   }, [chambres]);
+
+  // 16. Système de Gestion des Versements de Caisse (Matin / Soir)
+  const [versementsCaisse, setVersementsCaisse] = useState<VersementCaisse[]>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('hotelia_versements_caisse');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Erreur chargement hotelia_versements_caisse', e);
+    }
+    return INITIAL_VERSEMENTS_CAISSE;
+  });
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('hotelia_versements_caisse', JSON.stringify(versementsCaisse));
+      }
+    } catch (e) {
+      console.warn('Erreur sauvegarde hotelia_versements_caisse', e);
+    }
+  }, [versementsCaisse]);
+
+  const addVersementCaisse = (
+    versementData: Omit<VersementCaisse, 'id' | 'numeroRecu' | 'dateCreation' | 'montantTotal'>
+  ): VersementCaisse => {
+    const now = new Date();
+    const dateStr = versementData.dateVersement || now.toISOString().split('T')[0];
+    const cleanDateCompact = dateStr.replace(/-/g, '');
+    const countToday = versementsCaisse.filter((v) => v.dateVersement === dateStr).length + 1;
+    const numeroRecu = `VRS-${cleanDateCompact}-${String(countToday).padStart(3, '0')}`;
+    const id = `vers-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+    const total =
+      Number(versementData.montantEspeces || 0) +
+      Number(versementData.montantOrangeMoney || 0) +
+      Number(versementData.montantMoovMoney || 0) +
+      Number(versementData.montantMtnMoney || 0) +
+      Number(versementData.montantWave || 0);
+
+    const newVersement: VersementCaisse = {
+      ...versementData,
+      id,
+      numeroRecu,
+      dateCreation: now.toISOString(),
+      montantTotal: total,
+      shiftLabel:
+        versementData.shiftType === 'matin'
+          ? 'Matinée (07h00 - 17h00)'
+          : 'Soirée (17h00 - 06h00)'
+    };
+
+    setVersementsCaisse((prev) => [newVersement, ...prev]);
+
+    addAuditLog({
+      action: 'paiement',
+      actionLabel: `Versement de Caisse Enregistré (${newVersement.numeroRecu})`,
+      reservationId: newVersement.numeroRecu,
+      clientNom: `Caissier: ${newVersement.caissierNom}`,
+      clientTelephone: 'Gestion Caisses',
+      chambreNumero: newVersement.shiftType === 'matin' ? 'Shift Matin' : 'Shift Soir',
+      chambreType: 'Bordereau Versement',
+      montantTotal: total,
+      userName: currentUserProfile.nom,
+      userRole: currentUserProfile.role,
+      userEmail: currentUserProfile.email,
+      details: `Enregistrement du versement shift ${newVersement.shiftType.toUpperCase()} pour ${newVersement.caissierNom}. Total: ${total.toLocaleString('fr-FR')} FCFA (Espèces: ${newVersement.montantEspeces.toLocaleString('fr-FR')}, OM: ${newVersement.montantOrangeMoney.toLocaleString('fr-FR')}, Moov: ${newVersement.montantMoovMoney.toLocaleString('fr-FR')}, MTN: ${newVersement.montantMtnMoney.toLocaleString('fr-FR')}, Wave: ${newVersement.montantWave.toLocaleString('fr-FR')}).`
+    });
+
+    return newVersement;
+  };
+
+  const updateVersementCaisse = (id: string, updated: Partial<VersementCaisse>) => {
+    setVersementsCaisse((prev) =>
+      prev.map((v) => {
+        if (v.id === id) {
+          const merged = { ...v, ...updated };
+          const recalcTotal =
+            Number(merged.montantEspeces || 0) +
+            Number(merged.montantOrangeMoney || 0) +
+            Number(merged.montantMoovMoney || 0) +
+            Number(merged.montantMtnMoney || 0) +
+            Number(merged.montantWave || 0);
+
+          return {
+            ...merged,
+            montantTotal: recalcTotal,
+            modifieParNom: currentUserProfile.nom,
+            dateDerniereModification: new Date().toISOString()
+          };
+        }
+        return v;
+      })
+    );
+
+    addAuditLog({
+      action: 'modification',
+      actionLabel: `Versement de Caisse Modifié (${id})`,
+      reservationId: id,
+      clientNom: 'Gestion Caisses',
+      chambreNumero: 'Caisse',
+      chambreType: 'Bordereau Versement',
+      montantTotal: 0,
+      userName: currentUserProfile.nom,
+      userRole: currentUserProfile.role,
+      userEmail: currentUserProfile.email,
+      details: `Mise à jour du bordereau de versement par ${currentUserProfile.nom}.`
+    });
+  };
+
+  const deleteVersementCaisse = (id: string) => {
+    const target = versementsCaisse.find((v) => v.id === id);
+    setVersementsCaisse((prev) => prev.filter((v) => v.id !== id));
+
+    if (target) {
+      addAuditLog({
+        action: 'suppression',
+        actionLabel: `Versement de Caisse Supprimé (${target.numeroRecu})`,
+        reservationId: target.numeroRecu,
+        clientNom: `Caissier: ${target.caissierNom}`,
+        chambreNumero: 'Caisse',
+        chambreType: 'Bordereau Versement',
+        montantTotal: target.montantTotal,
+        userName: currentUserProfile.nom,
+        userRole: currentUserProfile.role,
+        userEmail: currentUserProfile.email,
+        details: `Suppression du versement ${target.numeroRecu} d'un montant de ${target.montantTotal.toLocaleString('fr-FR')} FCFA.`
+      });
+    }
+  };
 
   return (
     <HotelDataContext.Provider
@@ -4925,7 +5070,12 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         toggleRoomMaintenanceBlock,
         resolveMaintenanceTicket,
         activeMaintenanceTicketsCount,
-        blockedRoomsCount
+        blockedRoomsCount,
+        // 16. Système de Gestion des Versements de Caisse (Matin / Soir)
+        versementsCaisse,
+        addVersementCaisse,
+        updateVersementCaisse,
+        deleteVersementCaisse
       }}
     >
       {children}

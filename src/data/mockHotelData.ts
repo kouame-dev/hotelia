@@ -9,7 +9,8 @@ import {
   ThermalPrinterConfig,
   AuditLogEntry,
   ActiveUserSession,
-  MaintenanceTicket
+  MaintenanceTicket,
+  VersementCaisse
 } from '../types.ts';
 
 // 1. Types de chambre initiaux
@@ -1746,6 +1747,110 @@ export const INITIAL_MAINTENANCE_TICKETS: MaintenanceTicket[] = [
     coutReel: 15000,
     notesTechniques: 'Piles lithium 4xAA remplacées et firmware du verrou VingCard synchronisé. Test validé avec 3 cartes.',
     signalePar: 'Aminata Koné (Chef de Réception)'
+  }
+];
+
+// 18. Versements de caisse initiaux (Shifts Matinée 07h-17h & Soirée 17h-06h)
+export const INITIAL_VERSEMENTS_CAISSE: VersementCaisse[] = [
+  {
+    id: 'vers-2026-10-23-01',
+    numeroRecu: 'VRS-20261023-001',
+    dateVersement: '2026-10-23',
+    heureEnregistrement: '17:15',
+    dateCreation: '2026-10-23T17:15:00.000Z',
+    shiftType: 'matin',
+    shiftLabel: 'Matinée (07h00 - 17h00)',
+    caissierId: 'usr-3',
+    caissierNom: 'Mariam Diallo',
+    caissierRole: 'Caisse',
+    enregistreParId: 'usr-2',
+    enregistreParNom: 'Aminata Koné',
+    enregistreParRole: 'Chef de Réception',
+    montantEspeces: 185000,
+    montantOrangeMoney: 120000,
+    montantMoovMoney: 45000,
+    montantMtnMoney: 60000,
+    montantWave: 95000,
+    montantTotal: 505000,
+    ecartConstate: 0,
+    motifEcart: 'Caisse conforme au centime près',
+    observations: 'Versement shift matinée clôturé sans incident. 6 réservations et consommations encaissées.',
+    statut: 'valide'
+  },
+  {
+    id: 'vers-2026-10-22-02',
+    numeroRecu: 'VRS-20261022-002',
+    dateVersement: '2026-10-22',
+    heureEnregistrement: '06:45',
+    dateCreation: '2026-10-22T06:45:00.000Z',
+    shiftType: 'soir',
+    shiftLabel: 'Soirée (17h00 - 06h00)',
+    caissierId: 'usr-restaurant-caisse',
+    caissierNom: 'Aïcha Traoré',
+    caissierRole: 'Caisse Restaurant',
+    enregistreParId: 'usr-2',
+    enregistreParNom: 'Aminata Koné',
+    enregistreParRole: 'Chef de Réception',
+    montantEspeces: 240000,
+    montantOrangeMoney: 155000,
+    montantMoovMoney: 30000,
+    montantMtnMoney: 85000,
+    montantWave: 110000,
+    montantTotal: 620000,
+    ecartConstate: 0,
+    motifEcart: 'Caisse restaurant et bar de nuit équilibrée',
+    observations: 'Forte affluence au restaurant gastronomique & bar lounge de nuit.',
+    statut: 'valide'
+  },
+  {
+    id: 'vers-2026-10-22-01',
+    numeroRecu: 'VRS-20261022-001',
+    dateVersement: '2026-10-22',
+    heureEnregistrement: '17:20',
+    dateCreation: '2026-10-22T17:20:00.000Z',
+    shiftType: 'matin',
+    shiftLabel: 'Matinée (07h00 - 17h00)',
+    caissierId: 'usr-3',
+    caissierNom: 'Mariam Diallo',
+    caissierRole: 'Caisse',
+    enregistreParId: 'usr-2',
+    enregistreParNom: 'Aminata Koné',
+    enregistreParRole: 'Chef de Réception',
+    montantEspeces: 160000,
+    montantOrangeMoney: 95000,
+    montantMoovMoney: 25000,
+    montantMtnMoney: 50000,
+    montantWave: 80000,
+    montantTotal: 410000,
+    ecartConstate: 0,
+    motifEcart: 'Solde exact',
+    observations: 'Check-outs matinaux et séjours jour enregistrés.',
+    statut: 'valide'
+  },
+  {
+    id: 'vers-2026-10-21-02',
+    numeroRecu: 'VRS-20261021-002',
+    dateVersement: '2026-10-21',
+    heureEnregistrement: '06:50',
+    dateCreation: '2026-10-21T06:50:00.000Z',
+    shiftType: 'soir',
+    shiftLabel: 'Soirée (17h00 - 06h00)',
+    caissierId: 'usr-3',
+    caissierNom: 'Mariam Diallo',
+    caissierRole: 'Caisse',
+    enregistreParId: 'usr-2',
+    enregistreParNom: 'Aminata Koné',
+    enregistreParRole: 'Chef de Réception',
+    montantEspeces: 215000,
+    montantOrangeMoney: 130000,
+    montantMoovMoney: 40000,
+    montantMtnMoney: 70000,
+    montantWave: 105000,
+    montantTotal: 560000,
+    ecartConstate: 1000,
+    motifEcart: 'Surplus rendu de 1 000 FCFA laissé au bar',
+    observations: 'Versement de nuit validé par Chef de Réception.',
+    statut: 'valide'
   }
 ];
 

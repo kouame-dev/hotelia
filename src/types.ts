@@ -958,7 +958,8 @@ export type AuditActionType =
   | 'check_out'
   | 'reactivation'
   | 'suppression'
-  | 'paiement';
+  | 'paiement'
+  | 'maintenance';
 
 export interface AuditFieldDiff {
   champ: string;
@@ -1051,5 +1052,37 @@ export interface ConsumableStockAlert {
   notes?: string;
 }
 
+// 18. Système de Gestion des Caisses & Versements par Shift (Matin / Soir)
+export type ShiftType = 'matin' | 'soir';
 
+export interface VersementCaisse {
+  id: string;
+  numeroRecu: string;
+  dateVersement: string; // YYYY-MM-DD
+  heureEnregistrement: string; // HH:mm
+  dateCreation: string; // ISO 8601
+  shiftType: ShiftType; // 'matin' (07:00 - 17:00) ou 'soir' (17:00 - 06:00/07:00)
+  shiftLabel: string;
+  caissierId: string;
+  caissierNom: string;
+  caissierRole: string; // 'Caisse' | 'Caisse Restaurant' | 'Réceptionniste'
+  enregistreParId: string;
+  enregistreParNom: string;
+  enregistreParRole: string;
+  modifieParNom?: string;
+  dateDerniereModification?: string;
 
+  // Ventilations des montants (en FCFA)
+  montantEspeces: number; // Montant Caisse physique
+  montantOrangeMoney: number;
+  montantMoovMoney: number;
+  montantMtnMoney: number;
+  montantWave: number;
+  montantTotal: number; // Somme automatique des 5 modes
+
+  // Écarts éventuels & observations
+  ecartConstate?: number; // Différence solde théorique vs réel
+  motifEcart?: string;
+  observations?: string;
+  statut: 'valide' | 'en_attente' | 'rejete';
+}
