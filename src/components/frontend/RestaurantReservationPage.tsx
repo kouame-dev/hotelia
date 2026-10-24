@@ -371,7 +371,7 @@ export const RestaurantReservationPage: React.FC<RestaurantReservationPageProps>
                 onClick={onBackToHome}
                 className="px-5 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs flex items-center gap-2 cursor-pointer shadow-sm transition-all"
               >
-                <span>Retour à l'Accueil Hotelia</span>
+                <span>Retour à l'Accueil (Hôtel Refuge de bongouanou)</span>
               </button>
             </div>
           </div>
@@ -614,7 +614,7 @@ export const RestaurantReservationPage: React.FC<RestaurantReservationPageProps>
                       onChange={(e) => setIsHotelGuest(e.target.checked)}
                       className="rounded bg-white border-stone-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
                     />
-                    <span>Je séjourne actuellement à l'hôtel Hotelia</span>
+                    <span>Je séjourne actuellement à l'Hôtel Refuge de bongouanou</span>
                   </label>
 
                   {isHotelGuest && (
@@ -1019,7 +1019,7 @@ export const RestaurantReservationPage: React.FC<RestaurantReservationPageProps>
       {/* 5. Footer Information */}
       <footer className="bg-[#141311] text-stone-400 py-8 px-4 border-t border-stone-800 text-xs text-center space-y-2">
         <p className="font-serif font-bold text-white text-sm">
-          Restaurant Le Dekouassi • Hotelia Resort Abidjan
+          Restaurant Le Dekouassi • Hôtel Refuge de bongouanou
         </p>
         <p className="text-[11px] text-stone-500">
           Boulevard de la Corniche, Cocody, Abidjan • Service Voiturier Offert • Code Vestimentaire : Élégant Décontracté

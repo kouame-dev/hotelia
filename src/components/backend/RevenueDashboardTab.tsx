@@ -817,7 +817,7 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
         drawFooter(i, totalPages);
       }
 
-      doc.save(`Hotelia_Rapport_Financier_DG_${monthName}_${selectedYear}.pdf`);
+      doc.save(`Refuge_Bongouanou_Rapport_Financier_DG_${monthName}_${selectedYear}.pdf`);
       showToast(`Rapport Financier PDF (${monthName} ${selectedYear}) téléchargé avec succès pour le DG !`, 'pdf');
       setIsExportModalOpen(false);
     } catch (err) {
@@ -834,11 +834,11 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
 
     const lines = [
       `# =========================================================================`,
-      `# HOTELIA RESORT & PALACE - RAPPORT FINANCIER MENSUEL DIRECTION GENERALE`,
+      `# HÔTEL REFUGE BANNERAIE - RAPPORT FINANCIER MENSUEL DIRECTION GENERALE`,
       `# Periode : ${monthName.toUpperCase()} ${selectedYear}`,
       `# Date d extraction : ${nowStr}`,
       `# Editeur : ${currentUserProfile?.nom || 'Directeur Général'} (${currentUserProfile?.role || 'DG'})`,
-      `# Etablissement : Hotelia Resort & Palace (Dekouassi Holding, Abidjan)`,
+      `# Etablissement : Hôtel Refuge de bongouanou (Dekouassi Holding, Bongouanou)`,
       `# -------------------------------------------------------------------------`,
       `# CHIFFRE D AFFAIRES CONSOLIDE TOTAL : ${kpiSummary.totalConsolidated} FCFA`,
       `# - Part Hebergement & Nuitées       : ${kpiSummary.totalRes} FCFA (${kpiSummary.resPct}%) [${kpiSummary.countRes} séjours - Panier moy : ${kpiSummary.avgBookingValue} FCFA]`,
@@ -923,7 +923,7 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Hotelia_Rapport_Financier_DG_${monthName}_${selectedYear}.csv`);
+    link.setAttribute('download', `Refuge_Bongouanou_Rapport_Financier_DG_${monthName}_${selectedYear}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1123,10 +1123,10 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.setTextColor(130, 130, 130);
-      doc.text('HOTELIA • Bilan Financier Annuel Consolidé - Usage exclusif Direction Générale', margin, pageHeight - 7);
+      doc.text('HÔTEL REFUGE BANNERAIE • Bilan Financier Annuel Consolidé - Usage exclusif Direction Générale', margin, pageHeight - 7);
       doc.text('Page 1 sur 1', pageWidth - margin, pageHeight - 7, { align: 'right' });
 
-      doc.save(`Hotelia_Bilan_Annuel_DG_${selectedYear}.pdf`);
+      doc.save(`Refuge_Bongouanou_Bilan_Annuel_DG_${selectedYear}.pdf`);
       showToast(`Bilan Annuel PDF (${selectedYear}) téléchargé avec succès pour le DG !`, 'pdf');
       setIsExportModalOpen(false);
     } catch (err) {
@@ -1138,7 +1138,7 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
   const handleExportAnnualCsv = () => {
     const lines = [
       `# =========================================================================`,
-      `# HOTELIA RESORT & PALACE - BILAN FINANCIER ANNUEL DIRECTION GENERALE`,
+      `# HÔTEL REFUGE BANNERAIE - BILAN FINANCIER ANNUEL DIRECTION GENERALE`,
       `# Exercice : ${selectedYear} (12 Mois)`,
       `# Editeur : ${currentUserProfile?.nom || 'Directeur Général'} (DG)`,
       `# Total Chiffre d Affaires Annuel : ${kpiSummary.annualConsolidated} FCFA`,
@@ -1175,7 +1175,7 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Hotelia_Bilan_Annuel_DG_${selectedYear}.csv`);
+    link.setAttribute('download', `Refuge_Bongouanou_Bilan_Annuel_DG_${selectedYear}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

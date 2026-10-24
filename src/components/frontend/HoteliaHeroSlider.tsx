@@ -18,7 +18,7 @@ export const HOTELIA_SLIDES: SlideData[] = [
   {
     id: 1,
     badge: 'Hôtel & Résidence de Prestige',
-    title: 'Hotelia Résidence & Suites',
+    title: 'Hôtel Refuge de bongouanou',
     subtitle: 'L’élégance hôtelière signée Dekouassi Holding',
     description: 'Une parenthèse d’exception au cœur de la ville. Profitez de nos suites haut de gamme réservables à la nuitée (dès 10 000 FCFA) ou pour quelques heures (2 500 FCFA/h).',
     image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1920&q=80',

@@ -1147,7 +1147,7 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
 
         <div className="max-w-7xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
           <div>
-            © {new Date().getFullYear()} {settings.appName || 'Hotelia'}. Une marque exclusive de <strong>{settings.holdingName || 'Dekouassi Holding'}</strong>. Tous droits réservés.
+            © {new Date().getFullYear()} {settings.appName || 'Hôtel Refuge de bongouanou'}. Une marque exclusive de <strong>{settings.holdingName || 'Dekouassi Holding'}</strong>. Tous droits réservés.
           </div>
           <div className="flex items-center space-x-4 text-stone-500">
             <button

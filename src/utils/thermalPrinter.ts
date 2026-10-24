@@ -336,7 +336,7 @@ export function downloadThermalReceiptPdf(data: ThermalReceiptData, filename?: s
   doc.setFont('courier', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text(data.hotelName || 'HÔTEL REFUGE PALMERAIE DE BONGOUANOU', centerX, 8, { align: 'center' });
+  doc.text(data.hotelName || 'HÔTEL REFUGE BANNERAIE DE BONGOUANOU', centerX, 8, { align: 'center' });
 
   doc.setFont('courier', 'normal');
   doc.setFontSize(7.5);
@@ -476,7 +476,7 @@ export function downloadThermalReceiptPdf(data: ThermalReceiptData, filename?: s
   doc.setFontSize(7);
   doc.text(data.footerMessage || 'Merci de votre visite et bon appétit !', centerX, y, { align: 'center' });
   y += 3.5;
-  doc.text('Hôtel Refuge Palmeraie de Bongouanou', centerX, y, { align: 'center' });
+  doc.text('Hôtel Refuge de bongouanou', centerX, y, { align: 'center' });
 
   const finalName = filename || `Ticket_${data.ticketNumber || 'Caisse'}_80mm.pdf`;
   doc.save(finalName);

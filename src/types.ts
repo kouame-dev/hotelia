@@ -1084,5 +1084,31 @@ export interface VersementCaisse {
   ecartConstate?: number; // Différence solde théorique vs réel
   motifEcart?: string;
   observations?: string;
+  derogationDGOctroyee?: boolean;
+  motifDerogationDG?: string;
   statut: 'valide' | 'en_attente' | 'rejete';
 }
+
+export interface CashRegisterConfig {
+  delaiVersementMinutes: number; // Ex: 60 minutes (1 heure de délai de versement après clôture)
+  shiftMatinDebut: string; // Ex: "07:00"
+  shiftMatinFin: string; // Ex: "17:00"
+  shiftSoirDebut: string; // Ex: "17:00"
+  shiftSoirFin: string; // Ex: "06:00"
+  fuseauHoraire: string; // Ex: "Africa/Abidjan" (Bongouanou, Côte d'Ivoire - GMT+0)
+  bloquerApresDelai: boolean; // Si true, bloque la saisie après expiration du délai de versement
+  autoriserDerogationDG: boolean; // Si true, le Directeur Général peut accorder une dérogation
+  toleranceEcartMax: number; // Seuil d'alerte en FCFA
+}
+
+export const DEFAULT_CASH_REGISTER_CONFIG: CashRegisterConfig = {
+  delaiVersementMinutes: 60, // 1 heure de délai de versement par défaut
+  shiftMatinDebut: '07:00',
+  shiftMatinFin: '17:00',
+  shiftSoirDebut: '17:00',
+  shiftSoirFin: '06:00',
+  fuseauHoraire: 'Africa/Abidjan',
+  bloquerApresDelai: true,
+  autoriserDerogationDG: true,
+  toleranceEcartMax: 1000
+};

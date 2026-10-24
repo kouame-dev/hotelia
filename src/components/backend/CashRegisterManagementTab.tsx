@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   DollarSign,
   Coins,
@@ -28,13 +28,32 @@ import {
   X,
   CreditCard,
   ShieldCheck,
-  Check
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Utensils,
+  Bed,
+  BellRing,
+  RefreshCw,
+  Settings,
+  Timer,
+  ShieldAlert,
+  Eye
 } from 'lucide-react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
-import { VersementCaisse, ShiftType } from '../../types.ts';
+import { VersementCaisse, ShiftType, CashRegisterConfig, DEFAULT_CASH_REGISTER_CONFIG } from '../../types.ts';
 import { VersementReceiptModal } from './VersementReceiptModal.tsx';
+import { CashRegisterSettingsModal } from './CashRegisterSettingsModal.tsx';
+import { VersementEncaissementsDetailModal } from './VersementEncaissementsDetailModal.tsx';
 import { exportToCSV, exportToPdf, ExportColumn } from '../../utils/exportUtils.ts';
+import { calculateShiftCollections } from '../../utils/cashierShiftCalculator.ts';
+import {
+  getHotelCurrentTime,
+  getActiveShiftByTime,
+  getShiftTurnInDeadlineStatus
+} from '../../utils/hotelTimeUtils.ts';
 
 export const CashRegisterManagementTab: React.FC = () => {
   const {
@@ -43,7 +62,11 @@ export const CashRegisterManagementTab: React.FC = () => {
     updateVersementCaisse,
     deleteVersementCaisse,
     currentUserProfile,
-    usersList
+    usersList,
+    reservations,
+    serviceOrders,
+    posSales,
+    auditLogs
   } = useHotelData();
 
   const { formatPrice } = useHotelSettings();
@@ -64,23 +87,71 @@ export const CashRegisterManagementTab: React.FC = () => {
     userRoleStr.includes('caisse') &&
     !userRoleStr.includes('directeur');
 
+  // Modal de paramétrage des shifts et délais
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Configuration locale des shifts et délais (persistée dans le navigateur)
+  const [registerConfig, setRegisterConfig] = useState<CashRegisterConfig>(() => {
+    try {
+      const saved = localStorage.getItem('hotelia_cash_register_config');
+      if (saved) return { ...DEFAULT_CASH_REGISTER_CONFIG, ...JSON.parse(saved) };
+    } catch {}
+    return DEFAULT_CASH_REGISTER_CONFIG;
+  });
+
+  const handleSaveRegisterConfig = (newConfig: CashRegisterConfig) => {
+    setRegisterConfig(newConfig);
+    try {
+      localStorage.setItem('hotelia_cash_register_config', JSON.stringify(newConfig));
+    } catch {}
+  };
+
+  // Horloge locale officielle (Bongouanou, Côte d'Ivoire - GMT+0) inviolable
+  const [currentHotelTime, setCurrentHotelTime] = useState(() => getHotelCurrentTime(registerConfig.fuseauHoraire));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentHotelTime(getHotelCurrentTime(registerConfig.fuseauHoraire));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [registerConfig.fuseauHoraire]);
+
+  // Détection du shift actif en temps réel
+  const realTimeActiveShift = useMemo(() => {
+    return getActiveShiftByTime(currentHotelTime.timeStr, registerConfig);
+  }, [currentHotelTime.timeStr, registerConfig]);
+
+  // Compte à rebours du shift actif pour l'en-tête
+  const activeShiftCountdown = useMemo(() => {
+    return getShiftTurnInDeadlineStatus(currentHotelTime.timeStr, realTimeActiveShift, registerConfig);
+  }, [currentHotelTime.timeStr, realTimeActiveShift, registerConfig]);
+
   // Modal de reçu (Thermique / A4 / PDF / CSV)
   const [selectedVersementForReceipt, setSelectedVersementForReceipt] = useState<VersementCaisse | null>(null);
+
+  // Modal de détail exhaustif de tous les encaissements du caissier
+  const [selectedVersementForDetail, setSelectedVersementForDetail] = useState<VersementCaisse | null>(null);
 
   // Modal d'enregistrement / édition
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingVersement, setEditingVersement] = useState<VersementCaisse | null>(null);
 
   // États du formulaire
-  const [formDate, setFormDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [formHeure, setFormHeure] = useState(() => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  });
+  const [formDate, setFormDate] = useState(() => currentHotelTime.dateStr);
+  const [formHeure, setFormHeure] = useState(() => currentHotelTime.timeStr);
   const [formShift, setFormShift] = useState<ShiftType>('matin');
   const [formCaissierId, setFormCaissierId] = useState('');
   const [formCaissierNom, setFormCaissierNom] = useState('');
   const [formCaissierRole, setFormCaissierRole] = useState('Caisse');
+
+  // Compte à rebours pour le shift actuellement sélectionné dans le formulaire
+  const formShiftCountdown = useMemo(() => {
+    return getShiftTurnInDeadlineStatus(currentHotelTime.timeStr, formShift, registerConfig);
+  }, [currentHotelTime.timeStr, formShift, registerConfig]);
+
+  // Dérogation DG
+  const [formDerogationDGOctroyee, setFormDerogationDGOctroyee] = useState(false);
+  const [formMotifDerogationDG, setFormMotifDerogationDG] = useState('');
 
   // Ventilations
   const [formMontantEspeces, setFormMontantEspeces] = useState<number>(0);
@@ -94,7 +165,24 @@ export const CashRegisterManagementTab: React.FC = () => {
   const [formMotifEcart, setFormMotifEcart] = useState('');
   const [formObservations, setFormObservations] = useState('');
 
-  // Total calculé en temps réel dans le formulaire
+  // Affichage détaillé des transactions réelles du shift
+  const [showTransactionsDetail, setShowTransactionsDetail] = useState(false);
+  const [filterSourceDetail, setFilterSourceDetail] = useState<'all' | 'chambre' | 'service' | 'restaurant_bar'>('all');
+
+  // Détection d'un versement déjà existant pour ce caissier, cette date et ce shift (Règle du versement unique)
+  const existingVersementForCashier = useMemo(() => {
+    if (!isFormModalOpen) return null;
+    return versementsCaisse.find(
+      (v) =>
+        v.dateVersement === formDate &&
+        v.shiftType === formShift &&
+        (v.caissierNom.toLowerCase() === formCaissierNom.toLowerCase() ||
+          (formCaissierId && v.caissierId === formCaissierId)) &&
+        (!editingVersement || v.id !== editingVersement.id)
+    );
+  }, [versementsCaisse, formDate, formShift, formCaissierNom, formCaissierId, editingVersement, isFormModalOpen]);
+
+  // Total calculé en temps réel dans le formulaire (somme des 5 canaux)
   const formCalculatedTotal = useMemo(() => {
     return (
       Number(formMontantEspeces || 0) +
@@ -104,6 +192,43 @@ export const CashRegisterManagementTab: React.FC = () => {
       Number(formMontantWave || 0)
     );
   }, [formMontantEspeces, formMontantOrange, formMontantMoov, formMontantMtn, formMontantWave]);
+
+  // Calcul automatique en temps réel des encaissements des réservations de chambres, services payants et plats/boissons
+  const shiftCalculatedData = useMemo(() => {
+    return calculateShiftCollections({
+      date: formDate,
+      shift: formShift,
+      caissierNom: formCaissierNom,
+      reservations,
+      serviceOrders,
+      posSales,
+      auditLogs,
+      config: registerConfig
+    });
+  }, [formDate, formShift, formCaissierNom, reservations, serviceOrders, posSales, auditLogs, registerConfig]);
+
+  // Fonction pour injecter les montants théoriques calculés dans le formulaire
+  const applyCalculatedAmounts = (data = shiftCalculatedData) => {
+    setFormMontantEspeces(data.montantEspeces);
+    setFormMontantOrange(data.montantOrangeMoney);
+    setFormMontantMoov(data.montantMoovMoney);
+    setFormMontantMtn(data.montantMtnMoney);
+    setFormMontantWave(data.montantWave);
+    setFormEcart(0);
+    setFormMotifEcart('');
+  };
+
+  // Synchronisation automatique des montants lors du changement de caissier, de shift ou de date pour une nouvelle saisie
+  useEffect(() => {
+    if (isFormModalOpen && !editingVersement) {
+      setFormMontantEspeces(shiftCalculatedData.montantEspeces);
+      setFormMontantOrange(shiftCalculatedData.montantOrangeMoney);
+      setFormMontantMoov(shiftCalculatedData.montantMoovMoney);
+      setFormMontantMtn(shiftCalculatedData.montantMtnMoney);
+      setFormMontantWave(shiftCalculatedData.montantWave);
+      setFormEcart(0);
+    }
+  }, [formDate, formShift, formCaissierNom, isFormModalOpen, editingVersement, shiftCalculatedData.montantTotal]);
 
   // Filtres
   const [filterShift, setFilterShift] = useState<'all' | 'matin' | 'soir'>('all');
@@ -123,35 +248,60 @@ export const CashRegisterManagementTab: React.FC = () => {
     );
   }, [usersList]);
 
-  // Initialisation du formulaire pour nouveau versement
+  // Initialisation du formulaire pour nouveau versement avec calcul automatique immédiat
   const handleOpenNewVersement = () => {
     setEditingVersement(null);
-    const today = new Date().toISOString().split('T')[0];
-    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    setShowTransactionsDetail(false);
+    const hotelNow = getHotelCurrentTime(registerConfig.fuseauHoraire);
+    const today = hotelNow.dateStr;
+    const nowTime = hotelNow.timeStr;
     setFormDate(today);
     setFormHeure(nowTime);
 
-    // Détection automatique du shift en fonction de l'heure courante (17h00 - 06h00 = soir, sinon matin)
-    const currentHour = new Date().getHours();
-    const detectedShift: ShiftType = currentHour >= 17 || currentHour < 7 ? 'soir' : 'matin';
+    // Détection automatique du shift en fonction de l'heure locale officielle et des configurations
+    const detectedShift: ShiftType = getActiveShiftByTime(nowTime, registerConfig);
     setFormShift(detectedShift);
 
-    // Présélectionner un caissier
-    if (cashiersList.length > 0) {
-      setFormCaissierId(cashiersList[0].id);
-      setFormCaissierNom(cashiersList[0].nom);
-      setFormCaissierRole(cashiersList[0].role);
-    } else {
-      setFormCaissierId('usr-caisse');
-      setFormCaissierNom('Mariam Diallo');
-      setFormCaissierRole('Caisse');
-    }
+    // Réinitialiser la dérogation DG
+    setFormDerogationDGOctroyee(false);
+    setFormMotifDerogationDG('');
 
-    setFormMontantEspeces(0);
-    setFormMontantOrange(0);
-    setFormMontantMoov(0);
-    setFormMontantMtn(0);
-    setFormMontantWave(0);
+    // Présélectionner un caissier qui n'a pas encore versé pour ce shift
+    let initCaissierNom = 'Mariam Diallo';
+    let initCaissierId = 'usr-caisse';
+    let initCaissierRole = 'Caisse';
+
+    if (cashiersList.length > 0) {
+      // Trouver le premier caissier disponible sans versement
+      const availableCashier = cashiersList.find(
+        (c) => !versementsCaisse.some((v) => v.dateVersement === today && v.shiftType === detectedShift && (v.caissierNom.toLowerCase() === c.nom.toLowerCase() || v.caissierId === c.id))
+      );
+      const chosen = availableCashier || cashiersList[0];
+      initCaissierId = chosen.id;
+      initCaissierNom = chosen.nom;
+      initCaissierRole = chosen.role;
+    }
+    setFormCaissierId(initCaissierId);
+    setFormCaissierNom(initCaissierNom);
+    setFormCaissierRole(initCaissierRole);
+
+    // Calcul des encaissements réels pour ce shift initial
+    const initialCalc = calculateShiftCollections({
+      date: today,
+      shift: detectedShift,
+      caissierNom: initCaissierNom,
+      reservations,
+      serviceOrders,
+      posSales,
+      auditLogs,
+      config: registerConfig
+    });
+
+    setFormMontantEspeces(initialCalc.montantEspeces);
+    setFormMontantOrange(initialCalc.montantOrangeMoney);
+    setFormMontantMoov(initialCalc.montantMoovMoney);
+    setFormMontantMtn(initialCalc.montantMtnMoney);
+    setFormMontantWave(initialCalc.montantWave);
     setFormEcart(0);
     setFormMotifEcart('');
     setFormObservations('');
@@ -169,6 +319,9 @@ export const CashRegisterManagementTab: React.FC = () => {
     setFormCaissierNom(v.caissierNom);
     setFormCaissierRole(v.caissierRole);
 
+    setFormDerogationDGOctroyee(!!v.derogationDGOctroyee);
+    setFormMotifDerogationDG(v.motifDerogationDG || '');
+
     setFormMontantEspeces(v.montantEspeces || 0);
     setFormMontantOrange(v.montantOrangeMoney || 0);
     setFormMontantMoov(v.montantMoovMoney || 0);
@@ -182,7 +335,7 @@ export const CashRegisterManagementTab: React.FC = () => {
     setIsFormModalOpen(true);
   };
 
-  // Soumission du formulaire
+  // Soumission du formulaire avec contrôles stricts d'unicité et de délai
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -191,13 +344,32 @@ export const CashRegisterManagementTab: React.FC = () => {
       return;
     }
 
+    // 1. Contrôle d'unicité du versement par caissier, date et shift
+    if (existingVersementForCashier) {
+      alert(`Impossible d'enregistrer : le caissier ${formCaissierNom} a déjà effectué son versement pour le shift ${formShift === 'matin' ? 'Matinée' : 'Soirée'} du ${formDate} (Reçu N° ${existingVersementForCashier.numeroRecu}). Un seul versement est autorisé par caissier et par shift.`);
+      return;
+    }
+
+    // 2. Contrôle du délai de versement (+1h après clôture de shift)
+    if (!editingVersement && formShiftCountdown.isExpired && registerConfig.bloquerApresDelai) {
+      if (!isDG) {
+        alert(`Délai de versement expiré (+${registerConfig.delaiVersementMinutes} min). La clôture de caisse est verrouillée. Veuillez vous adresser au Directeur Général pour toute dérogation.`);
+        return;
+      } else if (!formDerogationDGOctroyee) {
+        alert('En tant que Directeur Général, vous devez cocher la case de dérogation exceptionnelle pour autoriser cet enregistrement hors délai.');
+        return;
+      }
+    }
+
     const payload = {
       dateVersement: formDate,
       heureEnregistrement: formHeure,
       shiftType: formShift,
-      shiftLabel: formShift === 'matin' ? 'Matinée (07h00 - 17h00)' : 'Soirée (17h00 - 06h00)',
+      shiftLabel: formShift === 'matin'
+        ? `Matinée (${registerConfig.shiftMatinDebut} - ${registerConfig.shiftMatinFin})`
+        : `Soirée (${registerConfig.shiftSoirDebut} - ${registerConfig.shiftSoirFin})`,
       caissierId: formCaissierId || 'usr-caisse',
-      caissierNom: formCaissierNom || 'Caissier Hotelia',
+      caissierNom: formCaissierNom || 'Caissier Hôtel Refuge de bongouanou',
       caissierRole: formCaissierRole || 'Caisse',
       enregistreParId: currentUserProfile.id,
       enregistreParNom: currentUserProfile.nom,
@@ -207,9 +379,11 @@ export const CashRegisterManagementTab: React.FC = () => {
       montantMoovMoney: Number(formMontantMoov) || 0,
       montantMtnMoney: Number(formMontantMtn) || 0,
       montantWave: Number(formMontantWave) || 0,
-      ecartConstate: Number(formEcart) || 0,
-      motifEcart: formMotifEcart.trim() || undefined,
+      ecartConstate: Number(formEcart) !== 0 ? Number(formEcart) : (formCalculatedTotal - shiftCalculatedData.montantTotal),
+      motifEcart: formMotifEcart.trim() || (formCalculatedTotal !== shiftCalculatedData.montantTotal && !formMotifEcart.trim() ? (formCalculatedTotal > shiftCalculatedData.montantTotal ? 'Surplus constaté lors de la clôture' : 'Déficit constaté lors de la clôture') : undefined),
       observations: formObservations.trim() || undefined,
+      derogationDGOctroyee: formDerogationDGOctroyee || undefined,
+      motifDerogationDG: formDerogationDGOctroyee ? formMotifDerogationDG.trim() : undefined,
       statut: 'valide' as const
     };
 
@@ -382,14 +556,26 @@ export const CashRegisterManagementTab: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-stone-400 mt-1">
-              Double versement journalier obligatoire : <strong>Shift Matinée (07h00 - 17h00)</strong> et{' '}
-              <strong>Shift Soirée (17h00 - 06h00)</strong> • Traçabilité Espèces, Mobile Money (Orange, Moov, MTN, Wave) &amp; Reçus thermiques.
+              Double versement journalier obligatoire : <strong>Shift Matinée ({registerConfig.shiftMatinDebut} - {registerConfig.shiftMatinFin})</strong> et{' '}
+              <strong>Shift Soirée ({registerConfig.shiftSoirDebut} - {registerConfig.shiftSoirFin})</strong> • Traçabilité Espèces, Mobile Money (Orange, Moov, MTN, Wave) &amp; Reçus thermiques.
             </p>
           </div>
         </div>
 
-        {/* Action Chef de Réception / DG */}
+        {/* Actions Chef de Réception / DG */}
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {(isChefReception || isDG) && (
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-[#C5A880] border border-[#C5A880]/40 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
+              title="Paramétrer les horaires des shifts et le délai limite de versement"
+            >
+              <Settings className="w-4 h-4 text-[#C5A880]" />
+              <span className="hidden sm:inline">Paramètres Shifts</span>
+            </button>
+          )}
+
           {(isChefReception || isDG) && (
             <button
               type="button"
@@ -420,6 +606,99 @@ export const CashRegisterManagementTab: React.FC = () => {
             <Download className="w-4 h-4 text-rose-400" />
             <span className="hidden sm:inline">Rapport PDF</span>
           </button>
+        </div>
+      </div>
+
+      {/* BANDEAU HORLOGE LOCALE OFFICIELLE & COMPTE À REBOURS DU DÉLAI DE VERSEMENT */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* 1. Horloge Officielle Locale Inviolable */}
+        <div className="bg-[#1C1B18] text-white p-4 rounded-2xl border border-stone-800 flex items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-stone-800 text-amber-400 border border-stone-700 flex items-center justify-center font-bold shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-[10px] uppercase font-bold text-stone-400 flex items-center gap-1">
+                <span>Heure Locale (Bongouanou, CI)</span>
+                {currentHotelTime.isSynced && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Synchronisé serveur" />
+                )}
+              </div>
+              <div className="text-xl font-mono font-black text-amber-400">
+                {currentHotelTime.timeWithSeconds}
+              </div>
+              <div className="text-[10px] text-stone-400">
+                GMT+0 • {currentHotelTime.dateStr}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Shift Actif en Temps Réel */}
+        <div className="bg-[#1C1B18] text-white p-4 rounded-2xl border border-stone-800 flex items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center space-x-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+              realTimeActiveShift === 'matin'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                : 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+            }`}>
+              {realTimeActiveShift === 'matin' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-purple-400" />}
+            </div>
+            <div>
+              <div className="text-[10px] uppercase font-bold text-stone-400">
+                Shift Actif en Temps Réel
+              </div>
+              <div className="text-sm font-extrabold text-white flex items-center gap-1.5">
+                <span>{realTimeActiveShift === 'matin' ? '☀️ Shift Matinée' : '🌙 Shift Soirée'}</span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  En cours
+                </span>
+              </div>
+              <div className="text-[10px] text-stone-400 font-mono">
+                {realTimeActiveShift === 'matin'
+                  ? `Plage : ${registerConfig.shiftMatinDebut} à ${registerConfig.shiftMatinFin}`
+                  : `Plage : ${registerConfig.shiftSoirDebut} à ${registerConfig.shiftSoirFin}`}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Compte à Rebours du Délai de Versement (+1h après clôture) */}
+        <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-md ${
+          activeShiftCountdown.isExpired
+            ? 'bg-rose-950/40 text-rose-200 border-rose-800'
+            : activeShiftCountdown.isWithinGracePeriod
+            ? 'bg-amber-950/40 text-amber-200 border-amber-800 animate-pulse'
+            : 'bg-[#1C1B18] text-white border-stone-800'
+        }`}>
+          <div className="flex items-center space-x-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+              activeShiftCountdown.isExpired
+                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                : activeShiftCountdown.isWithinGracePeriod
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+            }`}>
+              <Timer className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-[10px] uppercase font-bold flex items-center gap-1 text-stone-300">
+                <span>Délai Versement (+{registerConfig.delaiVersementMinutes} min)</span>
+              </div>
+              <div className="text-xl font-mono font-black">
+                {activeShiftCountdown.isExpired ? (
+                  <span className="text-rose-400">Délai Expiré</span>
+                ) : (
+                  <span className="text-amber-400">{activeShiftCountdown.formattedCountdown}</span>
+                )}
+              </div>
+              <div className="text-[10px] text-stone-400">
+                {activeShiftCountdown.isExpired
+                  ? `Expiré à ${activeShiftCountdown.delaiLimiteTime} (Clôture : ${activeShiftCountdown.shiftClotureTime})`
+                  : `Limite : ${activeShiftCountdown.delaiLimiteTime} (Clôture : ${activeShiftCountdown.shiftClotureTime})`}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -844,7 +1123,18 @@ export const CashRegisterManagementTab: React.FC = () => {
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          {/* Détail de tous les encaissements du caissier */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedVersementForDetail(v)}
+                            className="px-2.5 py-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                            title="Voir le détail exhaustif de tous les encaissements liés à ce caissier pour ce shift"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-sky-600" />
+                            <span className="text-[10px] font-extrabold uppercase tracking-wide">Détails</span>
+                          </button>
+
                           {/* Reçu Thermique & A4 Modal */}
                           <button
                             type="button"
@@ -928,45 +1218,131 @@ export const CashRegisterManagementTab: React.FC = () => {
 
             {/* Modal Body / Formulaire */}
             <form onSubmit={handleFormSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-              {/* Type de Shift (Boutons Radio Visuels) */}
+              {/* Alerte Compte à Rebours du Délai de Versement */}
+              <div className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+                formShiftCountdown.isExpired
+                  ? 'bg-rose-50 border-rose-300 text-rose-950'
+                  : formShiftCountdown.isWithinGracePeriod
+                  ? 'bg-amber-50 border-amber-300 text-amber-950 animate-pulse'
+                  : 'bg-emerald-50 border-emerald-300 text-emerald-950'
+              }`}>
+                <div className="flex items-center gap-2.5">
+                  <Timer className={`w-5 h-5 shrink-0 ${
+                    formShiftCountdown.isExpired ? 'text-rose-600' : formShiftCountdown.isWithinGracePeriod ? 'text-amber-600' : 'text-emerald-600'
+                  }`} />
+                  <div>
+                    <span className="font-extrabold uppercase text-[11px] block">
+                      {formShiftCountdown.isExpired
+                        ? 'DÉLAI DE VERSEMENT EXPIRÉ'
+                        : formShiftCountdown.isWithinGracePeriod
+                        ? 'PÉRIODE CRITIQUE DE VERSEMENT (1H POST-CLÔTURE)'
+                        : 'COMPTE À REBOURS DU DÉLAI DE VERSEMENT (+1H POST-CLÔTURE)'}
+                    </span>
+                    <span className="text-[11px] text-stone-600">
+                      Heure locale : <strong>{currentHotelTime.timeWithSeconds}</strong> (GMT+0 Bongouanou) • Limite : <strong>{formShiftCountdown.delaiLimiteTime}</strong>
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className={`text-base font-black font-mono block ${
+                    formShiftCountdown.isExpired ? 'text-rose-700' : 'text-amber-800'
+                  }`}>
+                    {formShiftCountdown.isExpired ? 'Expiré' : formShiftCountdown.formattedCountdown}
+                  </span>
+                  <span className="text-[9px] text-stone-500">
+                    {formShiftCountdown.isExpired ? 'Verrouillé sauf DG' : 'temps restant'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Type de Shift (Boutons Radio Visuels avec activation temps réel stricte) */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-2">
-                  1. Type de Versement Journalier *
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-700">
+                    1. Type de Versement Journalier *
+                  </label>
+                  <span className="text-[10px] text-stone-500 font-medium">
+                    Sélection asservie à l'heure réelle pour éviter toute manipulation
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
+                  {/* Shift Matinée */}
                   <button
                     type="button"
+                    disabled={!editingVersement && realTimeActiveShift !== 'matin'}
                     onClick={() => setFormShift('matin')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-center gap-3 ${
                       formShift === 'matin'
-                        ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-400/40 text-amber-950 font-bold'
-                        : 'bg-white border-stone-200 hover:border-stone-300 text-stone-700'
+                        ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-400/40 text-amber-950 font-bold shadow-sm'
+                        : !editingVersement && realTimeActiveShift !== 'matin'
+                        ? 'bg-stone-100 border-stone-200 text-stone-400 opacity-50 cursor-not-allowed'
+                        : 'bg-white border-stone-200 hover:border-stone-300 text-stone-700 cursor-pointer'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      formShift === 'matin'
+                        ? 'bg-amber-200 text-amber-800'
+                        : 'bg-stone-200 text-stone-500'
+                    }`}>
                       <Sun className="w-5 h-5" />
                     </div>
                     <div>
-                      <span className="block font-bold text-sm">Shift Matinée</span>
-                      <span className="text-[11px] text-stone-500 block">Horaires : 07h00 à 17h00</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="block font-bold text-sm">Shift Matinée</span>
+                        {realTimeActiveShift === 'matin' && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            Actif
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-stone-500 block">
+                        Horaires : {registerConfig.shiftMatinDebut} à {registerConfig.shiftMatinFin}
+                      </span>
+                      {!editingVersement && realTimeActiveShift !== 'matin' && (
+                        <span className="text-[9px] text-rose-500 font-semibold block mt-0.5">
+                          Désactivé (actif uniquement de {registerConfig.shiftMatinDebut} à {registerConfig.shiftMatinFin})
+                        </span>
+                      )}
                     </div>
                   </button>
 
+                  {/* Shift Soirée */}
                   <button
                     type="button"
+                    disabled={!editingVersement && realTimeActiveShift !== 'soir'}
                     onClick={() => setFormShift('soir')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-center gap-3 ${
                       formShift === 'soir'
-                        ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-400/40 text-purple-950 font-bold'
-                        : 'bg-white border-stone-200 hover:border-stone-300 text-stone-700'
+                        ? 'bg-purple-50 border-purple-500 ring-2 ring-purple-400/40 text-purple-950 font-bold shadow-sm'
+                        : !editingVersement && realTimeActiveShift !== 'soir'
+                        ? 'bg-stone-100 border-stone-200 text-stone-400 opacity-50 cursor-not-allowed'
+                        : 'bg-white border-stone-200 hover:border-stone-300 text-stone-700 cursor-pointer'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      formShift === 'soir'
+                        ? 'bg-purple-200 text-purple-800'
+                        : 'bg-stone-200 text-stone-500'
+                    }`}>
                       <Moon className="w-5 h-5" />
                     </div>
                     <div>
-                      <span className="block font-bold text-sm">Shift Soirée</span>
-                      <span className="text-[11px] text-stone-500 block">Horaires : 17h00 à 06h00</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="block font-bold text-sm">Shift Soirée</span>
+                        {realTimeActiveShift === 'soir' && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            Actif
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-stone-500 block">
+                        Horaires : {registerConfig.shiftSoirDebut} à {registerConfig.shiftSoirFin}
+                      </span>
+                      {!editingVersement && realTimeActiveShift !== 'soir' && (
+                        <span className="text-[9px] text-rose-500 font-semibold block mt-0.5">
+                          Désactivé (actif uniquement de {registerConfig.shiftSoirDebut} à {registerConfig.shiftSoirFin})
+                        </span>
+                      )}
                     </div>
                   </button>
                 </div>
@@ -989,7 +1365,7 @@ export const CashRegisterManagementTab: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Heure de Remise *
+                    Heure Locale de Remise *
                   </label>
                   <input
                     type="time"
@@ -1018,11 +1394,20 @@ export const CashRegisterManagementTab: React.FC = () => {
                     }}
                     className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#C5A880]/50"
                   >
-                    {cashiersList.map((c) => (
-                      <option key={c.id} value={c.nom}>
-                        {c.nom} ({c.role})
-                      </option>
-                    ))}
+                    {cashiersList.map((c) => {
+                      const hasDeposited = versementsCaisse.some(
+                        (v) =>
+                          v.dateVersement === formDate &&
+                          v.shiftType === formShift &&
+                          (v.caissierNom.toLowerCase() === c.nom.toLowerCase() || v.caissierId === c.id) &&
+                          (!editingVersement || v.id !== editingVersement.id)
+                      );
+                      return (
+                        <option key={c.id} value={c.nom}>
+                          {c.nom} ({c.role}) {hasDeposited ? '— [DÉJÀ VERSÉ]' : ''}
+                        </option>
+                      );
+                    })}
                     {!cashiersList.some((c) => c.nom === formCaissierNom) && (
                       <option value={formCaissierNom}>{formCaissierNom}</option>
                     )}
@@ -1030,116 +1415,438 @@ export const CashRegisterManagementTab: React.FC = () => {
                 </div>
               </div>
 
+              {/* RÈGLE DE VERSEMENT UNIQUE : Alerte Bloquante si déjà versé pour ce caissier */}
+              {existingVersementForCashier && (
+                <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 flex items-start justify-between gap-3 animate-in fade-in">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-200 text-rose-800 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-5 h-5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <span className="font-extrabold text-xs uppercase block text-rose-900 tracking-wide">
+                        VERSEMENT UNIQUE : CE CAISSIER A DÉJÀ VERSÉ SA CAISSE POUR CE SHIFT
+                      </span>
+                      <p className="text-xs text-rose-800 mt-1 leading-relaxed">
+                        Le caissier <strong>{formCaissierNom}</strong> a déjà effectué sa clôture pour le shift{' '}
+                        <strong>{formShift === 'matin' ? 'Matinée' : 'Soirée'}</strong> du <strong>{formDate}</strong>{' '}
+                        (Reçu N° <strong>{existingVersementForCashier.numeroRecu}</strong> pour un total de{' '}
+                        <strong>{formatPrice(existingVersementForCashier.montantTotal)}</strong>).
+                        Il est impossible d'enregistrer plusieurs versements pour le même caissier sur un même shift.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsFormModalOpen(false);
+                      setSelectedVersementForReceipt(existingVersementForCashier);
+                    }}
+                    className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shrink-0 cursor-pointer shadow-md transition-all"
+                  >
+                    Consulter le Reçu
+                  </button>
+                </div>
+              )}
+
+              {/* DÉLAI DE VERSEMENT EXPIRÉ : Alerte & Dérogation DG */}
+              {!editingVersement && formShiftCountdown.isExpired && registerConfig.bloquerApresDelai && (
+                <div className={`p-4 rounded-2xl border-2 flex flex-col gap-3 ${
+                  isDG ? 'bg-amber-50 border-amber-400 text-amber-950' : 'bg-rose-50 border-rose-400 text-rose-950'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      isDG ? 'bg-amber-200 text-amber-800' : 'bg-rose-200 text-rose-800'
+                    }`}>
+                      <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <span className="font-extrabold text-xs uppercase block tracking-wide">
+                        DÉLAI LIMITE DE VERSEMENT EXPIRÉ (+{registerConfig.delaiVersementMinutes} MINUTES)
+                      </span>
+                      <p className="text-xs mt-1 leading-relaxed">
+                        Le shift {formShift === 'matin' ? 'Matinée' : 'Soirée'} s'est achevé à <strong>{formShiftCountdown.shiftClotureTime}</strong>.
+                        L'échéance maximale de remise des caisses fixée à <strong>{formShiftCountdown.delaiLimiteTime}</strong> est dépassée.
+                        {!isDG && ' L\'enregistrement est strictement verrouillé. Veuillez vous adresser au Directeur Général pour toute dérogation exceptionnelle.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isDG && registerConfig.autoriserDerogationDG && (
+                    <div className="pt-3 border-t border-amber-300 space-y-2.5">
+                      <label className="flex items-start gap-2.5 cursor-pointer font-bold text-xs text-amber-950">
+                        <input
+                          type="checkbox"
+                          checked={formDerogationDGOctroyee}
+                          onChange={(e) => setFormDerogationDGOctroyee(e.target.checked)}
+                          className="mt-0.5 rounded text-amber-600 focus:ring-amber-500"
+                        />
+                        <span>Autorisation exceptionnelle de la Direction Générale (Dérogation pour cas de force majeure)</span>
+                      </label>
+                      {formDerogationDGOctroyee && (
+                        <div>
+                          <input
+                            type="text"
+                            required
+                            value={formMotifDerogationDG}
+                            onChange={(e) => setFormMotifDerogationDG(e.target.value)}
+                            placeholder="Motif impérieux justifiant la dérogation (ex: Coupure réseau prolongée, affluence exceptionnelle...)"
+                            className="w-full px-3 py-2 rounded-xl border border-amber-400 bg-white text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Ventilations Financières (5 canaux) */}
               <div className="bg-[#FAF9F5] p-5 rounded-2xl border border-stone-200 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-700">
-                    2. Ventilation des Montants Encaissés (FCFA) *
-                  </span>
-                  <span className="text-[11px] text-stone-500 font-mono">
-                    Saisie en Francs CFA
-                  </span>
+                {/* En-tête de section avec indicateur de calcul automatique */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                        2. Ventilation des Montants Encaissés (FCFA) *
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                        <span>Calcul Automatique</span>
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Les montants Orange, Wave, Moov, MTN et Espèces sont automatiquement calculés d'après les réservations de chambres, services payants, plats et boissons du shift.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => applyCalculatedAmounts()}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-900 border border-amber-300/60 text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto cursor-pointer transition-all"
+                    title="Recalculer et réinjecter les montants théoriques"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Resynchroniser</span>
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Synthèse des 3 sources d'encaissement (Chambres, Services, Restaurant/Bar) */}
+                <div className="bg-white p-3.5 rounded-xl border border-stone-200 shadow-xs space-y-2">
+                  <div className="text-[11px] font-bold text-stone-700 flex items-center justify-between">
+                    <span>SOURCES D'ENCAISSEMENT DÉTECTÉES POUR CE SHIFT :</span>
+                    <span className="font-mono text-amber-900 font-bold">
+                      Total Théorique : {formatPrice(shiftCalculatedData.montantTotal)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    {/* Chambres */}
+                    <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                        <Bed className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-stone-500 block">Chambres &amp; Séjours</span>
+                        <span className="font-bold font-mono text-stone-900">{formatPrice(shiftCalculatedData.totalChambres)}</span>
+                        <span className="text-[9px] text-stone-400 block">{shiftCalculatedData.nbTransactionsChambres} séjour(s)</span>
+                      </div>
+                    </div>
+
+                    {/* Services */}
+                    <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                        <BellRing className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-stone-500 block">Services Payants</span>
+                        <span className="font-bold font-mono text-stone-900">{formatPrice(shiftCalculatedData.totalServices)}</span>
+                        <span className="text-[9px] text-stone-400 block">{shiftCalculatedData.nbTransactionsServices} prestation(s)</span>
+                      </div>
+                    </div>
+
+                    {/* Plats & Boissons */}
+                    <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center shrink-0">
+                        <Utensils className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-stone-500 block">Boissons &amp; Plats</span>
+                        <span className="font-bold font-mono text-stone-900">{formatPrice(shiftCalculatedData.totalRestaurationEtBar)}</span>
+                        <span className="text-[9px] text-stone-400 block">{shiftCalculatedData.nbTransactionsRestaurant} ticket(s) bar/resto</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bouton dépliant pour afficher la liste des transactions */}
+                  <div className="pt-1 flex items-center justify-between text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setShowTransactionsDetail(!showTransactionsDetail)}
+                      className="text-amber-800 hover:text-amber-950 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      {showTransactionsDetail ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      <span>
+                        {showTransactionsDetail ? 'Masquer le détail des encaissements' : `Voir les ${shiftCalculatedData.nbTransactionsTotal} encaissements du shift`}
+                      </span>
+                    </button>
+                    <span className="text-[10px] text-stone-400 italic">
+                      Attribution : {formCaissierNom || 'Tous'} • Shift {formShift === 'matin' ? 'Matinée' : 'Soirée'}
+                    </span>
+                  </div>
+
+                  {/* Tableau dépliable des transactions */}
+                  {showTransactionsDetail && (
+                    <div className="mt-2 border border-stone-200 rounded-xl overflow-hidden animate-in fade-in duration-150">
+                      <div className="bg-stone-100 p-2 border-b border-stone-200 flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-[10px] font-bold uppercase text-stone-600">
+                          Transactions prises en compte ({shiftCalculatedData.transactions.length})
+                        </span>
+                        <div className="flex items-center gap-1 text-[10px]">
+                          {(['all', 'chambre', 'service', 'restaurant_bar'] as const).map((src) => (
+                            <button
+                              key={src}
+                              type="button"
+                              onClick={() => setFilterSourceDetail(src)}
+                              className={`px-2 py-0.5 rounded-md font-semibold cursor-pointer ${
+                                filterSourceDetail === src
+                                  ? 'bg-amber-600 text-white'
+                                  : 'bg-white text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              {src === 'all' ? 'Toutes' : src === 'chambre' ? 'Chambres' : src === 'service' ? 'Services' : 'Resto/Bar'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {shiftCalculatedData.transactions.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-stone-400 italic">
+                          Aucune transaction enregistrée pour ce caissier sur ce créneau horaire.
+                        </div>
+                      ) : (
+                        <div className="max-h-44 overflow-y-auto">
+                          <table className="w-full text-left text-[11px] border-collapse">
+                            <thead>
+                              <tr className="bg-stone-50 text-stone-500 text-[9px] uppercase font-bold border-b border-stone-200">
+                                <th className="py-1 px-2.5">Heure</th>
+                                <th className="py-1 px-2.5">Pôle</th>
+                                <th className="py-1 px-2.5">Réf &amp; Client</th>
+                                <th className="py-1 px-2.5">Mode</th>
+                                <th className="py-1 px-2.5 text-right">Montant</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-stone-100">
+                              {shiftCalculatedData.transactions
+                                .filter((t) => filterSourceDetail === 'all' || t.source === filterSourceDetail)
+                                .map((t) => (
+                                  <tr key={t.id} className="hover:bg-stone-50">
+                                    <td className="py-1 px-2.5 font-mono text-stone-500">{t.heure}</td>
+                                    <td className="py-1 px-2.5">
+                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                        t.source === 'chambre' ? 'bg-emerald-100 text-emerald-800' :
+                                        t.source === 'service' ? 'bg-blue-100 text-blue-800' :
+                                        'bg-orange-100 text-orange-800'
+                                      }`}>
+                                        {t.sourceLabel}
+                                      </span>
+                                    </td>
+                                    <td className="py-1 px-2.5">
+                                      <span className="font-semibold text-stone-900 block truncate max-w-[180px]">{t.reference}</span>
+                                      <span className="text-[9px] text-stone-500 block truncate max-w-[180px]">{t.clientNom}</span>
+                                    </td>
+                                    <td className="py-1 px-2.5 font-semibold text-stone-700">{t.modePaiement}</td>
+                                    <td className="py-1 px-2.5 text-right font-mono font-bold text-stone-900">{formatPrice(t.montant)}</td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Grille des 5 champs avec indicateurs de détection automatique */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
                   {/* Espèces */}
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-                      <Coins className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Montant Caisse (Espèces Physique)</span>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Coins className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Montant Caisse (Espèces Physique)</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        Système : {formatPrice(shiftCalculatedData.montantEspeces)}
+                      </span>
                     </label>
                     <input
                       type="number"
                       min={0}
                       step={500}
                       value={formMontantEspeces}
-                      onChange={(e) => setFormMontantEspeces(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setFormMontantEspeces(val);
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
+                        formMontantEspeces === shiftCalculatedData.montantEspeces
+                          ? 'border-emerald-300 bg-emerald-50/20'
+                          : 'border-amber-300 bg-amber-50/20'
+                      }`}
                       placeholder="0"
                     />
                   </div>
 
                   {/* Orange Money */}
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-orange-600" />
-                      <span>Montant Orange Money</span>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5 text-orange-600" />
+                        <span>Montant Orange Money</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-orange-800 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
+                        Système : {formatPrice(shiftCalculatedData.montantOrangeMoney)}
+                      </span>
                     </label>
                     <input
                       type="number"
                       min={0}
                       step={500}
                       value={formMontantOrange}
-                      onChange={(e) => setFormMontantOrange(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setFormMontantOrange(val);
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-500/50 ${
+                        formMontantOrange === shiftCalculatedData.montantOrangeMoney
+                          ? 'border-emerald-300 bg-emerald-50/20'
+                          : 'border-amber-300 bg-amber-50/20'
+                      }`}
                       placeholder="0"
                     />
                   </div>
 
                   {/* Moov Money */}
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Montant Moov Money</span>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Montant Moov Money</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                        Système : {formatPrice(shiftCalculatedData.montantMoovMoney)}
+                      </span>
                     </label>
                     <input
                       type="number"
                       min={0}
                       step={500}
                       value={formMontantMoov}
-                      onChange={(e) => setFormMontantMoov(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setFormMontantMoov(val);
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
+                        formMontantMoov === shiftCalculatedData.montantMoovMoney
+                          ? 'border-emerald-300 bg-emerald-50/20'
+                          : 'border-amber-300 bg-amber-50/20'
+                      }`}
                       placeholder="0"
                     />
                   </div>
 
                   {/* MTN Money */}
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-yellow-600" />
-                      <span>Montant MTN Money</span>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5 text-yellow-600" />
+                        <span>Montant MTN Money</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-yellow-800 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">
+                        Système : {formatPrice(shiftCalculatedData.montantMtnMoney)}
+                      </span>
                     </label>
                     <input
                       type="number"
                       min={0}
                       step={500}
                       value={formMontantMtn}
-                      onChange={(e) => setFormMontantMtn(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setFormMontantMtn(val);
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 ${
+                        formMontantMtn === shiftCalculatedData.montantMtnMoney
+                          ? 'border-emerald-300 bg-emerald-50/20'
+                          : 'border-amber-300 bg-amber-50/20'
+                      }`}
                       placeholder="0"
                     />
                   </div>
 
                   {/* Wave */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-cyan-600" />
-                      <span>Montant Wave (Paiement QR / Mobile)</span>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5 text-cyan-600" />
+                        <span>Montant Wave (Paiement QR / Mobile)</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-cyan-800 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">
+                        Système : {formatPrice(shiftCalculatedData.montantWave)}
+                      </span>
                     </label>
                     <input
                       type="number"
                       min={0}
                       step={500}
                       value={formMontantWave}
-                      onChange={(e) => setFormMontantWave(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setFormMontantWave(val);
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${
+                        formMontantWave === shiftCalculatedData.montantWave
+                          ? 'border-emerald-300 bg-emerald-50/20'
+                          : 'border-amber-300 bg-amber-50/20'
+                      }`}
                       placeholder="0"
                     />
                   </div>
                 </div>
 
-                {/* GRAND TOTAL CALCULÉ EN DIRECT */}
-                <div className="mt-4 p-4 rounded-xl bg-amber-500/15 border-2 border-amber-500/40 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs uppercase font-extrabold text-amber-950 block">
-                      TOTAL CALCULÉ DU VERSEMENT
-                    </span>
-                    <span className="text-[10px] text-stone-600">
-                      Somme automatique : Espèces + OM + Moov + MTN + Wave
-                    </span>
+                {/* GRAND TOTAL CALCULÉ EN DIRECT & CORRÉLÉ AVEC LE VERSEMENT */}
+                <div className="mt-4 p-4 rounded-xl bg-amber-500/15 border-2 border-amber-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs uppercase font-extrabold text-amber-950 block">
+                        TOTAL DU VERSEMENT (CORRÉLÉ AVEC LES ENCAISSEMENTS)
+                      </span>
+                      <span className="text-[10px] text-stone-600">
+                        Somme automatique : Espèces + Orange Money + Moov + MTN + Wave
+                      </span>
+                    </div>
+                    <div className="text-2xl font-black font-mono text-amber-950">
+                      {formatPrice(formCalculatedTotal)}
+                    </div>
                   </div>
-                  <div className="text-2xl font-black font-mono text-amber-950">
-                    {formatPrice(formCalculatedTotal)}
+
+                  {/* État de Rapprochement : Conforme ou Écart */}
+                  <div className="pt-2 border-t border-amber-300/60 flex items-center justify-between text-xs font-semibold">
+                    <span className="text-stone-700">Rapprochement avec le total théorique :</span>
+                    {formCalculatedTotal === shiftCalculatedData.montantTotal ? (
+                      <span className="text-emerald-700 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Caisse 100% conforme au centime près</span>
+                      </span>
+                    ) : formCalculatedTotal > shiftCalculatedData.montantTotal ? (
+                      <span className="text-blue-700 font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4 text-blue-600" />
+                        <span>Surplus physique constaté : +{formatPrice(formCalculatedTotal - shiftCalculatedData.montantTotal)}</span>
+                      </span>
+                    ) : (
+                      <span className="text-rose-700 font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4 text-rose-600" />
+                        <span>Déficit de caisse constaté : {formatPrice(formCalculatedTotal - shiftCalculatedData.montantTotal)}</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1147,9 +1854,20 @@ export const CashRegisterManagementTab: React.FC = () => {
               {/* Écart Éventuel & Observations */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
-                    Écart constaté (0 si conforme)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-stone-700">
+                      Écart constaté (0 si conforme)
+                    </label>
+                    {formCalculatedTotal !== shiftCalculatedData.montantTotal && (
+                      <button
+                        type="button"
+                        onClick={() => setFormEcart(formCalculatedTotal - shiftCalculatedData.montantTotal)}
+                        className="text-[10px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                      >
+                        Ajuster à {formCalculatedTotal - shiftCalculatedData.montantTotal > 0 ? '+' : ''}{formatPrice(formCalculatedTotal - shiftCalculatedData.montantTotal)}
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="number"
                     step={100}
@@ -1201,7 +1919,29 @@ export const CashRegisterManagementTab: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+                  disabled={
+                    !!existingVersementForCashier ||
+                    (!editingVersement &&
+                      formShiftCountdown.isExpired &&
+                      registerConfig.bloquerApresDelai &&
+                      (!isDG || !formDerogationDGOctroyee || !formMotifDerogationDG.trim()))
+                  }
+                  className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all ${
+                    existingVersementForCashier ||
+                    (!editingVersement &&
+                      formShiftCountdown.isExpired &&
+                      registerConfig.bloquerApresDelai &&
+                      (!isDG || !formDerogationDGOctroyee || !formMotifDerogationDG.trim()))
+                      ? 'bg-stone-300 text-stone-500 cursor-not-allowed opacity-60 shadow-none'
+                      : 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer'
+                  }`}
+                  title={
+                    existingVersementForCashier
+                      ? 'Impossible : versement déjà enregistré pour ce caissier'
+                      : !editingVersement && formShiftCountdown.isExpired && registerConfig.bloquerApresDelai
+                      ? 'Délai expiré : dérogation DG requise'
+                      : 'Valider et enregistrer'
+                  }
                 >
                   <Check className="w-4 h-4 stroke-[3]" />
                   <span>{editingVersement ? 'Enregistrer les Modifications' : 'Valider & Émettre le Reçu'}</span>
@@ -1219,6 +1959,31 @@ export const CashRegisterManagementTab: React.FC = () => {
         <VersementReceiptModal
           versement={selectedVersementForReceipt}
           onClose={() => setSelectedVersementForReceipt(null)}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 8. MODALE DE PARAMÉTRAGE DES CAISSES & SHIFTS (CHEF DE RÉCEPTION & DG)    */}
+      {/* ========================================================================= */}
+      {isSettingsModalOpen && (
+        <CashRegisterSettingsModal
+          config={registerConfig}
+          onSave={handleSaveRegisterConfig}
+          onClose={() => setIsSettingsModalOpen(false)}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 9. MODALE DE DÉTAIL EXHAUSTIF DES ENCAISSEMENTS DU CAISSIER              */}
+      {/* ========================================================================= */}
+      {selectedVersementForDetail && (
+        <VersementEncaissementsDetailModal
+          versement={selectedVersementForDetail}
+          onClose={() => setSelectedVersementForDetail(null)}
+          onOpenReceipt={(v) => {
+            setSelectedVersementForDetail(null);
+            setSelectedVersementForReceipt(v);
+          }}
         />
       )}
     </div>

@@ -1881,7 +1881,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } catch {}
 
     const { subject, textBody } = generateConfirmationEmail(res, {
-      hotelName: hotelCfg?.hotelName || hotelCfg?.appName || 'Hôtel Refuge Palmeraie de Bongouanou',
+      hotelName: hotelCfg?.hotelName || hotelCfg?.appName || 'HÔTEL REFUGE BANNERAIE',
       holdingName: hotelCfg?.holdingName || 'DEKOUASSI HOLDING',
       phone: hotelCfg?.phone || '+225 07 00 00 00 00',
       email: hotelCfg?.email || 'contact@hotelia.ci',

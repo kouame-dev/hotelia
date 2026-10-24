@@ -1251,6 +1251,58 @@ export const INITIAL_SERVICE_ORDERS: ServiceOrder[] = [
     statutPaiement: 'en_attente',
     statutCommande: 'en_cours',
     notes: 'Acompte 50% versé via MTN MoMo, solde sur facture globale.'
+  },
+  {
+    id: 'srv-ord-oct23-01',
+    numeroCommande: 'CMD-SRV-2026-OCT23-01',
+    date: '2026-10-23',
+    heure: '10:15',
+    clientNom: 'M. Touré Amadou',
+    chambreNumero: '102',
+    items: [
+      {
+        serviceId: 'srv-blanchisserie-1',
+        serviceNom: 'Blanchisserie & Repassage Express',
+        prixUnitaire: 15000,
+        quantite: 1,
+        totalLigne: 15000
+      }
+    ],
+    totalPartiel: 15000,
+    remise: 0,
+    totalGlobal: 15000,
+    acompteVerse: 15000,
+    resteAPayer: 0,
+    modePaiement: 'Orange Money',
+    statutPaiement: 'paye',
+    statutCommande: 'livre',
+    notes: 'Payé par Orange Money au passage de shift.'
+  },
+  {
+    id: 'srv-ord-oct23-02',
+    numeroCommande: 'CMD-SRV-2026-OCT23-02',
+    date: '2026-10-23',
+    heure: '14:30',
+    clientNom: 'Mme Bamba Fatou',
+    chambreNumero: '201',
+    items: [
+      {
+        serviceId: 'srv-navette-1',
+        serviceNom: 'Transfert Aéroport VIP & Rafraîchissements',
+        prixUnitaire: 25000,
+        quantite: 1,
+        totalLigne: 25000
+      }
+    ],
+    totalPartiel: 25000,
+    remise: 0,
+    totalGlobal: 25000,
+    acompteVerse: 25000,
+    resteAPayer: 0,
+    modePaiement: 'Wave',
+    statutPaiement: 'paye',
+    statutCommande: 'livre',
+    notes: 'Règlement instantané Wave auprès de la caisse.'
   }
 ];
 

@@ -78,12 +78,12 @@ export const VersementReceiptModal: React.FC<VersementReceiptModalProps> = ({
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
       doc.setTextColor(255, 255, 255);
-      doc.text(settings.appName || 'HOTELIA • DEKOUASSI HOLDING', margin, 12);
+      doc.text(settings.appName || 'HÔTEL REFUGE BANNERAIE • DEKOUASSI HOLDING', margin, 12);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(197, 168, 128);
-      doc.text(settings.brandSubtitle || 'Système de Gestion des Caisses & Clôtures de Shift', margin, 18);
+      doc.text(settings.brandSubtitle || 'Hôtel Refuge de bongouanou • Système de Gestion des Caisses', margin, 18);
 
       const nowStr = new Date().toLocaleDateString('fr-FR', {
         day: '2-digit',
@@ -448,16 +448,16 @@ export const VersementReceiptModal: React.FC<VersementReceiptModalProps> = ({
                 {/* En-tête thermique */}
                 <div className="ticket-header text-center pb-2 border-b-2 border-dashed border-black">
                   <div className="font-extrabold text-sm uppercase tracking-wider">
-                    {settings.appName || 'HOTELIA'}
+                    {settings.appName || 'HÔTEL REFUGE BANNERAIE'}
                   </div>
                   <div className="text-[10px] text-stone-700">
-                    DEKOUASSI HOLDING CI
+                    DEKOUASSI HOLDING CI • HÔTEL REFUGE DE BONGOUANOU
                   </div>
                   <div className="text-[10px] text-stone-600">
-                    {settings.address || 'Cocody Riviera Golf, Abidjan'}
+                    {settings.address || 'Bongouanou, Côte d\'Ivoire'}
                   </div>
                   <div className="text-[10px] text-stone-600">
-                    Tél : {settings.phone || '+225 27 22 00 00 00'}
+                    Tél : {settings.phone || '+225 07 00 00 00'}
                   </div>
                   <div className="mt-2 font-bold text-xs uppercase border-t border-b border-black py-1">
                     REÇU DE VERSEMENT DE CAISSE
@@ -594,13 +594,13 @@ export const VersementReceiptModal: React.FC<VersementReceiptModalProps> = ({
               <div className="border-b-2 border-stone-800 pb-4 mb-5 flex items-start justify-between">
                 <div>
                   <h1 className="text-xl font-black text-stone-900 tracking-tight">
-                    {settings.appName || 'HOTELIA RESORT & LOUNGE'}
+                    {settings.appName || 'HÔTEL REFUGE BANNERAIE'}
                   </h1>
                   <p className="text-[11px] text-stone-600 font-semibold">
-                    {settings.brandSubtitle || 'Dekouassi Holding CI • Clôtures & Billetterie des Caisses'}
+                    {settings.brandSubtitle || 'Hôtel Refuge de bongouanou • Clôtures & Billetterie des Caisses'}
                   </p>
                   <p className="text-[10px] text-stone-500 mt-1">
-                    {settings.address || 'Abidjan, Côte d\'Ivoire'} • Tél : {settings.phone || '+225 27 22 00 00 00'}
+                    {settings.address || 'Bongouanou, Côte d\'Ivoire'} • Tél : {settings.phone || '+225 07 00 00 00'}
                   </p>
                 </div>
                 <div className="text-right">

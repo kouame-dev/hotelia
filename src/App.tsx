@@ -122,7 +122,7 @@ export default function App() {
               </span>
               <span className="text-stone-600 hidden md:inline">|</span>
               <span className="text-stone-400 font-mono text-[11px] hidden md:inline">
-                HÔTEL REFUGE PALMERAIE DE BONGOUANOU
+                HÔTEL REFUGE BANNERAIE DE BONGOUANOU
               </span>
             </div>
 

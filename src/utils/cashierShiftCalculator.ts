@@ -1,4 +1,4 @@
-import { ReservationItem, ServiceOrder, PosSale, AuditLogEntry, ShiftType } from '../types.ts';
+import { ReservationItem, ServiceOrder, PosSale, AuditLogEntry, ShiftType, CashRegisterConfig, DEFAULT_CASH_REGISTER_CONFIG } from '../types.ts';
 
 export interface ShiftTransactionDetail {
   id: string;
@@ -57,9 +57,13 @@ export function normalizePaymentChannel(methodStr?: string): 'especes' | 'orange
 }
 
 /**
- * Vérifie si une transaction horodatée appartient au shift Matin (07h00 - 17h00) ou Soir (17h00 - 06h00)
+ * Vérifie si une transaction horodatée appartient au shift Matin ou Soir selon la configuration
  */
-export function isTimeInShift(timeStr: string | undefined, shift: ShiftType): boolean {
+export function isTimeInShift(
+  timeStr: string | undefined,
+  shift: ShiftType,
+  config: CashRegisterConfig = DEFAULT_CASH_REGISTER_CONFIG
+): boolean {
   if (!timeStr) {
     // Par défaut, si l'heure n'est pas renseignée, les opérations du jour sont assignées au shift Matin
     return shift === 'matin';
@@ -77,14 +81,15 @@ export function isTimeInShift(timeStr: string | undefined, shift: ShiftType): bo
   const minutes = parseInt(minsStr || '0', 10);
   const totalMinutes = hours * 60 + minutes;
 
-  const morningStart = 7 * 60; // 07h00 = 420
-  const morningEnd = 17 * 60;  // 17h00 = 1020
+  const [matinStartH, matinStartM] = (config.shiftMatinDebut || '07:00').split(':').map((v) => parseInt(v, 10) || 0);
+  const [matinEndH, matinEndM] = (config.shiftMatinFin || '17:00').split(':').map((v) => parseInt(v, 10) || 0);
+
+  const morningStart = matinStartH * 60 + matinStartM;
+  const morningEnd = matinEndH * 60 + matinEndM;
 
   if (shift === 'matin') {
-    // 07h00 <= time < 17h00
     return totalMinutes >= morningStart && totalMinutes < morningEnd;
   } else {
-    // 17h00 <= time <= 23h59 OU 00h00 <= time < 07h00
     return totalMinutes >= morningEnd || totalMinutes < morningStart;
   }
 }
@@ -101,7 +106,8 @@ export function calculateShiftCollections({
   reservations = [],
   serviceOrders = [],
   posSales = [],
-  auditLogs = []
+  auditLogs = [],
+  config = DEFAULT_CASH_REGISTER_CONFIG
 }: {
   date: string;
   shift: ShiftType;
@@ -110,6 +116,7 @@ export function calculateShiftCollections({
   serviceOrders?: ServiceOrder[];
   posSales?: PosSale[];
   auditLogs?: AuditLogEntry[];
+  config?: CashRegisterConfig;
 }): ShiftCollectionsResult {
   let montantEspeces = 0;
   let montantOrangeMoney = 0;
@@ -145,7 +152,7 @@ export function calculateShiftCollections({
     const saleDate = sale.date;
     if (saleDate !== date) return;
 
-    if (!isTimeInShift(sale.heure, shift)) return;
+    if (!isTimeInShift(sale.heure, shift, config)) return;
     if (!matchesCashier(sale.serveurNom)) return;
 
     // Montant encaissé réel
@@ -194,7 +201,7 @@ export function calculateShiftCollections({
     const orderDate = order.date;
     if (orderDate !== date) return;
 
-    if (!isTimeInShift(order.heure, shift)) return;
+    if (!isTimeInShift(order.heure, shift, config)) return;
 
     // Montant perçu pour ce service
     const amount = order.statutPaiement === 'paye'
@@ -253,7 +260,7 @@ export function calculateShiftCollections({
       transTime = res.dateCreation.split('T')[1].substring(0, 5);
     }
 
-    if (!isTimeInShift(transTime, shift)) return;
+    if (!isTimeInShift(transTime, shift, config)) return;
 
     // Montant encaissé pour cette réservation
     const amount = res.statutPaiement === 'paye'

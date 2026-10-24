@@ -457,7 +457,7 @@ export const HotelKpisVisualization: React.FC<HotelKpisVisualizationProps> = ({
       'data:text/csv;charset=utf-8,\uFEFF' +
       [
         `# RAPPORT DES KPIS HÔTELIERS - TAUX D'OCCUPATION & CA JOURNALIER`,
-        `# Établissement : ${settings.appName || settings.hotelName || 'Hôtel Refuge Palmeraie de Bongouanou'}`,
+        `# Établissement : ${settings.appName || settings.hotelName || 'HÔTEL REFUGE BANNERAIE'} (Hôtel Refuge de bongouanou)`,
         `# Capacité : ${totalPhysicalRooms} chambres physiques`,
         `# Période : ${period === 'month' ? `${MONTH_NAMES[selectedMonth]} ${selectedYear}` : period}`,
         `# Taux d'occupation moyen : ${kpiStats.avgOccupancyRate}% | CA Journalier moyen : ${formatPrice(kpiStats.avgDailyRevenue)} | RevPAR : ${formatPrice(kpiStats.overallRevPar)} | ADR : ${formatPrice(kpiStats.overallAdr)}`,

@@ -44,7 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   Anti-Surbooking
                 </span>
               </div>
-              <p className="text-xs text-slate-400">PMS Hotelia • Réservations Nuitées &amp; Heures, Point de Vente POS &amp; Facturation</p>
+              <p className="text-xs text-slate-400">PMS Hôtel Refuge de bongouanou • Réservations Nuitées &amp; Heures, Point de Vente POS &amp; Facturation</p>
             </div>
           </div>
 

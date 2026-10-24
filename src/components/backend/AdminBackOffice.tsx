@@ -21,6 +21,7 @@ import { RestaurantStockAlertsTab } from './RestaurantStockAlertsTab.tsx';
 import { DevToolsModal } from './DevToolsModal.tsx';
 import { ConnectedEmployeesModal } from './ConnectedEmployeesModal.tsx';
 import { ChromeDiagnosticModal } from './ChromeDiagnosticModal.tsx';
+import { UnifiedOperationsModal, UnifiedOperationsTab } from './UnifiedOperationsModal.tsx';
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
 import { RoomOccupancyCalendarTab } from './RoomOccupancyCalendarTab.tsx';
@@ -363,6 +364,15 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const [isDevToolsModalOpen, setIsDevToolsModalOpen] = useState(false);
   const [isConnectedEmployeesModalOpen, setIsConnectedEmployeesModalOpen] = useState(false);
 
+  // Modale unifiée regroupant les 4 onglets : Alertes & Stocks, Employés, Diag & Chrome, Manuels & Écrans
+  const [isUnifiedOperationsModalOpen, setIsUnifiedOperationsModalOpen] = useState(false);
+  const [unifiedModalInitialTab, setUnifiedModalInitialTab] = useState<UnifiedOperationsTab>('alerts');
+
+  const handleOpenUnifiedOperations = (tab: UnifiedOperationsTab = 'alerts') => {
+    setUnifiedModalInitialTab(tab);
+    setIsUnifiedOperationsModalOpen(true);
+  };
+
   // Libellé et métadonnées de la vue courante
   const currentViewInfo = useMemo(() => {
     switch (activeTab) {
@@ -662,90 +672,76 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 </div>
               </button>
 
-              {/* Onglet Unifié : Alertes & Stocks Restaurant / Consommables Hôtel */}
-              <button
-                type="button"
-                onClick={() => setIsNotifModalOpen(true)}
-                className={`relative px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs ${
-                  unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0
-                    ? 'bg-amber-950/60 hover:bg-amber-900/80 text-amber-200 border-amber-600/50 ring-1 ring-amber-500/30'
-                    : 'bg-[#2A2925] hover:bg-[#383631] text-stone-300 hover:text-white border-stone-700'
-                }`}
-                title="Centre unifié d'alertes sonores, réservations, stocks restaurant & consommables hôtel"
-              >
-                <div className="relative">
-                  {unreadCount > 0 ? (
-                    <BellRing className="w-4 h-4 text-amber-400 animate-bounce" />
-                  ) : unreadConsumableAlertsCount > 0 ? (
-                    <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse" />
-                  ) : unreadStockAlertsCount > 0 ? (
-                    <AlertTriangle className="w-4 h-4 text-rose-400 animate-pulse" />
-                  ) : (
-                    <Bell className="w-4 h-4 text-stone-300" />
-                  )}
-                  {(unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-white">
-                    {isChefReception ? 'Alertes & Consommables' : 'Alertes & Stocks'}
+              {/* Groupe d'Accès Unifié : Alertes & Stocks, Employés, Diag Chrome, Manuels & Écrans */}
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#252420] border border-stone-700/80 shadow-inner">
+                {/* 1. Alertes & Stocks */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenUnifiedOperations('alerts')}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                    unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0
+                      ? 'bg-rose-950/70 text-rose-300 border border-rose-600/50 hover:bg-rose-900/80 shadow-xs'
+                      : 'text-stone-300 hover:text-white hover:bg-stone-800'
+                  }`}
+                  title="Ouvrir la modale unifiée : Alertes & Stocks"
+                >
+                  <div className="relative">
+                    {unreadCount > 0 ? (
+                      <BellRing className="w-4 h-4 text-amber-400 animate-bounce" />
+                    ) : unreadConsumableAlertsCount > 0 ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse" />
+                    ) : unreadStockAlertsCount > 0 ? (
+                      <AlertTriangle className="w-4 h-4 text-rose-400 animate-pulse" />
+                    ) : (
+                      <Bell className="w-4 h-4 text-stone-300" />
+                    )}
+                    {(unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+                    )}
+                  </div>
+                  <span className="hidden lg:inline text-xs font-bold">
+                    {isChefReception ? 'Alertes' : 'Alertes & Stocks'}
                   </span>
                   {(unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) && (
                     <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px]">
                       {unreadCount + unreadStockAlertsCount + unreadConsumableAlertsCount}
                     </span>
                   )}
-                </div>
-              </button>
+                </button>
 
-              {/* Bouton Rapide : Employés Connectés & Reset 1-Clic */}
-              <button
-                type="button"
-                onClick={() => setIsConnectedEmployeesModalOpen(true)}
-                className="relative px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs bg-[#2A2925] hover:bg-[#383631] text-emerald-300 hover:text-emerald-200 border-emerald-600/40 hover:border-emerald-500/80"
-                title="Visualiser rapidement les employés connectés et réinitialiser leurs accès en 1 clic"
-              >
-                <div className="relative">
-                  <Users className="w-4 h-4 text-emerald-400" />
-                  {connectedEmployeesCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-white hidden md:inline">
-                    Employés
+                {/* 2. Employés Connectés */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenUnifiedOperations('employees')}
+                  className="px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 text-emerald-300 hover:text-white hover:bg-stone-800"
+                  title="Ouvrir la modale unifiée : Employés connectés & gestion des sessions"
+                >
+                  <div className="relative">
+                    <Users className="w-4 h-4 text-emerald-400" />
+                    {connectedEmployeesCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+                    )}
+                  </div>
+                  <span className="hidden lg:inline text-xs font-bold">Employés</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[10px]">
+                    {connectedEmployeesCount}
                   </span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[10px] flex items-center gap-1">
-                    <Zap className="w-2.5 h-2.5 text-amber-400" />
-                    <span>{connectedEmployeesCount} En Ligne</span>
-                  </span>
-                </div>
-              </button>
+                </button>
 
-              {/* Bouton Rapide : Diagnostic Chrome / Chromium & Quota Stockage */}
-              <button
-                type="button"
-                onClick={() => {
-                  setDiagnosticReport(getStorageDiagnosticInfo());
-                  setIsDiagnosticModalOpen(true);
-                }}
-                className="relative px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs bg-[#2A2925] hover:bg-[#383631] text-sky-300 hover:text-sky-200 border-sky-600/40 hover:border-sky-500/80"
-                title="Ouvrir le panneau de diagnostic Chromium / Chrome Mobile & Desktop et santé LocalStorage"
-              >
-                <div className="relative">
+                {/* 3. Diag Chrome & Storage */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenUnifiedOperations('diag')}
+                  className="px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 text-sky-300 hover:text-white hover:bg-stone-800"
+                  title="Ouvrir la modale unifiée : Diagnostic Chromium / Chrome & Stockage local"
+                >
                   <Cpu className="w-4 h-4 text-sky-400" />
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-sky-400 rounded-full animate-ping" />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-white hidden md:inline">
-                    Diag Chrome
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono font-bold text-[10px]">
+                  <span className="hidden lg:inline text-xs font-bold">Diag Chrome</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono font-bold text-[10px] hidden sm:inline">
                     Storage
                   </span>
-                </div>
-              </button>
+                </button>
+              </div>
 
               {/* Onglet Unifié : Profil & Déconnexion (Regroupement en 1 seul onglet avec menu complet) */}
               <div className="relative">
@@ -849,19 +845,22 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                             {connectedEmployeesCount} en ligne
                           </span>
                         </button>
-                        <a
-                          href="/documentation.html"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => setIsUserMenuOpen(false)}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            handleOpenUnifiedOperations('manual');
+                          }}
                           className="w-full flex items-center justify-between p-2 rounded-xl text-left transition-all hover:bg-stone-800 text-amber-200 text-xs font-semibold cursor-pointer"
                         >
                           <div className="flex items-center gap-2">
                             <FileText className="w-3.5 h-3.5 text-[#C5A880]" />
                             <span>Manuel Utilisateur &amp; Écrans</span>
                           </div>
-                          <ExternalLink className="w-3 h-3 text-stone-400" />
-                        </a>
+                          <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-mono">
+                            Modale
+                          </span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -893,25 +892,24 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 )}
               </div>
 
-              {/* Documentation Button */}
-              <a
-                href="/documentation.html"
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* Documentation Button (Modale Unifiée) */}
+              <button
+                type="button"
+                onClick={() => handleOpenUnifiedOperations('manual')}
                 className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-[#C5A880] border border-[#C5A880]/40 font-bold text-xs transition-all shadow-md cursor-pointer"
                 title="Consulter le Manuel Opérationnel & Guide Visuel avec Écrans"
               >
                 <FileText className="w-3.5 h-3.5 text-[#C5A880]" />
                 <span className="hidden md:inline">Manuel &amp; Écrans</span>
                 <span className="md:hidden">Manuel</span>
-              </a>
+              </button>
 
               {/* View Front-end Button */}
               <button
                 type="button"
                 onClick={onGoToPublicSite}
                 className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer"
-                title="Basculer vers le site public Hotelia (Front-End)"
+                title="Basculer vers le site public Hôtel Refuge de bongouanou (Front-End)"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Voir le Front-End</span>
@@ -1011,28 +1009,28 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               </span>
             </button>
 
-            {/* Onglet Direct : Centre d'Alertes Unifié (Stocks & Consommables) */}
+            {/* Onglet Direct : Centre d'Exploitation Unifié (Alertes, Employés, Diag, Manuels) */}
             <button
               type="button"
-              onClick={() => handleTabClick('stock_alerts')}
+              onClick={() => handleOpenUnifiedOperations('alerts')}
               className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                activeTab === 'stock_alerts'
+                isUnifiedOperationsModalOpen
                   ? 'bg-rose-700 text-white border-2 border-rose-400 shadow-lg ring-2 ring-rose-500/35'
                   : (unreadStockAlertsCount + unreadConsumableAlertsCount) > 0
                   ? 'bg-rose-950/40 text-rose-300 border border-rose-800/80 hover:bg-rose-900/60 hover:text-white'
                   : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
               }`}
-              title="Ouvrir le centre unifié des alertes de stocks restaurant et consommables d'hôtel"
+              title="Ouvrir la modale unifiée : Alertes & Stocks, Employés, Diag Chrome, Manuels & Écrans"
             >
               <AlertTriangle className={`w-4 h-4 ${(unreadStockAlertsCount + unreadConsumableAlertsCount) > 0 ? 'text-rose-400 animate-pulse' : 'text-stone-400'}`} />
-              <span>Onglet Alertes</span>
+              <span>Modale 4-en-1 : Alertes &amp; Outils</span>
               {(unreadStockAlertsCount + unreadConsumableAlertsCount) > 0 ? (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500 text-white animate-pulse">
                   {unreadStockAlertsCount + unreadConsumableAlertsCount}
                 </span>
               ) : (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  0
+                  4 onglets
                 </span>
               )}
             </button>
@@ -1908,7 +1906,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             {/* Footer */}
             <div className="bg-[#1C1B18] px-6 py-3 border-t border-stone-800 text-xs text-stone-400 flex items-center justify-between shrink-0">
               <span className="font-mono text-[11px]">
-                Hotelia Hébergement • Synchronisé en direct avec la base de données
+                Hôtel Refuge de bongouanou • Hébergement • Synchronisé en direct avec la base de données
               </span>
               <button
                 type="button"
@@ -2196,7 +2194,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             {/* Footer */}
             <div className="bg-[#1C1B18] px-6 py-3 border-t border-stone-800 text-xs text-stone-400 flex items-center justify-between shrink-0">
               <span className="font-mono text-[11px]">
-                Hotelia Restaurant • Commandes, stocks et KDS synchronisés
+                Hôtel Refuge de bongouanou • Restaurant • Commandes, stocks et KDS synchronisés
               </span>
               <button
                 type="button"
@@ -2656,7 +2654,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             {/* Footer */}
             <div className="bg-[#1C1B18] px-6 py-3 border-t border-stone-800 text-xs text-stone-400 flex items-center justify-between shrink-0">
               <span className="font-mono text-[11px]">
-                Hotelia Administration • Super Admin &amp; Direction Générale
+                Hôtel Refuge de bongouanou • Administration • Super Admin &amp; Direction Générale
               </span>
               <button
                 type="button"
@@ -2685,6 +2683,16 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       <SoundNotificationModal
         isOpen={isSoundModalOpen}
         onClose={() => setIsSoundModalOpen(false)}
+      />
+
+      {/* ========================================================================= */}
+      {/* 4a. MODALE UNIFIÉE : ALERTES & STOCKS, EMPLOYÉS, DIAG CHROME, MANUELS     */}
+      {/* ========================================================================= */}
+      <UnifiedOperationsModal
+        isOpen={isUnifiedOperationsModalOpen}
+        onClose={() => setIsUnifiedOperationsModalOpen(false)}
+        initialTab={unifiedModalInitialTab}
+        onNavigateToTab={(tab) => handleTabClick(tab as any)}
       />
 
       {/* 4b. MODALE INTERFACE SIMPLIFIÉE : EMPLOYÉS CONNECTÉS & RESET ACCÈS 1-CLIC */}
