@@ -19,10 +19,19 @@ export type AppFeatureId =
   | 'profile'
   | 'settings';
 
+export interface SubFeaturePermissionConfig {
+  canActivate: boolean; // Droit d'activer / accéder à la sous-fonctionnalité
+  canAdd: boolean;      // Droit d'ajouter (création)
+  canEdit: boolean;     // Droit de modifier (édition & mise à jour)
+  canDelete: boolean;   // Droit de supprimer (suppression / annulation définitive)
+}
+
 export interface FeaturePermissionConfig {
   canActivate: boolean; // Droit d'activer / accéder à la fonctionnalité
   canAdd: boolean;      // Droit d'ajouter (création)
   canEdit: boolean;     // Droit de modifier (édition & mise à jour)
+  canDelete?: boolean;  // Droit de supprimer globalement
+  subFeatures?: Record<string, SubFeaturePermissionConfig>; // Granularité fine par sous-fonctionnalité
 }
 
 export interface SubFeatureItem {
@@ -270,159 +279,320 @@ export const APP_FEATURES_METADATA: FeatureMetadata[] = [
   }
 ];
 
-// Matrice par défaut pour chaque rôle
+/**
+ * Construit un dictionnaire de permissions pour les sous-fonctionnalités d'un module donné.
+ * Hérite par défaut des permissions du module parent (canActivate, canAdd, canEdit, canDelete),
+ * tout en appliquant les surcharges spécifiques par sous-fonctionnalité si fournies.
+ */
+export function buildSubFeaturePermissions(
+  featureId: AppFeatureId,
+  parent: { canActivate: boolean; canAdd: boolean; canEdit: boolean; canDelete?: boolean },
+  overrides?: Record<string, Partial<SubFeaturePermissionConfig>>
+): Record<string, SubFeaturePermissionConfig> {
+  const featMeta = APP_FEATURES_METADATA.find((f) => f.id === featureId);
+  const result: Record<string, SubFeaturePermissionConfig> = {};
+  if (!featMeta || !featMeta.subFeatures) return result;
+
+  featMeta.subFeatures.forEach((sub) => {
+    const parentCanDelete = parent.canDelete ?? false;
+    const base: SubFeaturePermissionConfig = {
+      canActivate: parent.canActivate,
+      canAdd: parent.canActivate ? parent.canAdd : false,
+      canEdit: parent.canActivate ? parent.canEdit : false,
+      canDelete: parent.canActivate ? parentCanDelete : false
+    };
+
+    if (overrides && overrides[sub.id]) {
+      const ov = overrides[sub.id]!;
+      result[sub.id] = {
+        canActivate: ov.canActivate !== undefined ? ov.canActivate : base.canActivate,
+        canAdd: ov.canAdd !== undefined ? ov.canAdd : base.canAdd,
+        canEdit: ov.canEdit !== undefined ? ov.canEdit : base.canEdit,
+        canDelete: ov.canDelete !== undefined ? ov.canDelete : base.canDelete
+      };
+    } else {
+      result[sub.id] = base;
+    }
+  });
+
+  return result;
+}
+
+export function createRoleFeaturePerm(
+  featureId: AppFeatureId,
+  base: { canActivate: boolean; canAdd: boolean; canEdit: boolean; canDelete?: boolean },
+  subOverrides?: Record<string, Partial<SubFeaturePermissionConfig>>
+): FeaturePermissionConfig {
+  return {
+    canActivate: base.canActivate,
+    canAdd: base.canAdd,
+    canEdit: base.canEdit,
+    canDelete: base.canDelete ?? false,
+    subFeatures: buildSubFeaturePermissions(featureId, base, subOverrides)
+  };
+}
+
+// Matrice complète par défaut pour chaque rôle avec granularité fine sur chaque sous-fonctionnalité
 export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, FeaturePermissionConfig>> = {
   'Directeur Général': {
-    reservations: { canActivate: true, canAdd: true, canEdit: true },
-    gantt: { canActivate: true, canAdd: true, canEdit: true },
-    chambres: { canActivate: true, canAdd: true, canEdit: true },
-    services: { canActivate: true, canAdd: true, canEdit: true },
-    facture_globale: { canActivate: true, canAdd: true, canEdit: true },
-    pos: { canActivate: true, canAdd: true, canEdit: true },
-    restaurant: { canActivate: true, canAdd: true, canEdit: true },
-    cuisine: { canActivate: true, canAdd: true, canEdit: true },
-    stock: { canActivate: true, canAdd: true, canEdit: true },
-    stock_alerts: { canActivate: true, canAdd: true, canEdit: true },
-    dashboard: { canActivate: true, canAdd: true, canEdit: true },
-    finance: { canActivate: true, canAdd: true, canEdit: true },
-    expenses: { canActivate: true, canAdd: true, canEdit: true },
-    loyalty: { canActivate: true, canAdd: true, canEdit: true },
-    audit: { canActivate: true, canAdd: true, canEdit: true },
-    profile: { canActivate: true, canAdd: true, canEdit: true },
-    settings: { canActivate: true, canAdd: true, canEdit: true }
+    reservations: createRoleFeaturePerm('reservations', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    gantt: createRoleFeaturePerm('gantt', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }, {
+      gantt_anti_overbooking: { canAdd: false, canDelete: false }
+    }),
+    chambres: createRoleFeaturePerm('chambres', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    services: createRoleFeaturePerm('services', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    facture_globale: createRoleFeaturePerm('facture_globale', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    pos: createRoleFeaturePerm('pos', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    restaurant: createRoleFeaturePerm('restaurant', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    cuisine: createRoleFeaturePerm('cuisine', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    stock: createRoleFeaturePerm('stock', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    stock_alerts: createRoleFeaturePerm('stock_alerts', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    dashboard: createRoleFeaturePerm('dashboard', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    finance: createRoleFeaturePerm('finance', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    expenses: createRoleFeaturePerm('expenses', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    audit: createRoleFeaturePerm('audit', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      audit_operateurs: { canAdd: false, canEdit: false, canDelete: false }
+    }),
+    profile: createRoleFeaturePerm('profile', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    settings: createRoleFeaturePerm('settings', { canActivate: true, canAdd: true, canEdit: true, canDelete: true })
   },
+
   'Chef de Réception': {
-    reservations: { canActivate: true, canAdd: true, canEdit: true },
-    gantt: { canActivate: true, canAdd: true, canEdit: true },
-    chambres: { canActivate: true, canAdd: true, canEdit: true },
-    services: { canActivate: true, canAdd: true, canEdit: true },
-    facture_globale: { canActivate: true, canAdd: true, canEdit: true },
-    pos: { canActivate: false, canAdd: false, canEdit: false },
-    restaurant: { canActivate: true, canAdd: false, canEdit: false },
-    cuisine: { canActivate: true, canAdd: false, canEdit: true },
-    stock: { canActivate: true, canAdd: false, canEdit: false },
-    stock_alerts: { canActivate: true, canAdd: true, canEdit: true },
-    dashboard: { canActivate: true, canAdd: false, canEdit: false },
-    finance: { canActivate: false, canAdd: false, canEdit: false },
-    expenses: { canActivate: false, canAdd: false, canEdit: false },
-    loyalty: { canActivate: true, canAdd: true, canEdit: true },
-    audit: { canActivate: true, canAdd: false, canEdit: false },
-    profile: { canActivate: false, canAdd: false, canEdit: false },
-    settings: { canActivate: false, canAdd: false, canEdit: false }
+    reservations: createRoleFeaturePerm('reservations', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      res_nuitees: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      res_dayuse: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      res_acomptes: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      res_statuts: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    gantt: createRoleFeaturePerm('gantt', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      gantt_24h: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      gantt_calendar: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      gantt_anti_overbooking: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      gantt_housekeeping: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    chambres: createRoleFeaturePerm('chambres', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      chambres_grille: { canActivate: true, canAdd: false, canEdit: true, canDelete: false },
+      chambres_tarifs: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      chambres_proprete: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      chambres_blocages: { canActivate: true, canAdd: true, canEdit: true, canDelete: true }
+    }),
+    services: createRoleFeaturePerm('services', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      serv_catalogue: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      serv_commandes: { canActivate: true, canAdd: true, canEdit: true, canDelete: true },
+      serv_imputation: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    facture_globale: createRoleFeaturePerm('facture_globale', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    pos: createRoleFeaturePerm('pos', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    restaurant: createRoleFeaturePerm('restaurant', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    cuisine: createRoleFeaturePerm('cuisine', { canActivate: true, canAdd: false, canEdit: true, canDelete: false }),
+    stock: createRoleFeaturePerm('stock', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    stock_alerts: createRoleFeaturePerm('stock_alerts', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      alerts_resto: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      alerts_hotel: { canActivate: true, canAdd: true, canEdit: true, canDelete: true },
+      alerts_auto_order: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    dashboard: createRoleFeaturePerm('dashboard', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    finance: createRoleFeaturePerm('finance', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    expenses: createRoleFeaturePerm('expenses', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      loy_coupons_sms: { canActivate: true, canAdd: false, canEdit: false, canDelete: false }
+    }),
+    audit: createRoleFeaturePerm('audit', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
+
   'Caisse': {
-    reservations: { canActivate: true, canAdd: true, canEdit: true },
-    gantt: { canActivate: true, canAdd: true, canEdit: true },
-    chambres: { canActivate: false, canAdd: false, canEdit: false },
-    services: { canActivate: true, canAdd: true, canEdit: false },
-    facture_globale: { canActivate: true, canAdd: true, canEdit: true },
-    pos: { canActivate: false, canAdd: false, canEdit: false },
-    restaurant: { canActivate: false, canAdd: false, canEdit: false },
-    cuisine: { canActivate: true, canAdd: false, canEdit: false },
-    stock: { canActivate: false, canAdd: false, canEdit: false },
-    stock_alerts: { canActivate: true, canAdd: false, canEdit: false },
-    dashboard: { canActivate: true, canAdd: false, canEdit: false },
-    finance: { canActivate: false, canAdd: false, canEdit: false },
-    expenses: { canActivate: false, canAdd: false, canEdit: false },
-    loyalty: { canActivate: true, canAdd: false, canEdit: false },
-    audit: { canActivate: false, canAdd: false, canEdit: false },
-    profile: { canActivate: false, canAdd: false, canEdit: false },
-    settings: { canActivate: false, canAdd: false, canEdit: false }
+    reservations: createRoleFeaturePerm('reservations', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      res_nuitees: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      res_dayuse: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      res_acomptes: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      res_statuts: { canActivate: true, canAdd: false, canEdit: true, canDelete: false }
+    }),
+    gantt: createRoleFeaturePerm('gantt', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      gantt_24h: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      gantt_calendar: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      gantt_anti_overbooking: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      gantt_housekeeping: { canActivate: true, canAdd: false, canEdit: false, canDelete: false }
+    }),
+    chambres: createRoleFeaturePerm('chambres', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    services: createRoleFeaturePerm('services', { canActivate: true, canAdd: true, canEdit: false, canDelete: false }, {
+      serv_catalogue: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      serv_commandes: { canActivate: true, canAdd: true, canEdit: false, canDelete: false },
+      serv_imputation: { canActivate: true, canAdd: true, canEdit: false, canDelete: false }
+    }),
+    facture_globale: createRoleFeaturePerm('facture_globale', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      fact_consolidation_folio: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      fact_qr_fne: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      fact_multi_formats: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    pos: createRoleFeaturePerm('pos', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    restaurant: createRoleFeaturePerm('restaurant', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    cuisine: createRoleFeaturePerm('cuisine', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    stock: createRoleFeaturePerm('stock', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    stock_alerts: createRoleFeaturePerm('stock_alerts', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    dashboard: createRoleFeaturePerm('dashboard', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    finance: createRoleFeaturePerm('finance', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      fin_versements_shifts: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      fin_5_canaux: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      fin_rapprochement: { canActivate: true, canAdd: true, canEdit: false, canDelete: false },
+      fin_recus_versement: { canActivate: true, canAdd: true, canEdit: false, canDelete: false }
+    }),
+    expenses: createRoleFeaturePerm('expenses', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    audit: createRoleFeaturePerm('audit', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
+
   'Directeur Restaurant': {
-    reservations: { canActivate: false, canAdd: false, canEdit: false },
-    gantt: { canActivate: false, canAdd: false, canEdit: false },
-    chambres: { canActivate: false, canAdd: false, canEdit: false },
-    services: { canActivate: true, canAdd: true, canEdit: true },
-    facture_globale: { canActivate: true, canAdd: true, canEdit: true },
-    pos: { canActivate: true, canAdd: true, canEdit: true },
-    restaurant: { canActivate: true, canAdd: true, canEdit: true },
-    cuisine: { canActivate: true, canAdd: true, canEdit: true },
-    stock: { canActivate: true, canAdd: true, canEdit: true },
-    stock_alerts: { canActivate: true, canAdd: true, canEdit: true },
-    dashboard: { canActivate: true, canAdd: false, canEdit: false },
-    finance: { canActivate: false, canAdd: false, canEdit: false },
-    expenses: { canActivate: true, canAdd: true, canEdit: false },
-    loyalty: { canActivate: true, canAdd: true, canEdit: true },
-    audit: { canActivate: false, canAdd: false, canEdit: false },
-    profile: { canActivate: false, canAdd: false, canEdit: false },
-    settings: { canActivate: false, canAdd: false, canEdit: false }
+    reservations: createRoleFeaturePerm('reservations', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    gantt: createRoleFeaturePerm('gantt', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    chambres: createRoleFeaturePerm('chambres', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    services: createRoleFeaturePerm('services', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    facture_globale: createRoleFeaturePerm('facture_globale', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    pos: createRoleFeaturePerm('pos', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }, {
+      pos_tactile: { canActivate: true, canAdd: true, canEdit: true, canDelete: true },
+      pos_tickets_80mm: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      pos_imputation_chambre: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      pos_z_caisse: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    restaurant: createRoleFeaturePerm('restaurant', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }, {
+      resto_plan: { canActivate: true, canAdd: true, canEdit: true, canDelete: true },
+      resto_res_tables: { canActivate: true, canAdd: true, canEdit: true, canDelete: true },
+      resto_carte: { canActivate: true, canAdd: true, canEdit: true, canDelete: true }
+    }),
+    cuisine: createRoleFeaturePerm('cuisine', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    stock: createRoleFeaturePerm('stock', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }, {
+      stock_fiches: { canActivate: true, canAdd: true, canEdit: true, canDelete: true },
+      stock_mouvements: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      stock_multi_entrepots: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      stock_bons_achat: { canActivate: true, canAdd: true, canEdit: true, canDelete: true }
+    }),
+    stock_alerts: createRoleFeaturePerm('stock_alerts', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      alerts_resto: { canActivate: true, canAdd: true, canEdit: true, canDelete: true },
+      alerts_hotel: { canActivate: false, canAdd: false, canEdit: false, canDelete: false },
+      alerts_auto_order: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    dashboard: createRoleFeaturePerm('dashboard', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    finance: createRoleFeaturePerm('finance', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    expenses: createRoleFeaturePerm('expenses', { canActivate: true, canAdd: true, canEdit: false, canDelete: false }, {
+      exp_validation_direction: { canActivate: false, canAdd: false, canEdit: false, canDelete: false }
+    }),
+    loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    audit: createRoleFeaturePerm('audit', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
+
   'Caisse Restaurant': {
-    reservations: { canActivate: false, canAdd: false, canEdit: false },
-    gantt: { canActivate: false, canAdd: false, canEdit: false },
-    chambres: { canActivate: false, canAdd: false, canEdit: false },
-    services: { canActivate: false, canAdd: false, canEdit: false },
-    facture_globale: { canActivate: true, canAdd: true, canEdit: true },
-    pos: { canActivate: true, canAdd: true, canEdit: true },
-    restaurant: { canActivate: true, canAdd: true, canEdit: true },
-    cuisine: { canActivate: true, canAdd: false, canEdit: false },
-    stock: { canActivate: false, canAdd: false, canEdit: false },
-    stock_alerts: { canActivate: true, canAdd: false, canEdit: false },
-    dashboard: { canActivate: true, canAdd: false, canEdit: false },
-    finance: { canActivate: false, canAdd: false, canEdit: false },
-    expenses: { canActivate: false, canAdd: false, canEdit: false },
-    loyalty: { canActivate: true, canAdd: false, canEdit: false },
-    audit: { canActivate: false, canAdd: false, canEdit: false },
-    profile: { canActivate: false, canAdd: false, canEdit: false },
-    settings: { canActivate: false, canAdd: false, canEdit: false }
+    reservations: createRoleFeaturePerm('reservations', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    gantt: createRoleFeaturePerm('gantt', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    chambres: createRoleFeaturePerm('chambres', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    services: createRoleFeaturePerm('services', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    facture_globale: createRoleFeaturePerm('facture_globale', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    pos: createRoleFeaturePerm('pos', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      pos_tactile: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      pos_tickets_80mm: { canActivate: true, canAdd: true, canEdit: false, canDelete: false },
+      pos_imputation_chambre: { canActivate: true, canAdd: true, canEdit: false, canDelete: false },
+      pos_z_caisse: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    restaurant: createRoleFeaturePerm('restaurant', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      resto_plan: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      resto_res_tables: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      resto_carte: { canActivate: true, canAdd: false, canEdit: false, canDelete: false }
+    }),
+    cuisine: createRoleFeaturePerm('cuisine', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    stock: createRoleFeaturePerm('stock', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    stock_alerts: createRoleFeaturePerm('stock_alerts', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    dashboard: createRoleFeaturePerm('dashboard', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    finance: createRoleFeaturePerm('finance', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      fin_versements_shifts: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      fin_5_canaux: { canActivate: true, canAdd: true, canEdit: false, canDelete: false },
+      fin_rapprochement: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      fin_recus_versement: { canActivate: true, canAdd: true, canEdit: false, canDelete: false }
+    }),
+    expenses: createRoleFeaturePerm('expenses', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    audit: createRoleFeaturePerm('audit', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
+
   'Réceptionniste': {
-    reservations: { canActivate: true, canAdd: true, canEdit: true },
-    gantt: { canActivate: true, canAdd: true, canEdit: false },
-    chambres: { canActivate: true, canAdd: false, canEdit: false },
-    services: { canActivate: true, canAdd: true, canEdit: true },
-    facture_globale: { canActivate: true, canAdd: true, canEdit: false },
-    pos: { canActivate: false, canAdd: false, canEdit: false },
-    restaurant: { canActivate: false, canAdd: false, canEdit: false },
-    cuisine: { canActivate: true, canAdd: false, canEdit: false },
-    stock: { canActivate: false, canAdd: false, canEdit: false },
-    stock_alerts: { canActivate: true, canAdd: false, canEdit: false },
-    dashboard: { canActivate: true, canAdd: false, canEdit: false },
-    finance: { canActivate: false, canAdd: false, canEdit: false },
-    expenses: { canActivate: false, canAdd: false, canEdit: false },
-    loyalty: { canActivate: true, canAdd: true, canEdit: false },
-    audit: { canActivate: false, canAdd: false, canEdit: false },
-    profile: { canActivate: false, canAdd: false, canEdit: false },
-    settings: { canActivate: false, canAdd: false, canEdit: false }
+    reservations: createRoleFeaturePerm('reservations', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      res_nuitees: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      res_dayuse: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      res_acomptes: { canActivate: true, canAdd: true, canEdit: false, canDelete: false },
+      res_statuts: { canActivate: true, canAdd: false, canEdit: true, canDelete: false }
+    }),
+    gantt: createRoleFeaturePerm('gantt', { canActivate: true, canAdd: true, canEdit: false, canDelete: false }, {
+      gantt_24h: { canActivate: true, canAdd: true, canEdit: false, canDelete: false },
+      gantt_calendar: { canActivate: true, canAdd: true, canEdit: false, canDelete: false },
+      gantt_anti_overbooking: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+      gantt_housekeeping: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+    }),
+    chambres: createRoleFeaturePerm('chambres', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }, {
+      chambres_proprete: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+      chambres_blocages: { canActivate: true, canAdd: true, canEdit: false, canDelete: false }
+    }),
+    services: createRoleFeaturePerm('services', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
+      serv_catalogue: { canActivate: true, canAdd: false, canEdit: false, canDelete: false }
+    }),
+    facture_globale: createRoleFeaturePerm('facture_globale', { canActivate: true, canAdd: true, canEdit: false, canDelete: false }),
+    pos: createRoleFeaturePerm('pos', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    restaurant: createRoleFeaturePerm('restaurant', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    cuisine: createRoleFeaturePerm('cuisine', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    stock: createRoleFeaturePerm('stock', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    stock_alerts: createRoleFeaturePerm('stock_alerts', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    dashboard: createRoleFeaturePerm('dashboard', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    finance: createRoleFeaturePerm('finance', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    expenses: createRoleFeaturePerm('expenses', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: false, canDelete: false }),
+    audit: createRoleFeaturePerm('audit', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
+
   'Gérant': {
-    reservations: { canActivate: true, canAdd: true, canEdit: true },
-    gantt: { canActivate: true, canAdd: true, canEdit: true },
-    chambres: { canActivate: true, canAdd: true, canEdit: true },
-    services: { canActivate: true, canAdd: true, canEdit: true },
-    facture_globale: { canActivate: true, canAdd: true, canEdit: true },
-    pos: { canActivate: true, canAdd: true, canEdit: true },
-    restaurant: { canActivate: true, canAdd: true, canEdit: true },
-    cuisine: { canActivate: true, canAdd: true, canEdit: true },
-    stock: { canActivate: true, canAdd: true, canEdit: true },
-    stock_alerts: { canActivate: true, canAdd: true, canEdit: true },
-    dashboard: { canActivate: true, canAdd: true, canEdit: true },
-    finance: { canActivate: true, canAdd: false, canEdit: false },
-    expenses: { canActivate: true, canAdd: true, canEdit: true },
-    loyalty: { canActivate: true, canAdd: true, canEdit: true },
-    audit: { canActivate: true, canAdd: false, canEdit: false },
-    profile: { canActivate: true, canAdd: false, canEdit: false },
-    settings: { canActivate: false, canAdd: false, canEdit: false }
+    reservations: createRoleFeaturePerm('reservations', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    gantt: createRoleFeaturePerm('gantt', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    chambres: createRoleFeaturePerm('chambres', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    services: createRoleFeaturePerm('services', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    facture_globale: createRoleFeaturePerm('facture_globale', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    pos: createRoleFeaturePerm('pos', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    restaurant: createRoleFeaturePerm('restaurant', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    cuisine: createRoleFeaturePerm('cuisine', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    stock: createRoleFeaturePerm('stock', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    stock_alerts: createRoleFeaturePerm('stock_alerts', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    dashboard: createRoleFeaturePerm('dashboard', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    finance: createRoleFeaturePerm('finance', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    expenses: createRoleFeaturePerm('expenses', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    audit: createRoleFeaturePerm('audit', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    profile: createRoleFeaturePerm('profile', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
+
   'Admin': {
-    reservations: { canActivate: true, canAdd: true, canEdit: true },
-    gantt: { canActivate: true, canAdd: true, canEdit: true },
-    chambres: { canActivate: true, canAdd: true, canEdit: true },
-    services: { canActivate: true, canAdd: true, canEdit: true },
-    facture_globale: { canActivate: true, canAdd: true, canEdit: true },
-    pos: { canActivate: true, canAdd: true, canEdit: true },
-    restaurant: { canActivate: true, canAdd: true, canEdit: true },
-    cuisine: { canActivate: true, canAdd: true, canEdit: true },
-    stock: { canActivate: true, canAdd: true, canEdit: true },
-    stock_alerts: { canActivate: true, canAdd: true, canEdit: true },
-    dashboard: { canActivate: true, canAdd: true, canEdit: true },
-    finance: { canActivate: true, canAdd: true, canEdit: true },
-    expenses: { canActivate: true, canAdd: true, canEdit: true },
-    loyalty: { canActivate: true, canAdd: true, canEdit: true },
-    audit: { canActivate: true, canAdd: true, canEdit: true },
-    profile: { canActivate: true, canAdd: true, canEdit: true },
-    settings: { canActivate: true, canAdd: true, canEdit: true }
+    reservations: createRoleFeaturePerm('reservations', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    gantt: createRoleFeaturePerm('gantt', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    chambres: createRoleFeaturePerm('chambres', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    services: createRoleFeaturePerm('services', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    facture_globale: createRoleFeaturePerm('facture_globale', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    pos: createRoleFeaturePerm('pos', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    restaurant: createRoleFeaturePerm('restaurant', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    cuisine: createRoleFeaturePerm('cuisine', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    stock: createRoleFeaturePerm('stock', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    stock_alerts: createRoleFeaturePerm('stock_alerts', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    dashboard: createRoleFeaturePerm('dashboard', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    finance: createRoleFeaturePerm('finance', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    expenses: createRoleFeaturePerm('expenses', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    audit: createRoleFeaturePerm('audit', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    profile: createRoleFeaturePerm('profile', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
+    settings: createRoleFeaturePerm('settings', { canActivate: true, canAdd: true, canEdit: true, canDelete: true })
   }
 };
 

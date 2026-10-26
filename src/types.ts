@@ -175,10 +175,19 @@ export type AppFeatureId =
   | 'profile'
   | 'settings';
 
+export interface SubFeaturePermissionConfig {
+  canActivate: boolean; // Droit d'activer / accéder à la sous-fonctionnalité
+  canAdd: boolean;      // Droit d'ajouter (création)
+  canEdit: boolean;     // Droit de modifier (édition & mise à jour)
+  canDelete: boolean;   // Droit de supprimer (suppression / annulation définitive)
+}
+
 export interface FeaturePermissionConfig {
   canActivate: boolean; // Droit d'activer / accéder
   canAdd: boolean;      // Droit d'ajouter (création)
   canEdit: boolean;     // Droit de modifier (édition)
+  canDelete?: boolean;  // Droit de supprimer (suppression)
+  subFeatures?: Record<string, SubFeaturePermissionConfig>; // Granularité fine par sous-fonctionnalité
 }
 
 export interface AppRoleDefinition {
