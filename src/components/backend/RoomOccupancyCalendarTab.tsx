@@ -141,10 +141,11 @@ export const RoomOccupancyCalendarTab: React.FC<RoomOccupancyCalendarTabProps> =
       const monthStartStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
       const monthEndStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
-      const resStart = res.dateDebut;
-      const resEnd = res.dateFin || res.dateDebut;
-
       // Chevauchement avec le mois en cours
+      const resStart = res.dateDebut || '';
+      const resEnd = res.dateFin || res.dateDebut || '';
+      if (!resStart) return false;
+
       const isInMonth = resStart <= monthEndStr && resEnd >= monthStartStr;
       if (!isInMonth) return false;
 
@@ -166,9 +167,9 @@ export const RoomOccupancyCalendarTab: React.FC<RoomOccupancyCalendarTabProps> =
       // Filtre recherche client
       if (searchQuery.trim() !== '') {
         const q = searchQuery.toLowerCase();
-        const matchName = res.clientNom.toLowerCase().includes(q);
-        const matchTel = res.clientTelephone.toLowerCase().includes(q);
-        const matchRoom = res.chambreNumero.toLowerCase().includes(q);
+        const matchName = (res.clientNom || '').toLowerCase().includes(q);
+        const matchTel = (res.clientTelephone || '').toLowerCase().includes(q);
+        const matchRoom = (res.chambreNumero || '').toLowerCase().includes(q);
         if (!matchName && !matchTel && !matchRoom) return false;
       }
 
@@ -176,24 +177,34 @@ export const RoomOccupancyCalendarTab: React.FC<RoomOccupancyCalendarTabProps> =
     });
   }, [reservations, year, month, daysInMonth, selectedRoomNumber, selectedFormula, selectedStatus, searchQuery]);
 
-  // Indexation des réservations par date pour un accès O(1)
+  // Indexation des réservations par date pour un accès O(1) sans décalage de fuseau horaire
   const reservationsByDate = useMemo(() => {
     const map = new Map<string, ReservationItem[]>();
 
     filteredReservations.forEach((res) => {
+      if (!res.dateDebut) return;
+
       // Si c'est un créneau horaire ou même date début et fin
       if (res.dateDebut === res.dateFin || !res.dateFin) {
         const existing = map.get(res.dateDebut) || [];
         existing.push(res);
         map.set(res.dateDebut, existing);
       } else {
-        // Nuitée multi-jours : couvrir chaque jour de dateDebut à dateFin (non inclus ou inclus selon séjour)
-        const start = new Date(res.dateDebut);
-        const end = new Date(res.dateFin);
+        // Découpage sécurisé sans conversion UTC minuit sujette aux fuseaux horaires
+        const startParts = res.dateDebut.split('-').map(Number);
+        const endParts = (res.dateFin || res.dateDebut).split('-').map(Number);
+        if (startParts.length < 3 || isNaN(startParts[0])) return;
 
-        // Cloner la date
+        // Utilisation de 12:00 (midi) pour immuniser contre l'heure d'été / décalage fuseau
+        const start = new Date(startParts[0], startParts[1] - 1, startParts[2], 12, 0, 0);
+        const end = endParts.length >= 3 && !isNaN(endParts[0])
+          ? new Date(endParts[0], endParts[1] - 1, endParts[2], 12, 0, 0)
+          : new Date(start);
+
         const cur = new Date(start);
-        while (cur <= end) {
+        let loopSafety = 0;
+        while (cur <= end && loopSafety < 60) {
+          loopSafety++;
           const y = cur.getFullYear();
           const m = String(cur.getMonth() + 1).padStart(2, '0');
           const d = String(cur.getDate()).padStart(2, '0');
@@ -796,10 +807,10 @@ export const RoomOccupancyCalendarTab: React.FC<RoomOccupancyCalendarTabProps> =
                             className={`px-1.5 py-0.8 rounded text-[10px] font-medium leading-tight flex items-center justify-between transition-transform hover:scale-[1.02] shadow-xs cursor-pointer border ${getStatusColor(
                               res.statutReservation
                             )}`}
-                            title={`${res.clientNom} - Ch. ${res.chambreNumero} (${res.chambreType})`}
+                            title={`${res.clientNom || 'Client'} - Ch. ${res.chambreNumero || ''} (${res.chambreType || ''})`}
                           >
                             <span className="truncate font-semibold max-w-[70px] sm:max-w-[85px]">
-                              {res.chambreNumero} · {res.clientNom.split(' ')[0]}
+                              {res.chambreNumero} · {((res.clientNom || 'Client').trim().split(' ')[0] || 'Client')}
                             </span>
                             <span className="text-[9px] font-mono opacity-90 shrink-0">
                               {isPassage ? `${res.dureeHeures || 3}h` : 'Nuit'}
@@ -944,9 +955,9 @@ export const RoomOccupancyCalendarTab: React.FC<RoomOccupancyCalendarTabProps> =
                                 className={`w-full py-2 px-1 rounded text-[10px] font-semibold text-white truncate shadow-xs ${getStatusColor(
                                   firstRes.statutReservation
                                 )}`}
-                                title={`${firstRes.clientNom} (${firstRes.typeReservation === 'heure' ? 'Heures' : 'Nuitée'})`}
+                                title={`${firstRes.clientNom || 'Client'} (${firstRes.typeReservation === 'heure' ? 'Heures' : 'Nuitée'})`}
                               >
-                                {firstRes.clientNom.split(' ')[0]}
+                                {((firstRes.clientNom || 'Client').trim().split(' ')[0] || 'Client')}
                               </div>
                             ) : (
                               <div className="w-full h-8 rounded flex items-center justify-center text-stone-300 hover:bg-[#C5A880]/20 hover:text-[#C5A880] transition-colors">
@@ -999,9 +1010,15 @@ export const RoomOccupancyCalendarTab: React.FC<RoomOccupancyCalendarTabProps> =
           ) : (
             <div className="divide-y divide-stone-200">
               {filteredReservations
-                .sort((a, b) => a.dateDebut.localeCompare(b.dateDebut))
+                .slice()
+                .sort((a, b) => (a.dateDebut || '').localeCompare(b.dateDebut || ''))
                 .map((res) => {
                   const isPassage = res.typeReservation === 'heure';
+                  const dateParts = (res.dateDebut || '2026-01-01').split('-');
+                  const monthPart = dateParts[1] || '01';
+                  const dayPart = dateParts[2] || '01';
+                  const yearPart = (dateParts[0] || '2026').slice(2);
+
                   return (
                     <div
                       key={res.id}
@@ -1012,10 +1029,10 @@ export const RoomOccupancyCalendarTab: React.FC<RoomOccupancyCalendarTabProps> =
                       <div className="flex items-start space-x-3 sm:space-x-4">
                         <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 flex flex-col items-center justify-center shrink-0 font-mono">
                           <span className="text-[10px] text-stone-500 font-bold uppercase">
-                            {res.dateDebut.split('-')[1]}/{res.dateDebut.split('-')[0].slice(2)}
+                            {monthPart}/{yearPart}
                           </span>
                           <span className="text-base font-bold text-stone-900 leading-none">
-                            {res.dateDebut.split('-')[2]}
+                            {dayPart}
                           </span>
                         </div>
 

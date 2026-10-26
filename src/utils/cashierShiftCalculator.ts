@@ -14,6 +14,8 @@ export interface ShiftTransactionDetail {
   montant: number;
   description: string;
   caissierNom?: string;
+  isAcompte?: boolean;
+  typeEncaissement?: 'acompte' | 'solde' | 'integral' | 'pos' | 'service';
 }
 
 export interface ShiftCollectionsResult {
@@ -30,6 +32,10 @@ export interface ShiftCollectionsResult {
   totalChambres: number;
   totalServices: number;
   totalRestaurationEtBar: number;
+
+  // Cumul des Acomptes Encaissés
+  totalAcomptes: number;
+  nbTransactionsAcomptes: number;
 
   // Nombre de transactions
   nbTransactionsChambres: number;
@@ -128,6 +134,9 @@ export function calculateShiftCollections({
   let totalChambres = 0;
   let totalServices = 0;
   let totalRestaurationEtBar = 0;
+
+  let totalAcomptes = 0;
+  let nbTransactionsAcomptes = 0;
 
   let nbTransactionsChambres = 0;
   let nbTransactionsServices = 0;
@@ -262,6 +271,12 @@ export function calculateShiftCollections({
 
     if (!isTimeInShift(transTime, shift, config)) return;
 
+    // Déterminer s'il s'agit d'un acompte ou d'un règlement intégral / solde
+    const isAcompte =
+      res.statutPaiement === 'acompte' ||
+      (Number(res.acompteVerse || 0) > 0 && res.statutPaiement !== 'paye') ||
+      (Number(res.acompteVerse || 0) > 0 && Number(res.acompteVerse) < Number(res.montantTotal));
+
     // Montant encaissé pour cette réservation
     const amount = res.statutPaiement === 'paye'
       ? Number(res.montantTotal || 0)
@@ -294,6 +309,11 @@ export function calculateShiftCollections({
     totalChambres += amount;
     nbTransactionsChambres += 1;
 
+    if (isAcompte) {
+      totalAcomptes += amount;
+      nbTransactionsAcomptes += 1;
+    }
+
     transactions.push({
       id: res.id || `res-${Math.random()}`,
       source: 'chambre',
@@ -306,7 +326,9 @@ export function calculateShiftCollections({
       modePaiement: res.modePaiement,
       paymentChannel: channel,
       montant: amount,
-      description: `Séjour ${res.typeReservation === 'nuit' ? `${res.nbNuits || 1} nuit(s)` : `${res.dureeHeures || 2}h (Day-Use)`} - ${res.chambreType}`,
+      isAcompte: isAcompte,
+      typeEncaissement: isAcompte ? 'acompte' : 'integral',
+      description: `Séjour ${res.typeReservation === 'nuit' ? `${res.nbNuits || 1} nuit(s)` : `${res.dureeHeures || 2}h (Day-Use)`} - ${res.chambreType}${isAcompte ? ' (Acompte)' : ''}`,
       caissierNom: caissierNom
     });
   });
@@ -331,6 +353,8 @@ export function calculateShiftCollections({
     totalChambres,
     totalServices,
     totalRestaurationEtBar,
+    totalAcomptes,
+    nbTransactionsAcomptes,
     nbTransactionsChambres,
     nbTransactionsServices,
     nbTransactionsRestaurant,

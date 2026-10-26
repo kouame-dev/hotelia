@@ -41,7 +41,10 @@ import {
   Sliders,
   CheckSquare,
   Square,
-  Info
+  Info,
+  ChevronDown,
+  ChevronUp,
+  ListTree
 } from 'lucide-react';
 
 export const RolePermissionsMatrix: React.FC = () => {
@@ -69,6 +72,27 @@ export const RolePermissionsMatrix: React.FC = () => {
   const [newRoleNameInput, setNewRoleNameInput] = useState('');
   const [newRoleDescInput, setNewRoleDescInput] = useState('');
   const [cloneFromRole, setCloneFromRole] = useState<UserRole>('Réceptionniste');
+
+  // État d'expansion des sous-fonctionnalités détaillées des 17 fonctionnalités
+  const [expandedFeatureIds, setExpandedFeatureIds] = useState<Record<string, boolean>>({});
+  const [allExpanded, setAllExpanded] = useState(false);
+
+  const toggleFeatureExpand = (featureId: string) => {
+    setExpandedFeatureIds((prev) => ({
+      ...prev,
+      [featureId]: !prev[featureId]
+    }));
+  };
+
+  const toggleAllExpand = () => {
+    const nextState = !allExpanded;
+    setAllExpanded(nextState);
+    const updated: Record<string, boolean> = {};
+    APP_FEATURES_METADATA.forEach((f) => {
+      updated[f.id] = nextState;
+    });
+    setExpandedFeatureIds(updated);
+  };
 
   // Feedback toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -526,16 +550,31 @@ export const RolePermissionsMatrix: React.FC = () => {
 
       {/* 4. Table / Matrice Interactive des Permissions */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
+        <div className="p-4 border-b border-stone-200 bg-stone-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#C5A880]" />
-            <h3 className="font-serif font-bold text-sm text-stone-900">
-              Grille des 17 Fonctionnalités &amp; Permissions Détaillées
-            </h3>
+            <div>
+              <h3 className="font-serif font-bold text-sm text-stone-900">
+                Grille des 17 Fonctionnalités &amp; Permissions Détaillées
+              </h3>
+              <p className="text-[11px] text-stone-500">
+                Chaque fonctionnalité regroupe des sous-fonctionnalités opérationnelles précises
+              </p>
+            </div>
           </div>
-          <span className="text-[11px] font-mono text-stone-500">
-            {filteredFeatures.length} fonctionnalité(s) affichée(s)
-          </span>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={toggleAllExpand}
+              className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <ListTree className="w-3.5 h-3.5 text-[#C5A880]" />
+              <span>{allExpanded ? 'Tout Replier' : 'Déplier Toutes les Sous-Fonctionnalités'}</span>
+            </button>
+            <span className="text-[11px] font-mono text-stone-500 bg-white px-2 py-1 rounded-lg border border-stone-200">
+              {filteredFeatures.length} fonctionnalités
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -596,112 +635,242 @@ export const RolePermissionsMatrix: React.FC = () => {
                   );
                 }
 
+                const isExpanded = !!expandedFeatureIds[feat.id];
+                const subFeaturesCount = feat.subFeatures?.length || 0;
+
                 return (
-                  <tr
-                    key={feat.id}
-                    className={`hover:bg-stone-50/80 transition-colors ${
-                      perm.canActivate ? 'bg-white' : 'bg-stone-50/40 text-stone-400'
-                    }`}
-                  >
-                    {/* Nom et Description */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-start space-x-3">
-                        <div className="p-2 rounded-xl bg-stone-100 border border-stone-200 shrink-0 mt-0.5">
-                          {renderFeatureIcon(feat.iconName)}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-stone-900 text-sm">{feat.name}</span>
-                            <span
-                              className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
-                                feat.category === 'Hébergement'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : feat.category === 'Restauration'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-purple-100 text-purple-800'
-                              }`}
-                            >
-                              {feat.category}
-                            </span>
+                  <React.Fragment key={feat.id}>
+                    <tr
+                      className={`hover:bg-stone-50/80 transition-colors ${
+                        perm.canActivate ? 'bg-white' : 'bg-stone-50/40 text-stone-400'
+                      }`}
+                    >
+                      {/* Nom, Description et Déclencheur Sous-Fonctionnalités */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-start space-x-3">
+                          <div className="p-2 rounded-xl bg-stone-100 border border-stone-200 shrink-0 mt-0.5">
+                            {renderFeatureIcon(feat.iconName)}
                           </div>
-                          <p className="text-[11px] text-stone-500 mt-0.5 line-clamp-2">
-                            {feat.description}
-                          </p>
+                          <div className="space-y-1.5 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-stone-900 text-sm">{feat.name}</span>
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
+                                  feat.category === 'Hébergement'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : feat.category === 'Restauration'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-purple-100 text-purple-800'
+                                }`}
+                              >
+                                {feat.category}
+                              </span>
+                              {subFeaturesCount > 0 && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-[#C5A880]/20 text-[#8c6b3e] border border-[#C5A880]/30">
+                                  {subFeaturesCount} sous-modules
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-stone-500 leading-relaxed">
+                              {feat.description}
+                            </p>
+
+                            {/* Bouton pour afficher/masquer les sous-fonctionnalités */}
+                            {subFeaturesCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => toggleFeatureExpand(feat.id)}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border ${
+                                  isExpanded
+                                    ? 'bg-[#C5A880]/20 text-[#8c6b3e] border-[#C5A880]/50 font-bold'
+                                    : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200'
+                                }`}
+                              >
+                                <ListTree className="w-3.5 h-3.5 text-[#C5A880]" />
+                                <span>
+                                  {isExpanded ? 'Masquer les sous-fonctionnalités' : `Détails des ${subFeaturesCount} sous-fonctionnalités`}
+                                </span>
+                                {isExpanded ? (
+                                  <ChevronUp className="w-3.5 h-3.5 text-[#8c6b3e]" />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* 1. Interrupteur Activer */}
-                    <td className="py-3.5 px-3 text-center">
-                      <button
-                        type="button"
-                        disabled={isSuperAdminRole}
-                        onClick={() => handleTogglePermission(feat.id, 'canActivate', perm.canActivate)}
-                        className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
-                          perm.canActivate ? 'bg-emerald-600' : 'bg-stone-300'
-                        } ${isSuperAdminRole ? 'opacity-60 cursor-not-allowed' : ''}`}
-                        title={perm.canActivate ? 'Désactiver l’accès' : 'Activer l’accès'}
-                      >
-                        <span
-                          className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
-                            perm.canActivate ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                      <span className="text-[10px] font-mono mt-1 block font-semibold text-stone-600">
-                        {perm.canActivate ? 'Oui' : 'Non'}
-                      </span>
-                    </td>
+                      {/* 1. Interrupteur Activer */}
+                      <td className="py-3.5 px-3 text-center">
+                        <button
+                          type="button"
+                          disabled={isSuperAdminRole}
+                          onClick={() => handleTogglePermission(feat.id, 'canActivate', perm.canActivate)}
+                          className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
+                            perm.canActivate ? 'bg-emerald-600' : 'bg-stone-300'
+                          } ${isSuperAdminRole ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          title={perm.canActivate ? 'Désactiver l’accès' : 'Activer l’accès'}
+                        >
+                          <span
+                            className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
+                              perm.canActivate ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                        <span className="text-[10px] font-mono mt-1 block font-semibold text-stone-600">
+                          {perm.canActivate ? 'Oui' : 'Non'}
+                        </span>
+                      </td>
 
-                    {/* 2. Interrupteur Ajouter */}
-                    <td className="py-3.5 px-3 text-center">
-                      <button
-                        type="button"
-                        disabled={isSuperAdminRole || !perm.canActivate}
-                        onClick={() => handleTogglePermission(feat.id, 'canAdd', perm.canAdd)}
-                        className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
-                          perm.canAdd ? 'bg-blue-600' : 'bg-stone-300'
-                        } ${isSuperAdminRole || !perm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        title={perm.canAdd ? 'Interdire la création' : 'Autoriser la création'}
-                      >
-                        <span
-                          className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
-                            perm.canAdd ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                      <span className="text-[10px] font-mono mt-1 block font-semibold text-stone-600">
-                        {perm.canAdd ? 'Autorisé' : 'Bloqué'}
-                      </span>
-                    </td>
+                      {/* 2. Interrupteur Ajouter */}
+                      <td className="py-3.5 px-3 text-center">
+                        <button
+                          type="button"
+                          disabled={isSuperAdminRole || !perm.canActivate}
+                          onClick={() => handleTogglePermission(feat.id, 'canAdd', perm.canAdd)}
+                          className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
+                            perm.canAdd ? 'bg-blue-600' : 'bg-stone-300'
+                          } ${isSuperAdminRole || !perm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          title={perm.canAdd ? 'Interdire la création' : 'Autoriser la création'}
+                        >
+                          <span
+                            className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
+                              perm.canAdd ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                        <span className="text-[10px] font-mono mt-1 block font-semibold text-stone-600">
+                          {perm.canAdd ? 'Autorisé' : 'Bloqué'}
+                        </span>
+                      </td>
 
-                    {/* 3. Interrupteur Modifier */}
-                    <td className="py-3.5 px-3 text-center">
-                      <button
-                        type="button"
-                        disabled={isSuperAdminRole || !perm.canActivate}
-                        onClick={() => handleTogglePermission(feat.id, 'canEdit', perm.canEdit)}
-                        className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
-                          perm.canEdit ? 'bg-purple-600' : 'bg-stone-300'
-                        } ${isSuperAdminRole || !perm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
-                        title={perm.canEdit ? 'Interdire la modification' : 'Autoriser la modification'}
-                      >
-                        <span
-                          className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
-                            perm.canEdit ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                      <span className="text-[10px] font-mono mt-1 block font-semibold text-stone-600">
-                        {perm.canEdit ? 'Autorisé' : 'Bloqué'}
-                      </span>
-                    </td>
+                      {/* 3. Interrupteur Modifier */}
+                      <td className="py-3.5 px-3 text-center">
+                        <button
+                          type="button"
+                          disabled={isSuperAdminRole || !perm.canActivate}
+                          onClick={() => handleTogglePermission(feat.id, 'canEdit', perm.canEdit)}
+                          className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
+                            perm.canEdit ? 'bg-purple-600' : 'bg-stone-300'
+                          } ${isSuperAdminRole || !perm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          title={perm.canEdit ? 'Interdire la modification' : 'Autoriser la modification'}
+                        >
+                          <span
+                            className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
+                              perm.canEdit ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                        <span className="text-[10px] font-mono mt-1 block font-semibold text-stone-600">
+                          {perm.canEdit ? 'Autorisé' : 'Bloqué'}
+                        </span>
+                      </td>
 
-                    {/* Badge Statut */}
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      {statusBadge}
-                    </td>
-                  </tr>
+                      {/* Badge Statut */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        {statusBadge}
+                      </td>
+                    </tr>
+
+                    {/* Ligne dépliée des Sous-Fonctionnalités Détaillées */}
+                    {isExpanded && feat.subFeatures && (
+                      <tr className="bg-gradient-to-r from-stone-50 via-amber-50/15 to-stone-50 border-b-2 border-stone-200">
+                        <td colSpan={5} className="py-4 px-4 sm:px-6">
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-3 rounded-xl border border-stone-200 shadow-2xs">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-[#C5A880]/20 flex items-center justify-center text-[#8c6b3e]">
+                                  <ListTree className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <span className="font-serif font-bold text-xs text-stone-900 uppercase tracking-wide block">
+                                    Sous-fonctionnalités &amp; Détails Opérationnels : {feat.name}
+                                  </span>
+                                  <span className="text-[10px] text-stone-500">
+                                    Périmètre fin gouverné par 1. Activer (Accès), 2. Ajouter (Création) et 3. Modifier (Édition)
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] font-mono font-bold bg-[#C5A880]/15 text-[#8c6b3e] px-2.5 py-1 rounded-md border border-[#C5A880]/30">
+                                  {feat.subFeatures.length} sous-modules actifs
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {feat.subFeatures.map((sub, sIdx) => (
+                                <div
+                                  key={sub.id || sIdx}
+                                  className={`p-3.5 rounded-xl border transition-all ${
+                                    perm.canActivate
+                                      ? 'bg-white border-stone-200 shadow-2xs'
+                                      : 'bg-stone-100/70 border-stone-200/80 text-stone-400 opacity-75'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-2 h-2 rounded-full bg-[#C5A880]" />
+                                      <span className="font-bold text-xs text-stone-900">
+                                        {sub.name}
+                                      </span>
+                                    </div>
+                                    {sub.badge && (
+                                      <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-stone-100 text-stone-700 border border-stone-200 shrink-0">
+                                        {sub.badge}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <p className="text-[11px] text-stone-600 leading-relaxed mb-3">
+                                    {sub.description}
+                                  </p>
+
+                                  {/* Statuts des 3 permissions pour cette sous-fonctionnalité */}
+                                  <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono">
+                                    <span className="text-stone-500 font-semibold text-[10px]">Droits effectifs :</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className={`px-2 py-0.5 rounded font-bold ${
+                                          perm.canActivate
+                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                            : 'bg-stone-100 text-stone-400 border border-stone-200'
+                                        }`}
+                                        title="Activer : Consultation de la sous-fonctionnalité"
+                                      >
+                                        Vue : {perm.canActivate ? 'Actif' : 'Inactif'}
+                                      </span>
+                                      <span
+                                        className={`px-2 py-0.5 rounded font-bold ${
+                                          perm.canAdd
+                                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                                            : 'bg-stone-100 text-stone-400 border border-stone-200'
+                                        }`}
+                                        title="Ajouter : Saisie de nouvelles données"
+                                      >
+                                        Ajout : {perm.canAdd ? 'Autorisé' : 'Bloqué'}
+                                      </span>
+                                      <span
+                                        className={`px-2 py-0.5 rounded font-bold ${
+                                          perm.canEdit
+                                            ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                                            : 'bg-stone-100 text-stone-400 border border-stone-200'
+                                        }`}
+                                        title="Modifier : Édition et suppression"
+                                      >
+                                        Modif : {perm.canEdit ? 'Autorisé' : 'Bloqué'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>

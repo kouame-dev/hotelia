@@ -1079,6 +1079,8 @@ export interface VersementCaisse {
   montantMtnMoney: number;
   montantWave: number;
   montantTotal: number; // Somme automatique des 5 modes
+  totalAcomptes?: number; // Cumul total des acomptes perçus pour ce shift
+  nbAcomptes?: number; // Nombre d'acomptes enregistrés
 
   // Écarts éventuels & observations
   ecartConstate?: number; // Différence solde théorique vs réel

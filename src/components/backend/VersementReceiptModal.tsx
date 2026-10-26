@@ -78,7 +78,7 @@ export const VersementReceiptModal: React.FC<VersementReceiptModalProps> = ({
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
       doc.setTextColor(255, 255, 255);
-      doc.text(settings.appName || 'HÔTEL REFUGE BANNERAIE • DEKOUASSI HOLDING', margin, 12);
+      doc.text(settings.appName || 'HÔTEL REFUGE BANANERAIE • DEKOUASSI HOLDING', margin, 12);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
@@ -448,7 +448,7 @@ export const VersementReceiptModal: React.FC<VersementReceiptModalProps> = ({
                 {/* En-tête thermique */}
                 <div className="ticket-header text-center pb-2 border-b-2 border-dashed border-black">
                   <div className="font-extrabold text-sm uppercase tracking-wider">
-                    {settings.appName || 'HÔTEL REFUGE BANNERAIE'}
+                    {settings.appName || 'HÔTEL REFUGE BANANERAIE'}
                   </div>
                   <div className="text-[10px] text-stone-700">
                     DEKOUASSI HOLDING CI • HÔTEL REFUGE DE BONGOUANOU
@@ -594,7 +594,7 @@ export const VersementReceiptModal: React.FC<VersementReceiptModalProps> = ({
               <div className="border-b-2 border-stone-800 pb-4 mb-5 flex items-start justify-between">
                 <div>
                   <h1 className="text-xl font-black text-stone-900 tracking-tight">
-                    {settings.appName || 'HÔTEL REFUGE BANNERAIE'}
+                    {settings.appName || 'HÔTEL REFUGE BANANERAIE'}
                   </h1>
                   <p className="text-[11px] text-stone-600 font-semibold">
                     {settings.brandSubtitle || 'Hôtel Refuge de bongouanou • Clôtures & Billetterie des Caisses'}

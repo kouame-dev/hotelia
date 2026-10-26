@@ -171,7 +171,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
         doc.setFont('courier', 'bold');
         doc.setFontSize(10);
         doc.setTextColor(0, 0, 0);
-        doc.text(settings.appName || 'HÔTEL REFUGE BANNERAIE DE BONGOUANOU', centerX, 8, { align: 'center' });
+        doc.text(settings.appName || 'HÔTEL REFUGE BANANERAIE DE BONGOUANOU', centerX, 8, { align: 'center' });
 
         doc.setFont('courier', 'normal');
         doc.setFontSize(7.5);
@@ -307,13 +307,13 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
       doc.setTextColor(goldPrimary[0], goldPrimary[1], goldPrimary[2]);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
-      doc.text(settings.appName || 'HÔTEL REFUGE BANNERAIE DE BONGOUANOU', 14, 16);
+      doc.text(settings.appName || 'HÔTEL REFUGE BANANERAIE DE BONGOUANOU', 14, 16);
 
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.text(
-        `${settings.address || "Bongouanou, Région du Moronou, Côte d'Ivoire"}  •  Tél: ${settings.phone || '+225 07 00 00 00'}  •  contact@refugebanneraie-bongouanou.ci`,
+        `${settings.address || "Bongouanou, Région du Moronou, Côte d'Ivoire"}  •  Tél: ${settings.phone || '+225 07 00 00 00'}  •  contact@refugebananeraie-bongouanou.ci`,
         14,
         24
       );
@@ -740,7 +740,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                     {/* En-tête Ticket */}
                     <div className="ticket-header center border-b border-dashed border-stone-400 pb-3">
                       <div className="font-bold text-xs uppercase tracking-wider text-black">
-                        {thermalPrinterConfig.enteteHaut || 'HÔTEL REFUGE BANNERAIE DE BONGOUANOU'}
+                        {thermalPrinterConfig.enteteHaut || 'HÔTEL REFUGE BANANERAIE DE BONGOUANOU'}
                       </div>
                       <div className="text-[9px] text-stone-600">
                         {thermalPrinterConfig.adresseHotel || "Bongouanou, Région du Moronou, Côte d'Ivoire"}
@@ -1094,7 +1094,7 @@ export const PosInvoiceModal: React.FC<PosInvoiceModalProps> = ({
                 {/* En-tête Ticket */}
                 <div className="ticket-header center" style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '6px' }}>
                   <div style={{ fontWeight: 'bold', fontSize: '13px', textTransform: 'uppercase' }}>
-                    {thermalPrinterConfig.enteteHaut || 'HÔTEL REFUGE BANNERAIE DE BONGOUANOU'}
+                    {thermalPrinterConfig.enteteHaut || 'HÔTEL REFUGE BANANERAIE DE BONGOUANOU'}
                   </div>
                   <div style={{ fontSize: '9px' }}>{thermalPrinterConfig.adresseHotel || "Bongouanou, Côte d'Ivoire"}</div>
                   <div style={{ fontSize: '9px' }}>Tél: {thermalPrinterConfig.telephoneHotel || '+225 07 00 00 00'}</div>

@@ -267,14 +267,11 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
       const nowTime = getNowTimeFormatted();
       setFormHeureDebut(nowTime);
       updateHourlyEndTime(nowTime, formDureeHeures, formDureeMinutes);
-      // 1. Statut initial : Confirmé
-      // 2. Mode de règlement : Espèces / Caisse
-      // 3. État de paiement : Payé en totalité
-      // 4. Acompte : 0 FCFA (readOnly)
+      // Pour le séjour de passage, l'acompte prend dynamiquement 100% de la somme totale et est non modifiable
       setFormStatutRes('confirmee');
       setFormModePaiement('Espèces / Caisse');
       setFormStatutPaiement('paye');
-      setFormAcompte(0);
+      setFormAcompte(calculatedTotal);
     } else {
       setFormStatutRes('en_attente');
       setFormModePaiement('Orange Money');
@@ -307,9 +304,9 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
       ? formClientTel.trim()
       : (formMode === 'heure' ? 'Non renseigné (Day-Use)' : '+225 07 00 00 00 00');
 
-    // Acompte forcé à 0 pour le Day-Use
-    const finalAcompte = formMode === 'heure' ? 0 : formAcompte;
-    const finalResteAPayer = isPaid ? 0 : Math.max(0, calculatedTotal - finalAcompte);
+    // Pour le cas Passage, l'acompte est automatiquement et dynamiquement égal à la somme totale
+    const finalAcompte = formMode === 'heure' ? calculatedTotal : formAcompte;
+    const finalResteAPayer = formMode === 'heure' ? 0 : (isPaid ? 0 : Math.max(0, calculatedTotal - finalAcompte));
 
     const created = addReservation({
       clientNom: finalClientNom,
@@ -357,15 +354,15 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
       setFormAcompte(0);
     }
 
-    // Si la réservation est en attente, basculer vers la liste des réservations en attente
+    // Basculer immédiatement sur la liste globale des réservations
+    setActiveSubTab('toutes');
+
+    // Rediriger immédiatement vers le modal 'Édition & Impression Facture Client'
+    setInvoiceModalRes(created);
+
     setTimeout(() => {
       setFormSuccessMessage(null);
-      if (formStatutRes === 'en_attente') {
-        setActiveSubTab('en_attente');
-      } else {
-        setActiveSubTab('toutes');
-      }
-    }, 1200);
+    }, 2000);
   };
 
   // Calcul dynamique des minutes restantes pour les nuitées et jours restants pour les séjours
@@ -1345,10 +1342,10 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-stone-600">Acompte versé</label>
+                  <label className="block text-xs font-semibold text-stone-600">Acompte versé *</label>
                   {formMode === 'heure' && (
-                    <span className="text-[10px] text-stone-600 font-mono font-bold bg-stone-100 px-1.5 py-0.5 rounded border border-stone-300">
-                      0 FCFA (Lecture seule)
+                    <span className="text-[10px] text-purple-900 font-mono font-bold bg-purple-100 px-2 py-0.5 rounded-md border border-purple-300">
+                      100% Total ({formatPrice(calculatedTotal)}) • Non modifiable
                     </span>
                   )}
                 </div>
@@ -1358,21 +1355,25 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                   max={calculatedTotal}
                   readOnly={formMode === 'heure'}
                   disabled={formMode === 'heure'}
-                  value={formMode === 'heure' ? 0 : formAcompte}
+                  value={formMode === 'heure' ? calculatedTotal : formAcompte}
                   onChange={(e) => {
                     if (formMode !== 'heure') {
                       setFormAcompte(parseFloat(e.target.value) || 0);
                     }
                   }}
-                  className={`w-full p-2.5 rounded-xl text-sm outline-none font-mono transition-colors ${
+                  className={`w-full p-2.5 rounded-xl text-sm outline-none font-mono transition-colors font-bold ${
                     formMode === 'heure'
-                      ? 'bg-stone-100 text-stone-500 cursor-not-allowed border border-stone-300 font-bold select-none'
-                      : 'bg-white border border-stone-300 focus:ring-2 focus:ring-[#C5A880] focus:border-transparent'
+                      ? 'bg-purple-50/80 text-purple-950 border-2 border-purple-400 cursor-not-allowed select-none shadow-inner'
+                      : 'bg-white border border-stone-300 focus:ring-2 focus:ring-[#C5A880] focus:border-transparent text-stone-900'
                   }`}
                 />
-                {formMode === 'heure' && (
+                {formMode === 'heure' ? (
+                  <p className="text-[10px] text-purple-800 font-semibold mt-1">
+                    🔒 Cas Passage : Le montant de l'acompte est automatiquement égal à la somme totale ({formatPrice(calculatedTotal)}) calculée selon le nombre d'heures et est non modifiable.
+                  </p>
+                ) : (
                   <p className="text-[10px] text-stone-500 mt-1">
-                    🔒 Champ verrouillé à 0 FCFA pour le Day-Use (règlement complet requis).
+                    Acompte ou règlement initial (libre de saisie pour une nuitée).
                   </p>
                 )}
               </div>
@@ -1428,6 +1429,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                 </button>
                 <button
                   type="submit"
+                  title="Enregistrer le règlement et ouvrir l'Édition & Impression Facture Client"
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-7 py-2.5 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer border border-[#D97706]"
                 >
                   <CreditCard className="w-4 h-4 text-slate-950" />

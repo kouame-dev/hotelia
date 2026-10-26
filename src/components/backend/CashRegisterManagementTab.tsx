@@ -15,6 +15,7 @@ import {
   Download,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   Sun,
   Moon,
   Trash2,
@@ -340,7 +341,7 @@ export const CashRegisterManagementTab: React.FC = () => {
     e.preventDefault();
 
     if (formCalculatedTotal <= 0) {
-      alert('Veuillez saisir au moins un montant supérieur à zéro pour valider le versement.');
+      alert("Impossible d'enregistrer le versement : Seul un caissier ayant eu des activités d'encaissement dont la somme totale de versement est strictement supérieure à zéro (0 FCFA) peut effectuer un versement.");
       return;
     }
 
@@ -379,6 +380,8 @@ export const CashRegisterManagementTab: React.FC = () => {
       montantMoovMoney: Number(formMontantMoov) || 0,
       montantMtnMoney: Number(formMontantMtn) || 0,
       montantWave: Number(formMontantWave) || 0,
+      totalAcomptes: shiftCalculatedData.totalAcomptes,
+      nbAcomptes: shiftCalculatedData.nbTransactionsAcomptes,
       ecartConstate: Number(formEcart) !== 0 ? Number(formEcart) : (formCalculatedTotal - shiftCalculatedData.montantTotal),
       motifEcart: formMotifEcart.trim() || (formCalculatedTotal !== shiftCalculatedData.montantTotal && !formMotifEcart.trim() ? (formCalculatedTotal > shiftCalculatedData.montantTotal ? 'Surplus constaté lors de la clôture' : 'Déficit constaté lors de la clôture') : undefined),
       observations: formObservations.trim() || undefined,
@@ -1664,14 +1667,14 @@ export const CashRegisterManagementTab: React.FC = () => {
                   )}
                 </div>
 
-                {/* Grille des 5 champs avec indicateurs de détection automatique */}
+                {/* Grille des 5 champs chargés et modifiables (Espèces, Orange, Moov, MTN, Wave) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                  {/* Espèces */}
+                  {/* Espèces (Cash) */}
                   <div>
                     <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <Coins className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Montant Caisse (Espèces Physique)</span>
+                        <span className="font-bold">Espèces (Cash) *</span>
                       </span>
                       <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                         Système : {formatPrice(shiftCalculatedData.montantEspeces)}
@@ -1681,9 +1684,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       type="number"
                       min={0}
                       step={500}
-                      value={formMontantEspeces}
+                      value={formMontantEspeces === 0 ? '' : formMontantEspeces}
                       onChange={(e) => {
-                        const val = Number(e.target.value);
+                        const val = e.target.value === '' ? 0 : Number(e.target.value);
                         setFormMontantEspeces(val);
                       }}
                       className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${
@@ -1693,6 +1696,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       }`}
                       placeholder="0"
                     />
+                    <span className="text-[10px] text-stone-500 mt-0.5 block">
+                      Montant modifiable encaissé en espèces physiques.
+                    </span>
                   </div>
 
                   {/* Orange Money */}
@@ -1700,7 +1706,7 @@ export const CashRegisterManagementTab: React.FC = () => {
                     <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <Smartphone className="w-3.5 h-3.5 text-orange-600" />
-                        <span>Montant Orange Money</span>
+                        <span className="font-bold">Orange Money *</span>
                       </span>
                       <span className="text-[10px] font-mono font-bold text-orange-800 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
                         Système : {formatPrice(shiftCalculatedData.montantOrangeMoney)}
@@ -1710,9 +1716,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       type="number"
                       min={0}
                       step={500}
-                      value={formMontantOrange}
+                      value={formMontantOrange === 0 ? '' : formMontantOrange}
                       onChange={(e) => {
-                        const val = Number(e.target.value);
+                        const val = e.target.value === '' ? 0 : Number(e.target.value);
                         setFormMontantOrange(val);
                       }}
                       className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-500/50 ${
@@ -1722,6 +1728,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       }`}
                       placeholder="0"
                     />
+                    <span className="text-[10px] text-stone-500 mt-0.5 block">
+                      Montant modifiable encaissé via Orange Money.
+                    </span>
                   </div>
 
                   {/* Moov Money */}
@@ -1729,7 +1738,7 @@ export const CashRegisterManagementTab: React.FC = () => {
                     <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <Smartphone className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Montant Moov Money</span>
+                        <span className="font-bold">Moov Money *</span>
                       </span>
                       <span className="text-[10px] font-mono font-bold text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
                         Système : {formatPrice(shiftCalculatedData.montantMoovMoney)}
@@ -1739,9 +1748,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       type="number"
                       min={0}
                       step={500}
-                      value={formMontantMoov}
+                      value={formMontantMoov === 0 ? '' : formMontantMoov}
                       onChange={(e) => {
-                        const val = Number(e.target.value);
+                        const val = e.target.value === '' ? 0 : Number(e.target.value);
                         setFormMontantMoov(val);
                       }}
                       className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
@@ -1751,6 +1760,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       }`}
                       placeholder="0"
                     />
+                    <span className="text-[10px] text-stone-500 mt-0.5 block">
+                      Montant modifiable encaissé via Moov Flooz.
+                    </span>
                   </div>
 
                   {/* MTN Money */}
@@ -1758,7 +1770,7 @@ export const CashRegisterManagementTab: React.FC = () => {
                     <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <Smartphone className="w-3.5 h-3.5 text-yellow-600" />
-                        <span>Montant MTN Money</span>
+                        <span className="font-bold">MTN Money *</span>
                       </span>
                       <span className="text-[10px] font-mono font-bold text-yellow-800 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">
                         Système : {formatPrice(shiftCalculatedData.montantMtnMoney)}
@@ -1768,9 +1780,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       type="number"
                       min={0}
                       step={500}
-                      value={formMontantMtn}
+                      value={formMontantMtn === 0 ? '' : formMontantMtn}
                       onChange={(e) => {
-                        const val = Number(e.target.value);
+                        const val = e.target.value === '' ? 0 : Number(e.target.value);
                         setFormMontantMtn(val);
                       }}
                       className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 ${
@@ -1780,14 +1792,17 @@ export const CashRegisterManagementTab: React.FC = () => {
                       }`}
                       placeholder="0"
                     />
+                    <span className="text-[10px] text-stone-500 mt-0.5 block">
+                      Montant modifiable encaissé via MTN MoMo.
+                    </span>
                   </div>
 
-                  {/* Wave */}
+                  {/* Wave CI */}
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <Smartphone className="w-3.5 h-3.5 text-cyan-600" />
-                        <span>Montant Wave (Paiement QR / Mobile)</span>
+                        <span className="font-bold">Wave CI (Paiement QR / Mobile) *</span>
                       </span>
                       <span className="text-[10px] font-mono font-bold text-cyan-800 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">
                         Système : {formatPrice(shiftCalculatedData.montantWave)}
@@ -1797,9 +1812,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       type="number"
                       min={0}
                       step={500}
-                      value={formMontantWave}
+                      value={formMontantWave === 0 ? '' : formMontantWave}
                       onChange={(e) => {
-                        const val = Number(e.target.value);
+                        const val = e.target.value === '' ? 0 : Number(e.target.value);
                         setFormMontantWave(val);
                       }}
                       className={`w-full px-3 py-2 rounded-xl border font-mono text-sm font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 ${
@@ -1809,6 +1824,39 @@ export const CashRegisterManagementTab: React.FC = () => {
                       }`}
                       placeholder="0"
                     />
+                    <span className="text-[10px] text-stone-500 mt-0.5 block">
+                      Montant modifiable encaissé via Wave QR Code ou Transfert.
+                    </span>
+                  </div>
+                </div>
+
+                {/* CHAMP DÉDIÉ : CUMUL TOTAL DES ACOMPTES ENCAISSÉS */}
+                <div className="p-4 rounded-2xl bg-purple-50/90 border-2 border-purple-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-200 text-purple-900 flex items-center justify-center shrink-0">
+                      <Receipt className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black uppercase text-purple-950 tracking-wider">
+                          Cumul Total des Acomptes Encaissés
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-200 text-purple-900 border border-purple-400">
+                          {shiftCalculatedData.nbTransactionsAcomptes} acompte(s) perçu(s)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-purple-800 mt-0.5">
+                        Somme des acomptes et avances perçus lors de ce shift (hébergement &amp; réservations). Déjà inclus dans la ventilation ci-dessus.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-left sm:text-right shrink-0 bg-white/80 sm:bg-transparent p-2 sm:p-0 rounded-xl border sm:border-0 border-purple-200">
+                    <div className="text-xl sm:text-2xl font-black font-mono text-purple-950">
+                      {formatPrice(shiftCalculatedData.totalAcomptes)}
+                    </div>
+                    <span className="text-[10px] text-purple-700 font-semibold block">
+                      Avances comptabilisées
+                    </span>
                   </div>
                 </div>
 
@@ -1849,6 +1897,21 @@ export const CashRegisterManagementTab: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Alerte si Montant = 0 FCFA (Versement interdit si pas d'activités > 0) */}
+                {formCalculatedTotal <= 0 && (
+                  <div className="mt-3 p-3.5 rounded-xl bg-rose-50 border-2 border-rose-300 flex items-start gap-3 text-rose-900 shadow-xs">
+                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-extrabold text-xs text-rose-950 uppercase tracking-wide">
+                        Versement non autorisé (Montant total = 0 FCFA)
+                      </h4>
+                      <p className="text-[11px] text-rose-800 mt-0.5 leading-relaxed">
+                        Conformément aux règles de sécurité financière, <strong>seul un caissier ayant effectué des activités d'encaissement</strong> dont la somme totale de versement est <strong>strictement supérieure à zéro (&gt; 0 FCFA)</strong> peut enregistrer un versement de caisse.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Écart Éventuel & Observations */}
@@ -1920,6 +1983,7 @@ export const CashRegisterManagementTab: React.FC = () => {
                 <button
                   type="submit"
                   disabled={
+                    formCalculatedTotal <= 0 ||
                     !!existingVersementForCashier ||
                     (!editingVersement &&
                       formShiftCountdown.isExpired &&
@@ -1927,6 +1991,7 @@ export const CashRegisterManagementTab: React.FC = () => {
                       (!isDG || !formDerogationDGOctroyee || !formMotifDerogationDG.trim()))
                   }
                   className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md transition-all ${
+                    formCalculatedTotal <= 0 ||
                     existingVersementForCashier ||
                     (!editingVersement &&
                       formShiftCountdown.isExpired &&
@@ -1936,7 +2001,9 @@ export const CashRegisterManagementTab: React.FC = () => {
                       : 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer'
                   }`}
                   title={
-                    existingVersementForCashier
+                    formCalculatedTotal <= 0
+                      ? 'Versement interdit : le montant total versé doit être strictement supérieur à 0 FCFA'
+                      : existingVersementForCashier
                       ? 'Impossible : versement déjà enregistré pour ce caissier'
                       : !editingVersement && formShiftCountdown.isExpired && registerConfig.bloquerApresDelai
                       ? 'Délai expiré : dérogation DG requise'

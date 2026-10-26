@@ -273,14 +273,14 @@ export interface FneIvoirienneConfig {
 export const DEFAULT_FNE_IVOIRIENNE_CONFIG: FneIvoirienneConfig = {
   enabled: true,
   modeTransmission: 'direct_dgi',
-  nomEntreprise: 'HÔTEL REFUGE BANNERAIE',
+  nomEntreprise: 'HÔTEL REFUGE BANANERAIE',
   nccEntreprise: '2104592 X',
   rccmEntreprise: 'CI-BGN-2022-B-14892',
   centreImpotRattachement: 'Centre des Impôts de Bongouanou / Moronou',
   regimeImposition: 'Régime Réel Normal (RRN)',
   codePointVenteDgi: 'POS-BGN-01',
   telephoneOfficiel: '+225 07 00 00 00 00',
-  adresseFiscale: "Quartier Résidentiel Banneraie, Bongouanou, Côte d'Ivoire",
+  adresseFiscale: "Quartier Résidentiel Bananeraie, Bongouanou, Côte d'Ivoire",
 
   dgiApiEndpoint: 'https://fne-api.dgi.gouv.ci/v1/factures',
   dgiApiKey: 'dgi_sec_token_ci_9832148092_bgn',
@@ -365,7 +365,7 @@ export interface HotelSettings {
 }
 
 export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
-  appName: 'HÔTEL REFUGE BANNERAIE',
+  appName: 'HÔTEL REFUGE BANANERAIE',
   brandSubtitle: 'Hôtel Refuge de bongouanou • Résidences, Chambres & Restaurant à Bongouanou',
   holdingName: 'Dekouassi Holding',
   logoUrl: '',
@@ -382,22 +382,22 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
     delaiAnnulationHeureCourte: 2
   },
 
-  termsOfService: 'Toute réservation effectuée à l’HÔTEL REFUGE BANNERAIE (Hôtel Refuge de bongouanou) implique l’adhésion sans réserve aux conditions générales. Les chambres sont strictement non-fumeurs. Une pièce d’identité valide et une caution pourront être demandées au check-in. Le calme et la discrétion de l’établissement doivent être respectés en toute circonstance.',
+  termsOfService: 'Toute réservation effectuée à l’HÔTEL REFUGE BANANERAIE (Hôtel Refuge de bongouanou) implique l’adhésion sans réserve aux conditions générales. Les chambres sont strictement non-fumeurs. Une pièce d’identité valide et une caution pourront être demandées au check-in. Le calme et la discrétion de l’établissement doivent être respectés en toute circonstance.',
   privacyPolicy: 'Dekouassi Holding s’engage à protéger la confidentialité de vos données personnelles. Les informations recueillies lors de votre réservation sont utilisées exclusivement pour la gestion de votre séjour et ne seront jamais cédées à des tiers.',
 
   seo: {
-    metaTitle: 'HÔTEL REFUGE BANNERAIE - Bongouanou',
-    metaDescription: "Système complet de gestion hôtelière PMS pour l'HÔTEL REFUGE BANNERAIE de Bongouanou (Hôtel Refuge de bongouanou) : chambres et suites de prestige, réservations nuitées & formules passage, restaurant gastronomique et facturation.",
-    metaKeywords: "hôtel, refuge banneraie, hôtel refuge de bongouanou, bongouanou, gestion hôtelière, formule passage, day use, restaurant, Dekouassi Holding",
+    metaTitle: 'HÔTEL REFUGE BANANERAIE - Bongouanou',
+    metaDescription: "Système complet de gestion hôtelière PMS pour l'HÔTEL REFUGE BANANERAIE de Bongouanou (Hôtel Refuge de bongouanou) : chambres et suites de prestige, réservations nuitées & formules passage, restaurant gastronomique et facturation.",
+    metaKeywords: "hôtel, refuge bananeraie, hôtel refuge de bongouanou, bongouanou, gestion hôtelière, formule passage, day use, restaurant, Dekouassi Holding",
     ogImageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80',
-    canonicalUrl: 'https://refugebanneraie-bongouanou.ci',
+    canonicalUrl: 'https://refugebananeraie-bongouanou.ci',
     googleAnalyticsId: 'G-REFUGE2026'
   },
 
   promoBanner: {
     id: 'promo-1',
     enabled: true,
-    text: 'Offre Spéciale Bienvenue : -20% sur toutes les réservations Passage en semaine avec le code BANNERAIE20 !',
+    text: 'Offre Spéciale Bienvenue : -20% sur toutes les réservations Passage en semaine avec le code BANANERAIE20 !',
     linkText: 'En profiter',
     linkUrl: '#chambres',
     bgColor: '#1C1B18',
@@ -443,9 +443,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           parsed.appName.includes('Architect') ||
           parsed.appName.includes('Hotelia') ||
           parsed.appName.includes('Palmeraie') ||
+          parsed.appName.includes('BANNERAIE') ||
+          parsed.appName.includes('Banneraie') ||
           parsed.appName.includes("Gestion d'Hôtel")
         ) {
-          parsed.appName = 'HÔTEL REFUGE BANNERAIE';
+          parsed.appName = 'HÔTEL REFUGE BANANERAIE';
         }
         if (
           !parsed.brandSubtitle ||
@@ -460,15 +462,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           parsed.seo.metaTitle.includes('Architect') ||
           parsed.seo.metaTitle.includes('Hotelia') ||
           parsed.seo.metaTitle.includes('Palmeraie') ||
+          parsed.seo.metaTitle.includes('BANNERAIE') ||
+          parsed.seo.metaTitle.includes('Banneraie') ||
           parsed.seo.metaTitle.includes("Gestion d'Hôtel")
         ) {
           if (!parsed.seo) parsed.seo = {};
-          parsed.seo.metaTitle = 'HÔTEL REFUGE BANNERAIE - Bongouanou';
+          parsed.seo.metaTitle = 'HÔTEL REFUGE BANANERAIE - Bongouanou';
         }
         // Forcer mise à jour fiscale et FNE
         if (parsed.fneIvoirienne) {
-          parsed.fneIvoirienne.nomEntreprise = 'HÔTEL REFUGE BANNERAIE';
-          parsed.fneIvoirienne.adresseFiscale = "Quartier Résidentiel Banneraie, Bongouanou, Côte d'Ivoire";
+          parsed.fneIvoirienne.nomEntreprise = 'HÔTEL REFUGE BANANERAIE';
+          parsed.fneIvoirienne.adresseFiscale = "Quartier Résidentiel Bananeraie, Bongouanou, Côte d'Ivoire";
           parsed.fneIvoirienne.activerTdt = false;
           parsed.fneIvoirienne.tauxTdtPourcentage = 0;
           parsed.fneIvoirienne.valeurTdtForfait = 0;
@@ -477,7 +481,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return {
           ...DEFAULT_HOTEL_SETTINGS,
           ...parsed,
-          appName: 'HÔTEL REFUGE BANNERAIE',
+          appName: 'HÔTEL REFUGE BANANERAIE',
           brandSubtitle: 'Hôtel Refuge de bongouanou • Résidences, Chambres & Restaurant à Bongouanou',
           mobileMoney: {
             orangeMoney: {

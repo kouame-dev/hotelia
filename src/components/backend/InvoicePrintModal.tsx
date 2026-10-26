@@ -391,7 +391,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-900 via-stone-900 to-slate-950 p-2.5 border-2 border-[#C5A880] flex flex-col items-center justify-center text-center shadow-sm">
                       <Sparkles className="w-6 h-6 text-[#C5A880] mb-0.5" />
                       <span className="font-serif font-bold text-[9px] text-[#C5A880] tracking-widest uppercase">
-                        REFUGE BANNERAIE
+                        REFUGE BANANERAIE
                       </span>
                     </div>
                   )}
@@ -401,7 +401,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       {settings.holdingName || 'DEKOUASSI HOLDING'}
                     </span>
                     <h1 className="font-serif font-bold text-2xl sm:text-3xl text-stone-950 tracking-tight">
-                      {settings.appName || 'HÔTEL REFUGE BANNERAIE'}
+                      {settings.appName || 'HÔTEL REFUGE BANANERAIE'}
                     </h1>
                     <p className="text-xs text-stone-500 italic mt-0.5">
                       {settings.brandSubtitle || 'L’élégance hôtelière de prestige'}
@@ -630,7 +630,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 {/* Cachet Numérique "ACQUITTÉ" */}
                 <div className="border-2 border-dashed border-emerald-600 p-3 rounded-xl text-center bg-emerald-50/60 rotate-[-2deg] shadow-xs">
                   <span className="text-[10px] font-mono tracking-widest text-emerald-700 font-bold block uppercase">
-                    HÔTEL REFUGE BANNERAIE DE BONGOUANOU
+                    HÔTEL REFUGE BANANERAIE DE BONGOUANOU
                   </span>
                   <span className="font-serif font-black text-xl text-emerald-800 tracking-wider block">
                     ★ FACTURE ACQUITTÉE ★
@@ -681,7 +681,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                       />
                     ) : (
                       <div className="text-center font-bold text-sm tracking-widest uppercase pb-1">
-                        ★ ★ ★ HÔTEL REFUGE BANNERAIE ★ ★ ★
+                        ★ ★ ★ HÔTEL REFUGE BANANERAIE ★ ★ ★
                       </div>
                     )}
                   </div>
@@ -690,7 +690,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 {/* En-tête personnalisé */}
                 <div className="ticket-header center space-y-0.5 pb-2">
                   <div className="font-bold text-sm uppercase">
-                    {settings.appName || 'HÔTEL REFUGE BANNERAIE DE BONGOUANOU'}
+                    {settings.appName || 'HÔTEL REFUGE BANANERAIE DE BONGOUANOU'}
                   </div>
                   <div className="text-[11px] text-stone-600 uppercase">
                     BONGOUANOU, CÔTE D'IVOIRE

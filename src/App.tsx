@@ -33,22 +33,64 @@ import {
 export type MainAppView = 'frontend' | 'restaurant_booking' | 'login' | 'backend' | 'dev_tools';
 
 export default function App() {
-  // Vue active principale : 'frontend' affichée par défaut
-  const [appView, setAppView] = useState<MainAppView>('frontend');
+  // Vue active principale : initialisée selon le hash URL ou le stockage local pour empêcher la perte de session au rafraîchissement
+  const [appView, setAppView] = useState<MainAppView>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const hash = window.location.hash.toLowerCase();
+        if (hash === '#admin' || hash === '#backend') return 'backend';
+        if (hash === '#login' || hash === '#connexion') return 'login';
+        if (hash === '#restaurant' || hash === '#restaurant_booking') return 'restaurant_booking';
+        if (hash === '#dev' || hash === '#dev_tools') return 'dev_tools';
+
+        const savedView = localStorage.getItem('hotelia_main_app_view') as MainAppView | null;
+        if (savedView && ['backend', 'login', 'restaurant_booking', 'dev_tools', 'frontend'].includes(savedView)) {
+          return savedView;
+        }
+      }
+    } catch {}
+    return 'frontend';
+  });
 
   const [isClientSpaceOpen, setIsClientSpaceOpen] = useState(false);
   const [backendInitialTab, setBackendInitialTab] = useState<BackOfficeTab | undefined>(undefined);
   const [backendTabTimestamp, setBackendTabTimestamp] = useState<number>(0);
 
-  // Utilisateur connecté au back-end
+  // Utilisateur connecté au back-end (sauvegardé et persisté pour éviter la perte de session au rafraîchissement)
   const [currentUser, setCurrentUser] = useState<{
     nom: string;
     role: string;
     email: string;
-  } | null>({
-    nom: 'Koua Dibi (Dekouassi Holding)',
-    role: 'Directeur Général & Administrateur',
-    email: 'directeur@hotelia.dekouassiholding.com'
+  } | null>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const savedUser = localStorage.getItem('hotelia_backend_current_user');
+        if (savedUser) {
+          const parsed = JSON.parse(savedUser);
+          if (parsed && parsed.nom && parsed.role) {
+            return parsed;
+          }
+        }
+        // Vérifier si un profil actif est enregistré dans HotelDataContext
+        const activeKey = localStorage.getItem('hotelia_active_user_key');
+        const savedProfiles = localStorage.getItem('hotelia_user_profiles');
+        if (activeKey && savedProfiles) {
+          const profiles = JSON.parse(savedProfiles);
+          if (profiles[activeKey]) {
+            return {
+              nom: profiles[activeKey].nom,
+              role: profiles[activeKey].role,
+              email: profiles[activeKey].email
+            };
+          }
+        }
+      }
+    } catch {}
+    return {
+      nom: 'Koua Dibi (Dekouassi Holding)',
+      role: 'Directeur Général & Administrateur',
+      email: 'directeur@hotelia.dekouassiholding.com'
+    };
   });
 
   // Onglet actif pour la vue outils techniques (dev_tools)
@@ -60,20 +102,27 @@ export default function App() {
       const hash = window.location.hash.toLowerCase();
       if (hash === '#admin' || hash === '#backend') {
         setAppView(currentUser ? 'backend' : 'login');
+        try { localStorage.setItem('hotelia_main_app_view', currentUser ? 'backend' : 'login'); } catch {}
       } else if (hash === '#login' || hash === '#connexion') {
         setAppView('login');
+        try { localStorage.setItem('hotelia_main_app_view', 'login'); } catch {}
       } else if (hash === '#restaurant' || hash === '#restaurant_booking') {
         setAppView('restaurant_booking');
+        try { localStorage.setItem('hotelia_main_app_view', 'restaurant_booking'); } catch {}
       } else if (hash === '#dev' || hash === '#dev_tools') {
         setAppView('dev_tools');
-      } else {
+        try { localStorage.setItem('hotelia_main_app_view', 'dev_tools'); } catch {}
+      } else if (hash === '#frontend' || hash === '#hotel') {
         setAppView('frontend');
+        try { localStorage.setItem('hotelia_main_app_view', 'frontend'); } catch {}
       }
     };
 
-    // Si pas de hash ou si hash vaut #frontend / #hotel, afficher le Front-End
-    if (!window.location.hash || window.location.hash === '#frontend' || window.location.hash === '#hotel') {
-      setAppView('frontend');
+    // Si hash déjà présent, synchroniser
+    if (window.location.hash) {
+      handleHashSync();
+    } else if (appView === 'backend') {
+      window.history.replaceState(null, '', '#admin');
     }
 
     window.addEventListener('hashchange', handleHashSync);
@@ -82,10 +131,13 @@ export default function App() {
       window.removeEventListener('hashchange', handleHashSync);
       window.removeEventListener('popstate', handleHashSync);
     };
-  }, [currentUser]);
+  }, [currentUser, appView]);
 
   const navigateToView = (view: MainAppView) => {
     setAppView(view);
+    try {
+      localStorage.setItem('hotelia_main_app_view', view);
+    } catch {}
     if (typeof window !== 'undefined') {
       const targetHash =
         view === 'backend' ? '#admin' :
@@ -100,11 +152,18 @@ export default function App() {
 
   const handleLoginSuccess = (userData: { nom: string; role: string; email: string }) => {
     setCurrentUser(userData);
+    try {
+      localStorage.setItem('hotelia_backend_current_user', JSON.stringify(userData));
+    } catch {}
     navigateToView('backend');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
+    try {
+      localStorage.removeItem('hotelia_backend_current_user');
+      localStorage.setItem('hotelia_main_app_view', 'login');
+    } catch {}
     navigateToView('login');
   };
 
@@ -122,7 +181,7 @@ export default function App() {
               </span>
               <span className="text-stone-600 hidden md:inline">|</span>
               <span className="text-stone-400 font-mono text-[11px] hidden md:inline">
-                HÔTEL REFUGE BANNERAIE DE BONGOUANOU
+                HÔTEL REFUGE BANANERAIE DE BONGOUANOU
               </span>
             </div>
 
@@ -185,6 +244,12 @@ export default function App() {
             user={currentUser}
             onLogout={handleLogout}
             onGoToPublicSite={() => navigateToView('frontend')}
+            onUserChange={(updatedUser) => {
+              setCurrentUser(updatedUser);
+              try {
+                localStorage.setItem('hotelia_backend_current_user', JSON.stringify(updatedUser));
+              } catch {}
+            }}
             initialTab={backendInitialTab}
             initialTabTimestamp={backendTabTimestamp}
           />

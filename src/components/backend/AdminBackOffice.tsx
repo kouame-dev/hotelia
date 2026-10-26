@@ -127,6 +127,7 @@ interface AdminBackOfficeProps {
   user: { nom: string; role: string; email: string };
   onLogout: () => void;
   onGoToPublicSite: () => void;
+  onUserChange?: (userData: { nom: string; role: string; email: string }) => void;
   initialTab?: BackOfficeTab;
   initialTabTimestamp?: number;
   initialRestaurantSubTab?: 'pos' | 'tables' | 'commandes' | 'reservations' | 'menu' | 'caisse';
@@ -136,6 +137,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   user,
   onLogout,
   onGoToPublicSite,
+  onUserChange,
   initialTab,
   initialTabTimestamp,
   initialRestaurantSubTab
@@ -176,6 +178,10 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
   const [activeTab, setActiveTab] = useState<BackOfficeTab>(() => {
     if (initialTab) return initialTab;
+    try {
+      const savedTab = localStorage.getItem('hotelia_admin_active_tab') as BackOfficeTab | null;
+      if (savedTab) return savedTab;
+    } catch {}
     if (currentUserProfile.role === 'Caisse Restaurant' || currentUserProfile.role === 'Directeur Restaurant') {
       return 'restaurant';
     }
@@ -184,6 +190,13 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     }
     return 'dashboard';
   });
+
+  // Mémorisation de l'onglet actif pour éviter la perte de contexte au rafraîchissement
+  useEffect(() => {
+    try {
+      localStorage.setItem('hotelia_admin_active_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
   const [reservationSubTab, setReservationSubTab] = useState<ReservationSubTab>('toutes');
   const [restaurantSubTab, setRestaurantSubTab] = useState<'pos' | 'tables' | 'commandes' | 'reservations' | 'menu' | 'caisse'>(
     initialRestaurantSubTab || 'pos'
@@ -512,7 +525,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     ) {
       logChromeDiagnostic('AdminBackOffice RoleGuard', `Redirection automatique Directeur Restaurant vers restaurant depuis "${activeTab}"`);
       setActiveTab('restaurant');
-    } else if (isCaisse && activeTab !== 'reservations' && activeTab !== 'cuisine') {
+    } else if (isCaisse && activeTab !== 'reservations' && activeTab !== 'cuisine' && activeTab !== 'gantt' && activeTab !== 'calendar') {
       logChromeDiagnostic('AdminBackOffice RoleGuard', `Redirection automatique Caisse Hôtel vers reservations depuis "${activeTab}"`);
       setActiveTab('reservations');
     }
@@ -542,6 +555,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     const featureMap: Record<string, AppFeatureId> = {
       dashboard: 'dashboard',
       gantt: 'gantt',
+      calendar: 'gantt',
       reservations: 'reservations',
       chambres: 'chambres',
       maintenance: 'chambres',
@@ -637,111 +651,32 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
             {/* Profile & Navigation Actions */}
             <div className="flex items-center space-x-3">
-              {/* Bouton Rapide : Système de Notifications Sonores (Réception & Direction) */}
+              {/* Centre d'Exploitation & Outils (Modale Unifiée 5-en-1 : Alertes, Employés, Diag, Manuels, Sons) */}
               <button
                 type="button"
-                onClick={() => setIsSoundModalOpen(true)}
-                className={`relative px-3 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs ${
-                  soundConfig?.enabled
-                    ? 'bg-[#C5A880]/15 hover:bg-[#C5A880]/25 text-amber-200 border-[#C5A880]/50 hover:border-[#C5A880]'
-                    : 'bg-[#2A2925] hover:bg-[#383631] text-stone-400 hover:text-stone-300 border-stone-700'
-                }`}
-                title={
-                  soundConfig?.enabled
-                    ? `Carillon et alertes sonores actifs (${Math.round((soundConfig.volume ?? 0.85) * 100)}%) - Cliquer pour tester et configurer`
-                    : 'Alertes sonores coupées - Cliquer pour activer le carillon'
-                }
+                onClick={() => handleOpenUnifiedOperations('alerts')}
+                className="relative px-3.5 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-2 shadow-xs bg-[#2A2925] hover:bg-[#383631] text-[#C5A880] hover:text-white border-[#C5A880]/40 hover:border-[#C5A880]"
+                title="Ouvrir le Centre d'Exploitation Unifié (Alertes & Stocks, Employés, Diag Chrome, Manuels & Écrans, Alertes Sonores)"
               >
                 <div className="relative">
-                  {soundConfig?.enabled ? (
-                    <Volume2 className="w-4 h-4 text-[#C5A880]" />
-                  ) : (
-                    <VolumeX className="w-4 h-4 text-stone-400" />
-                  )}
-                  {soundConfig?.enabled && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-white hidden sm:inline">
-                    {soundConfig?.enabled ? 'Alertes Sonores' : 'Son Muet'}
-                  </span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/40 text-[#C5A880] border border-[#C5A880]/30 hidden lg:inline">
-                    {soundConfig?.enabled ? `${Math.round((soundConfig.volume ?? 0.85) * 100)}%` : 'OFF'}
-                  </span>
-                </div>
-              </button>
-
-              {/* Groupe d'Accès Unifié : Alertes & Stocks, Employés, Diag Chrome, Manuels & Écrans */}
-              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#252420] border border-stone-700/80 shadow-inner">
-                {/* 1. Alertes & Stocks */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenUnifiedOperations('alerts')}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                    unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0
-                      ? 'bg-rose-950/70 text-rose-300 border border-rose-600/50 hover:bg-rose-900/80 shadow-xs'
-                      : 'text-stone-300 hover:text-white hover:bg-stone-800'
-                  }`}
-                  title="Ouvrir la modale unifiée : Alertes & Stocks"
-                >
-                  <div className="relative">
-                    {unreadCount > 0 ? (
-                      <BellRing className="w-4 h-4 text-amber-400 animate-bounce" />
-                    ) : unreadConsumableAlertsCount > 0 ? (
-                      <AlertTriangle className="w-4 h-4 text-amber-400 animate-pulse" />
-                    ) : unreadStockAlertsCount > 0 ? (
-                      <AlertTriangle className="w-4 h-4 text-rose-400 animate-pulse" />
-                    ) : (
-                      <Bell className="w-4 h-4 text-stone-300" />
-                    )}
-                    {(unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
-                    )}
-                  </div>
-                  <span className="hidden lg:inline text-xs font-bold">
-                    {isChefReception ? 'Alertes' : 'Alertes & Stocks'}
-                  </span>
+                  <Boxes className="w-4 h-4 text-[#C5A880]" />
                   {(unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px]">
-                      {unreadCount + unreadStockAlertsCount + unreadConsumableAlertsCount}
-                    </span>
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
                   )}
-                </button>
-
-                {/* 2. Employés Connectés */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenUnifiedOperations('employees')}
-                  className="px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 text-emerald-300 hover:text-white hover:bg-stone-800"
-                  title="Ouvrir la modale unifiée : Employés connectés & gestion des sessions"
-                >
-                  <div className="relative">
-                    <Users className="w-4 h-4 text-emerald-400" />
-                    {connectedEmployeesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
-                    )}
-                  </div>
-                  <span className="hidden lg:inline text-xs font-bold">Employés</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[10px]">
-                    {connectedEmployeesCount}
+                </div>
+                <span className="text-xs font-bold text-white hidden sm:inline">
+                  Système &amp; Outils
+                </span>
+                {(unreadCount > 0 || unreadStockAlertsCount > 0 || unreadConsumableAlertsCount > 0) ? (
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px] animate-pulse">
+                    {unreadCount + unreadStockAlertsCount + unreadConsumableAlertsCount}
                   </span>
-                </button>
-
-                {/* 3. Diag Chrome & Storage */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenUnifiedOperations('diag')}
-                  className="px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 text-sky-300 hover:text-white hover:bg-stone-800"
-                  title="Ouvrir la modale unifiée : Diagnostic Chromium / Chrome & Stockage local"
-                >
-                  <Cpu className="w-4 h-4 text-sky-400" />
-                  <span className="hidden lg:inline text-xs font-bold">Diag Chrome</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono font-bold text-[10px] hidden sm:inline">
-                    Storage
+                ) : (
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/30 font-mono font-bold text-[10px]">
+                    5-en-1
                   </span>
-                </button>
-              </div>
+                )}
+              </button>
 
               {/* Onglet Unifié : Profil & Déconnexion (Regroupement en 1 seul onglet avec menu complet) */}
               <div className="relative">
@@ -804,6 +739,10 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                             type="button"
                             onClick={() => {
                               switchUserRole(u.id);
+                              onUserChange?.({ nom: u.nom, role: u.role, email: u.email });
+                              try {
+                                localStorage.setItem('hotelia_backend_current_user', JSON.stringify({ nom: u.nom, role: u.role, email: u.email }));
+                              } catch {}
                               setIsUserMenuOpen(false);
                             }}
                             className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all cursor-pointer ${
@@ -864,6 +803,22 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         <button
                           type="button"
                           onClick={() => {
+                            setIsUserMenuOpen(false);
+                            handleOpenUnifiedOperations('sounds');
+                          }}
+                          className="w-full flex items-center justify-between p-2 rounded-xl text-left transition-all hover:bg-stone-800 text-stone-300 hover:text-white text-xs font-semibold cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Volume2 className="w-3.5 h-3.5 text-[#C5A880]" />
+                            <span>Alertes Sonores &amp; Carillon</span>
+                          </div>
+                          <span className="text-[10px] bg-stone-800 text-[#C5A880] px-1.5 py-0.2 rounded font-mono">
+                            {soundConfig?.enabled ? `${Math.round((soundConfig.volume ?? 0.85) * 100)}%` : 'OFF'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
                             setActiveTab('profile');
                             setIsUserMenuOpen(false);
                           }}
@@ -891,18 +846,6 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   </>
                 )}
               </div>
-
-              {/* Documentation Button (Modale Unifiée) */}
-              <button
-                type="button"
-                onClick={() => handleOpenUnifiedOperations('manual')}
-                className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-[#C5A880] border border-[#C5A880]/40 font-bold text-xs transition-all shadow-md cursor-pointer"
-                title="Consulter le Manuel Opérationnel & Guide Visuel avec Écrans"
-              >
-                <FileText className="w-3.5 h-3.5 text-[#C5A880]" />
-                <span className="hidden md:inline">Manuel &amp; Écrans</span>
-                <span className="md:hidden">Manuel</span>
-              </button>
 
               {/* View Front-end Button */}
               <button
@@ -1009,32 +952,6 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               </span>
             </button>
 
-            {/* Onglet Direct : Centre d'Exploitation Unifié (Alertes, Employés, Diag, Manuels) */}
-            <button
-              type="button"
-              onClick={() => handleOpenUnifiedOperations('alerts')}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                isUnifiedOperationsModalOpen
-                  ? 'bg-rose-700 text-white border-2 border-rose-400 shadow-lg ring-2 ring-rose-500/35'
-                  : (unreadStockAlertsCount + unreadConsumableAlertsCount) > 0
-                  ? 'bg-rose-950/40 text-rose-300 border border-rose-800/80 hover:bg-rose-900/60 hover:text-white'
-                  : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
-              }`}
-              title="Ouvrir la modale unifiée : Alertes & Stocks, Employés, Diag Chrome, Manuels & Écrans"
-            >
-              <AlertTriangle className={`w-4 h-4 ${(unreadStockAlertsCount + unreadConsumableAlertsCount) > 0 ? 'text-rose-400 animate-pulse' : 'text-stone-400'}`} />
-              <span>Modale 4-en-1 : Alertes &amp; Outils</span>
-              {(unreadStockAlertsCount + unreadConsumableAlertsCount) > 0 ? (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500 text-white animate-pulse">
-                  {unreadStockAlertsCount + unreadConsumableAlertsCount}
-                </span>
-              ) : (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  4 onglets
-                </span>
-              )}
-            </button>
-
             {/* Onglet Direct : Maintenance & Réparations (Chambres Bloquées) */}
             <button
               type="button"
@@ -1080,55 +997,6 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               <span>Versements Caisses</span>
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                 Matin &amp; Soir
-              </span>
-            </button>
-
-            {/* Séparateur discret */}
-            <div className="h-6 w-px bg-stone-800 shrink-0 hidden sm:block" />
-
-            {/* Bouton Direct : Employés Connectés (Visualisation & Reset 1 Clic) */}
-            <button
-              type="button"
-              onClick={() => setIsConnectedEmployeesModalOpen(true)}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md bg-stone-900/90 hover:bg-stone-800 text-emerald-300 border border-emerald-600/40 hover:border-emerald-500/70"
-              title="Visualiser rapidement les employés connectés et réinitialiser leurs accès en un clic"
-            >
-              <Users className="w-4 h-4 text-emerald-400" />
-              <span className="text-stone-200">Employés Connectés</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {connectedEmployeesCount} en ligne
-              </span>
-            </button>
-
-            {/* Boîte à Outils & Démonstrations Unifiée (Ouvre la Modale Outils) */}
-            <button
-              type="button"
-              onClick={() => setIsDevToolsModalOpen(true)}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer bg-stone-800/90 hover:bg-stone-700 text-[#C5A880] border border-stone-700 shadow-sm"
-              title="Ouvrir la boîte à outils technique (SQL, ERD, Simulateur, Code Anti-Surbooking)"
-            >
-              <Code2 className="w-4 h-4 text-[#C5A880]" />
-              <span className="text-stone-200">Boîte à Outils</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/30 font-bold">
-                Dev / SQL
-              </span>
-            </button>
-
-            {/* Bouton Diag Chrome / Quota LocalStorage */}
-            <button
-              type="button"
-              onClick={() => {
-                setDiagnosticReport(getStorageDiagnosticInfo());
-                setIsDiagnosticModalOpen(true);
-              }}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer bg-stone-800/90 hover:bg-stone-700 text-sky-300 border border-sky-700/60 shadow-sm"
-              title="Ouvrir le centre de diagnostic Chrome, cycles de vie et santé LocalStorage"
-            >
-              <Cpu className="w-4 h-4 text-sky-400" />
-              <span className="text-stone-200">Diag Chrome</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
-                Logs &amp; Quota
               </span>
             </button>
           </div>
@@ -1226,49 +1094,75 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </div>
         </div>
 
-        {/* Bannière de Session Caisse : Confirmation du périmètre exclusif réservations */}
+        {/* Bannière de Session Caisse : Confirmation du périmètre avec Planning Gantt et Calendrier */}
         {isCaisse && (
-          <div className="bg-[#FF9900]/15 border-2 border-[#FF9900] text-stone-900 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="bg-[#FF9900]/15 border-2 border-[#FF9900] text-stone-900 p-4 rounded-2xl flex flex-col xl:flex-row xl:items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-xl bg-[#FF9900] text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
                 <CreditCard className="w-5 h-5" />
               </div>
               <div>
                 <span className="text-xs font-bold text-amber-950 uppercase tracking-wider block">
-                  SESSION CAISSE HÔTEL ACTIVE • PÉRIMÈTRE RÉSERVATIONS EXCLUSIF
+                  SESSION CAISSE HÔTEL ACTIVE • RÉSERVATIONS, PLANNING GANTT &amp; CALENDRIER MENSUEL
                 </span>
                 <p className="text-xs text-stone-700">
-                  Votre profil de <strong>Caisse Hôtel</strong> est configuré pour gérer uniquement les réservations, les règlements et la génération de factures (A4 et thermique paramétrable).
+                  Votre profil de <strong>Caisse Hôtel</strong> est habilité pour les réservations, le <strong>Planning Gantt 24h</strong>, le <strong>Calendrier mensuel d'occupation</strong>, les encaissements, factures et versements.
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleTabClick('gantt')}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
+                  activeTab === 'gantt'
+                    ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                    : 'bg-stone-900 hover:bg-stone-850 text-blue-300 border border-blue-500/40'
+                }`}
+                title="Accéder au Planning Gantt 24h"
+              >
+                <Calendar className="w-4 h-4 text-blue-400" />
+                <span>Planning Gantt</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabClick('calendar')}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
+                  activeTab === 'calendar'
+                    ? 'bg-[#C5A880] text-slate-950 font-black ring-2 ring-[#C5A880]'
+                    : 'bg-stone-900 hover:bg-stone-850 text-[#C5A880] border border-[#C5A880]/40'
+                }`}
+                title="Accéder au Calendrier Mensuel d'Occupation"
+              >
+                <CalendarDays className="w-4 h-4 text-[#C5A880]" />
+                <span>Calendrier Mois</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab('reservations');
                   setReservationSubTab('ajouter');
                 }}
-                className="px-4 py-2 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
+                className="px-3.5 py-2 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>Créer une Réservation</span>
+                <span>Créer Réservation</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('facture_globale')}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
               >
                 <Receipt className="w-4 h-4 stroke-[2.5]" />
-                <span>Facture Globale &amp; FNE</span>
+                <span>Facture Globale</span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('versements')}
-                className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-850 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all border border-amber-500/40"
+                className="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-850 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all border border-amber-500/40"
               >
                 <Coins className="w-4 h-4 stroke-[2.5] text-amber-400" />
-                <span>Mes Versements</span>
+                <span>Versements</span>
               </button>
             </div>
           </div>
@@ -1356,14 +1250,14 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
 
         {/* Tab 1 : Planning Gantt */}
-        {activeTab === 'gantt' && !isCaisse && !isCaisseRestaurant && (
+        {activeTab === 'gantt' && !isCaisseRestaurant && (
           <ErrorBoundary fallbackTitle="Erreur sur le planning Gantt">
             <AdminGanttDashboard onNavigateToCalendar={() => setActiveTab('calendar')} />
           </ErrorBoundary>
         )}
 
         {/* Tab 1b : Calendrier Mensuel d'Occupation des Chambres */}
-        {activeTab === 'calendar' && !isCaisse && !isCaisseRestaurant && (
+        {activeTab === 'calendar' && !isCaisseRestaurant && (
           <ErrorBoundary fallbackTitle="Erreur sur le calendrier d'occupation">
             <RoomOccupancyCalendarTab
               onNavigateToReservation={(resId) => {
@@ -1531,7 +1425,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
         {/* Filet de sécurité anti-page blanche : si l'onglet demandé est restreint pour le rôle connecté */}
         {(
-          (activeTab === 'gantt' && (isCaisse || isCaisseRestaurant)) ||
+          (activeTab === 'gantt' && isCaisseRestaurant) ||
+          (activeTab === 'calendar' && isCaisseRestaurant) ||
           (activeTab === 'reservations' && isCaisseRestaurant) ||
           (activeTab === 'stock' && isCaisse) ||
           (activeTab === 'loyalty' && isCaisse) ||

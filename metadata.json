@@ -1,6 +1,6 @@
 {
   "name": "Gestion d'Hôtel - Maison Meublées et services",
-  "description": "Système complet de gestion hôtelière PMS pour l'HÔTEL REFUGE BANNERAIE de Bongouanou (Hôtel Refuge de bongouanou) : module Restaurant & Point de Vente dédié (plan de tables, KDS cuisine, additions), comptes admin et caisse restaurant, page publique de réservation de table gastronomique, gestion des rôles, réservations nuitées & formules passage (day-use) avec décompte temps réel, stock multi-entrepôts, facturation globale et impression thermique 80mm & A4.",
+  "description": "Système complet de gestion hôtelière PMS pour l'HÔTEL REFUGE BANANERAIE de Bongouanou (Hôtel Refuge de bongouanou) : module Restaurant & Point de Vente dédié (plan de tables, KDS cuisine, additions), comptes admin et caisse restaurant, page publique de réservation de table gastronomique, gestion des rôles, réservations nuitées & formules passage (day-use) avec décompte temps réel, stock multi-entrepôts, facturation globale et impression thermique 80mm & A4.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

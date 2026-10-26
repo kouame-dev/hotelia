@@ -3075,7 +3075,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
             {/* Aperçu Ticket Restaurant */}
             <div id="restaurant-ticket-preview-box" className="thermal-ticket-container bg-stone-50 border border-stone-300 rounded-xl p-4 font-mono text-xs text-stone-800 space-y-2 max-h-80 overflow-y-auto shadow-inner">
               <div className="ticket-header center border-b border-stone-300 pb-2">
-                <span className="font-bold text-sm block tracking-wider uppercase">HÔTEL REFUGE BANNERAIE DE BONGOUANOU</span>
+                <span className="font-bold text-sm block tracking-wider uppercase">HÔTEL REFUGE BANANERAIE DE BONGOUANOU</span>
                 <span className="font-bold text-xs block text-emerald-800 uppercase">RESTAURANT &amp; BAR LOUNGE</span>
                 <span className="text-[10px] text-stone-500 block">Bongouanou, Côte d'Ivoire • Tél: +225 07 00 00 00</span>
 
@@ -3225,7 +3225,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                       : orderToPrint.totalNet;
 
                     downloadThermalReceiptPdf({
-                      hotelName: 'HÔTEL REFUGE BANNERAIE DE BONGOUANOU',
+                      hotelName: 'HÔTEL REFUGE BANANERAIE DE BONGOUANOU',
                       subtitle: 'RESTAURANT & BAR LOUNGE',
                       address: "Bongouanou, Côte d'Ivoire",
                       phone: "+225 07 00 00 00",

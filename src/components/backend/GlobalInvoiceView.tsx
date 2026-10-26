@@ -839,7 +839,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
                       </div>
                       <div>
                         <h1 className="text-xl font-serif font-bold tracking-tight text-stone-950 uppercase">
-                          {settings.appName || settings.hotelName || 'HÔTEL REFUGE BANNERAIE'}
+                          {settings.appName || settings.hotelName || 'HÔTEL REFUGE BANANERAIE'}
                         </h1>
                         <p className="text-xs text-stone-500 font-medium">
                           {fneConfig.nomEntreprise || 'Dekouassi Holding Hôtelière CI'}
@@ -1311,7 +1311,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
 
                 {/* Print Footer */}
                 <div className="text-center text-[10px] text-stone-500 mt-8 pt-4 border-t border-stone-200">
-                  {settings.appName || settings.hotelName || 'HÔTEL REFUGE BANNERAIE'} (Hôtel Refuge de bongouanou) — Facture normalisée électronique délivrée conformément aux dispositions du Code Général des Impôts de Côte d'Ivoire.
+                  {settings.appName || settings.hotelName || 'HÔTEL REFUGE BANANERAIE'} (Hôtel Refuge de bongouanou) — Facture normalisée électronique délivrée conformément aux dispositions du Code Général des Impôts de Côte d'Ivoire.
                 </div>
               </div>
             ) : (
@@ -1323,7 +1323,7 @@ Statut : ${activeInvoice.statutPaiement === 'solde' ? 'RÉGLÉ / SOLDÉ' : 'REST
                 {/* Header Ticket */}
                 <div className="ticket-header center pb-4 border-b border-dashed border-stone-400 space-y-1">
                   <div className="font-serif font-bold text-lg uppercase tracking-wide">
-                    {settings.appName || settings.hotelName || 'HÔTEL REFUGE BANNERAIE'}
+                    {settings.appName || settings.hotelName || 'HÔTEL REFUGE BANANERAIE'}
                   </div>
                   <div className="text-[10px] text-stone-600">
                     {fneConfig.adresseFiscale || thermalPrinterConfig?.headerMessage || 'Boulevard Lagunaire, Abidjan'}

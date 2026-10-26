@@ -336,7 +336,7 @@ export function downloadThermalReceiptPdf(data: ThermalReceiptData, filename?: s
   doc.setFont('courier', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text(data.hotelName || 'HÔTEL REFUGE BANNERAIE DE BONGOUANOU', centerX, 8, { align: 'center' });
+  doc.text(data.hotelName || 'HÔTEL REFUGE BANANERAIE DE BONGOUANOU', centerX, 8, { align: 'center' });
 
   doc.setFont('courier', 'normal');
   doc.setFontSize(7.5);

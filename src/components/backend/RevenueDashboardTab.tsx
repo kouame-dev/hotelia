@@ -834,7 +834,7 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
 
     const lines = [
       `# =========================================================================`,
-      `# HÔTEL REFUGE BANNERAIE - RAPPORT FINANCIER MENSUEL DIRECTION GENERALE`,
+      `# HÔTEL REFUGE BANANERAIE - RAPPORT FINANCIER MENSUEL DIRECTION GENERALE`,
       `# Periode : ${monthName.toUpperCase()} ${selectedYear}`,
       `# Date d extraction : ${nowStr}`,
       `# Editeur : ${currentUserProfile?.nom || 'Directeur Général'} (${currentUserProfile?.role || 'DG'})`,
@@ -1123,7 +1123,7 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.setTextColor(130, 130, 130);
-      doc.text('HÔTEL REFUGE BANNERAIE • Bilan Financier Annuel Consolidé - Usage exclusif Direction Générale', margin, pageHeight - 7);
+      doc.text('HÔTEL REFUGE BANANERAIE • Bilan Financier Annuel Consolidé - Usage exclusif Direction Générale', margin, pageHeight - 7);
       doc.text('Page 1 sur 1', pageWidth - margin, pageHeight - 7, { align: 'right' });
 
       doc.save(`Refuge_Bongouanou_Bilan_Annuel_DG_${selectedYear}.pdf`);
@@ -1138,7 +1138,7 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
   const handleExportAnnualCsv = () => {
     const lines = [
       `# =========================================================================`,
-      `# HÔTEL REFUGE BANNERAIE - BILAN FINANCIER ANNUEL DIRECTION GENERALE`,
+      `# HÔTEL REFUGE BANANERAIE - BILAN FINANCIER ANNUEL DIRECTION GENERALE`,
       `# Exercice : ${selectedYear} (12 Mois)`,
       `# Editeur : ${currentUserProfile?.nom || 'Directeur Général'} (DG)`,
       `# Total Chiffre d Affaires Annuel : ${kpiSummary.annualConsolidated} FCFA`,
