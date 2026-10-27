@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
-import { UserRole, AppFeatureId, FeaturePermissionConfig, AppRoleDefinition } from '../../types.ts';
+import { UserRole, AppFeatureId, FeaturePermissionConfig, SubFeaturePermissionConfig, AppRoleDefinition } from '../../types.ts';
 import {
   APP_FEATURES_METADATA,
   FeatureMetadata
@@ -44,16 +44,19 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
-  ListTree
+  ListTree,
+  Trash2
 } from 'lucide-react';
 
 export const RolePermissionsMatrix: React.FC = () => {
   const {
     rolesList,
     updateRolePermissions,
+    updateRoleSubFeaturePermission,
     resetRolePermissionsToDefault,
     usersList,
     updateUserFeaturePermissions,
+    updateUserSubFeaturePermission,
     addCustomRole,
     currentUserProfile
   } = useHotelData();
@@ -126,13 +129,27 @@ export const RolePermissionsMatrix: React.FC = () => {
     if (activeRoleDef && activeRoleDef.permissions[featureId]) {
       return activeRoleDef.permissions[featureId];
     }
-    return { canActivate: false, canAdd: false, canEdit: false };
+    return { canActivate: false, canAdd: false, canEdit: false, canDelete: false };
   };
 
-  // Mettre à jour une permission spécifique
+  // Récupérer la permission effective pour une sous-fonctionnalité
+  const getSubPermission = (featureId: AppFeatureId, subFeatureId: string): SubFeaturePermissionConfig => {
+    const parentPerm = getPermission(featureId);
+    if (parentPerm.subFeatures && parentPerm.subFeatures[subFeatureId]) {
+      return parentPerm.subFeatures[subFeatureId];
+    }
+    return {
+      canActivate: parentPerm.canActivate ?? false,
+      canAdd: parentPerm.canAdd ?? false,
+      canEdit: parentPerm.canEdit ?? false,
+      canDelete: parentPerm.canDelete ?? false
+    };
+  };
+
+  // Mettre à jour une permission de module principal
   const handleTogglePermission = (
     featureId: AppFeatureId,
-    field: 'canActivate' | 'canAdd' | 'canEdit',
+    field: 'canActivate' | 'canAdd' | 'canEdit' | 'canDelete',
     currentVal: boolean
   ) => {
     const newVal = !currentVal;
@@ -140,12 +157,26 @@ export const RolePermissionsMatrix: React.FC = () => {
     let updated: FeaturePermissionConfig = { ...currentPerm, [field]: newVal };
 
     // Logique ergonomique :
-    // - Si on désactive "canActivate", on désactive aussi Ajouter et Modifier
+    // - Si on désactive "canActivate", on désactive aussi Ajouter, Modifier et Supprimer
     if (field === 'canActivate' && !newVal) {
-      updated = { canActivate: false, canAdd: false, canEdit: false };
+      updated = {
+        ...updated,
+        canActivate: false,
+        canAdd: false,
+        canEdit: false,
+        canDelete: false
+      };
+      // Désactiver également toutes les sous-fonctionnalités associées
+      if (updated.subFeatures) {
+        const nextSub: Record<string, SubFeaturePermissionConfig> = {};
+        Object.keys(updated.subFeatures).forEach((sfId) => {
+          nextSub[sfId] = { canActivate: false, canAdd: false, canEdit: false, canDelete: false };
+        });
+        updated.subFeatures = nextSub;
+      }
     }
-    // - Si on active "canAdd" ou "canEdit", on active obligatoirement "canActivate"
-    if ((field === 'canAdd' || field === 'canEdit') && newVal) {
+    // - Si on active "canAdd", "canEdit" ou "canDelete", on active obligatoirement "canActivate"
+    if ((field === 'canAdd' || field === 'canEdit' || field === 'canDelete') && newVal) {
       updated.canActivate = true;
     }
 
@@ -158,11 +189,80 @@ export const RolePermissionsMatrix: React.FC = () => {
     }
   };
 
-  // Actions de masse
-  const handleBulkSetAll = (canActivate: boolean, canAdd: boolean, canEdit: boolean) => {
+  // Mettre à jour une permission fine pour une sous-fonctionnalité
+  const handleToggleSubPermission = (
+    featureId: AppFeatureId,
+    subFeatureId: string,
+    field: 'canActivate' | 'canAdd' | 'canEdit' | 'canDelete',
+    currentVal: boolean
+  ) => {
+    const newVal = !currentVal;
+    const currentSub = getSubPermission(featureId, subFeatureId);
+    let updated: SubFeaturePermissionConfig = { ...currentSub, [field]: newVal };
+
+    // Cascade logique :
+    if (field === 'canActivate' && !newVal) {
+      updated = { canActivate: false, canAdd: false, canEdit: false, canDelete: false };
+    }
+    if ((field === 'canAdd' || field === 'canEdit' || field === 'canDelete') && newVal) {
+      updated.canActivate = true;
+    }
+
+    if (targetType === 'role') {
+      updateRoleSubFeaturePermission(selectedRoleName, featureId, subFeatureId, updated);
+      showToast(`Sous-fonctionnalité mise à jour pour le rôle ${selectedRoleName} !`);
+    } else if (targetType === 'user' && activeUser) {
+      updateUserSubFeaturePermission(activeUser.id, featureId, subFeatureId, updated);
+      showToast(`Sous-fonctionnalité personnalisée pour ${activeUser.nom} !`);
+    }
+  };
+
+  // Préréglage rapide en 1 clic pour une sous-fonctionnalité
+  const handleSetSubFeaturePreset = (
+    featureId: AppFeatureId,
+    subFeatureId: string,
+    preset: 'all' | 'readonly' | 'none'
+  ) => {
+    let updated: SubFeaturePermissionConfig;
+    if (preset === 'all') {
+      updated = { canActivate: true, canAdd: true, canEdit: true, canDelete: true };
+    } else if (preset === 'readonly') {
+      updated = { canActivate: true, canAdd: false, canEdit: false, canDelete: false };
+    } else {
+      updated = { canActivate: false, canAdd: false, canEdit: false, canDelete: false };
+    }
+
+    if (targetType === 'role') {
+      updateRoleSubFeaturePermission(selectedRoleName, featureId, subFeatureId, updated);
+      showToast(`Sous-fonctionnalité configurée (${preset === 'all' ? 'Accès Total' : preset === 'readonly' ? 'Lecture Seule' : 'Bloquée'}) !`);
+    } else if (targetType === 'user' && activeUser) {
+      updateUserSubFeaturePermission(activeUser.id, featureId, subFeatureId, updated);
+      showToast(`Sous-fonctionnalité configurée pour ${activeUser.nom} !`);
+    }
+  };
+
+  // Actions de masse globales
+  const handleBulkSetAll = (
+    canActivate: boolean,
+    canAdd: boolean,
+    canEdit: boolean,
+    canDelete: boolean = canEdit
+  ) => {
     const bulkPermissions: Record<AppFeatureId, FeaturePermissionConfig> = {} as Record<AppFeatureId, FeaturePermissionConfig>;
     APP_FEATURES_METADATA.forEach((feat) => {
-      bulkPermissions[feat.id] = { canActivate, canAdd, canEdit };
+      const subFeaturesUpdated: Record<string, SubFeaturePermissionConfig> = {};
+      if (feat.subFeatures) {
+        feat.subFeatures.forEach((sf) => {
+          subFeaturesUpdated[sf.id] = { canActivate, canAdd, canEdit, canDelete };
+        });
+      }
+      bulkPermissions[feat.id] = {
+        canActivate,
+        canAdd,
+        canEdit,
+        canDelete,
+        subFeatures: subFeaturesUpdated
+      };
     });
 
     if (targetType === 'role') {
@@ -274,18 +374,21 @@ export const RolePermissionsMatrix: React.FC = () => {
     let activeCount = 0;
     let addCount = 0;
     let editCount = 0;
+    let deleteCount = 0;
 
     APP_FEATURES_METADATA.forEach((f) => {
       const p = getPermission(f.id);
       if (p.canActivate) activeCount++;
       if (p.canAdd) addCount++;
       if (p.canEdit) editCount++;
+      if (p.canDelete) deleteCount++;
     });
 
     return {
       activeCount,
       addCount,
       editCount,
+      deleteCount,
       total: APP_FEATURES_METADATA.length
     };
   }, [activeRoleDef, activeUser, targetType, getPermission]);
@@ -471,6 +574,9 @@ export const RolePermissionsMatrix: React.FC = () => {
             <span className="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-900 font-mono font-bold text-[11px] border border-purple-200">
               Modif : {stats.editCount}/{stats.total}
             </span>
+            <span className="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-900 font-mono font-bold text-[11px] border border-rose-200">
+              Suppr : {stats.deleteCount}/{stats.total}
+            </span>
           </div>
         </div>
 
@@ -482,21 +588,21 @@ export const RolePermissionsMatrix: React.FC = () => {
             </span>
             <button
               type="button"
-              onClick={() => handleBulkSetAll(true, true, true)}
+              onClick={() => handleBulkSetAll(true, true, true, true)}
               className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold transition-all cursor-pointer"
             >
               ✓ Tout Activer (Accès Complet)
             </button>
             <button
               type="button"
-              onClick={() => handleBulkSetAll(true, false, false)}
+              onClick={() => handleBulkSetAll(true, false, false, false)}
               className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold transition-all cursor-pointer"
             >
               👁️ Lecture Seule
             </button>
             <button
               type="button"
-              onClick={() => handleBulkSetAll(false, false, false)}
+              onClick={() => handleBulkSetAll(false, false, false, false)}
               className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold transition-all cursor-pointer"
             >
               ✕ Tout Désactiver
@@ -582,22 +688,28 @@ export const RolePermissionsMatrix: React.FC = () => {
             <thead>
               <tr className="border-b border-stone-200 bg-stone-100/60 text-stone-600 font-semibold uppercase tracking-wider text-[10px]">
                 <th className="py-3 px-4 w-2/5">Fonctionnalité &amp; Module</th>
-                <th className="py-3 px-3 text-center w-28">
+                <th className="py-3 px-2 text-center w-24">
                   <div className="flex flex-col items-center">
                     <span className="font-bold text-emerald-800">1. ACTIVER</span>
                     <span className="text-[9px] text-stone-500 font-normal">Accès / Vue</span>
                   </div>
                 </th>
-                <th className="py-3 px-3 text-center w-28">
+                <th className="py-3 px-2 text-center w-24">
                   <div className="flex flex-col items-center">
                     <span className="font-bold text-blue-800">2. AJOUTER</span>
                     <span className="text-[9px] text-stone-500 font-normal">Création (+)</span>
                   </div>
                 </th>
-                <th className="py-3 px-3 text-center w-28">
+                <th className="py-3 px-2 text-center w-24">
                   <div className="flex flex-col items-center">
                     <span className="font-bold text-purple-800">3. MODIFIER</span>
                     <span className="text-[9px] text-stone-500 font-normal">Édition / Maj</span>
+                  </div>
+                </th>
+                <th className="py-3 px-2 text-center w-24">
+                  <div className="flex flex-col items-center">
+                    <span className="font-bold text-rose-800">4. SUPPRIMER</span>
+                    <span className="text-[9px] text-stone-500 font-normal">Retrait / Del</span>
                   </div>
                 </th>
                 <th className="py-3 px-4 text-right">Statut Accordé</th>
@@ -614,14 +726,14 @@ export const RolePermissionsMatrix: React.FC = () => {
                   </span>
                 );
 
-                if (perm.canActivate && perm.canAdd && perm.canEdit) {
+                if (perm.canActivate && perm.canAdd && perm.canEdit && perm.canDelete) {
                   statusBadge = (
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 justify-end">
                       <Check className="w-3 h-3 text-emerald-700 stroke-[3]" />
                       <span>Accès Total</span>
                     </span>
                   );
-                } else if (perm.canActivate && !perm.canAdd && !perm.canEdit) {
+                } else if (perm.canActivate && !perm.canAdd && !perm.canEdit && !perm.canDelete) {
                   statusBadge = (
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
                       Lecture Seule
@@ -688,7 +800,7 @@ export const RolePermissionsMatrix: React.FC = () => {
                               >
                                 <ListTree className="w-3.5 h-3.5 text-[#C5A880]" />
                                 <span>
-                                  {isExpanded ? 'Masquer les sous-fonctionnalités' : `Détails des ${subFeaturesCount} sous-fonctionnalités`}
+                                  {isExpanded ? 'Masquer les sous-fonctionnalités' : `Configurer les ${subFeaturesCount} sous-fonctionnalités`}
                                 </span>
                                 {isExpanded ? (
                                   <ChevronUp className="w-3.5 h-3.5 text-[#8c6b3e]" />
@@ -702,19 +814,19 @@ export const RolePermissionsMatrix: React.FC = () => {
                       </td>
 
                       {/* 1. Interrupteur Activer */}
-                      <td className="py-3.5 px-3 text-center">
+                      <td className="py-3.5 px-2 text-center">
                         <button
                           type="button"
                           disabled={isSuperAdminRole}
                           onClick={() => handleTogglePermission(feat.id, 'canActivate', perm.canActivate)}
-                          className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
+                          className={`w-11 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
                             perm.canActivate ? 'bg-emerald-600' : 'bg-stone-300'
                           } ${isSuperAdminRole ? 'opacity-60 cursor-not-allowed' : ''}`}
                           title={perm.canActivate ? 'Désactiver l’accès' : 'Activer l’accès'}
                         >
                           <span
                             className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
-                              perm.canActivate ? 'translate-x-6' : 'translate-x-1'
+                              perm.canActivate ? 'translate-x-5.5' : 'translate-x-0.5'
                             }`}
                           />
                         </button>
@@ -724,19 +836,19 @@ export const RolePermissionsMatrix: React.FC = () => {
                       </td>
 
                       {/* 2. Interrupteur Ajouter */}
-                      <td className="py-3.5 px-3 text-center">
+                      <td className="py-3.5 px-2 text-center">
                         <button
                           type="button"
                           disabled={isSuperAdminRole || !perm.canActivate}
                           onClick={() => handleTogglePermission(feat.id, 'canAdd', perm.canAdd)}
-                          className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
+                          className={`w-11 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
                             perm.canAdd ? 'bg-blue-600' : 'bg-stone-300'
                           } ${isSuperAdminRole || !perm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
                           title={perm.canAdd ? 'Interdire la création' : 'Autoriser la création'}
                         >
                           <span
                             className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
-                              perm.canAdd ? 'translate-x-6' : 'translate-x-1'
+                              perm.canAdd ? 'translate-x-5.5' : 'translate-x-0.5'
                             }`}
                           />
                         </button>
@@ -746,24 +858,46 @@ export const RolePermissionsMatrix: React.FC = () => {
                       </td>
 
                       {/* 3. Interrupteur Modifier */}
-                      <td className="py-3.5 px-3 text-center">
+                      <td className="py-3.5 px-2 text-center">
                         <button
                           type="button"
                           disabled={isSuperAdminRole || !perm.canActivate}
                           onClick={() => handleTogglePermission(feat.id, 'canEdit', perm.canEdit)}
-                          className={`w-12 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
+                          className={`w-11 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
                             perm.canEdit ? 'bg-purple-600' : 'bg-stone-300'
                           } ${isSuperAdminRole || !perm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
                           title={perm.canEdit ? 'Interdire la modification' : 'Autoriser la modification'}
                         >
                           <span
                             className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
-                              perm.canEdit ? 'translate-x-6' : 'translate-x-1'
+                              perm.canEdit ? 'translate-x-5.5' : 'translate-x-0.5'
                             }`}
                           />
                         </button>
                         <span className="text-[10px] font-mono mt-1 block font-semibold text-stone-600">
                           {perm.canEdit ? 'Autorisé' : 'Bloqué'}
+                        </span>
+                      </td>
+
+                      {/* 4. Interrupteur Supprimer */}
+                      <td className="py-3.5 px-2 text-center">
+                        <button
+                          type="button"
+                          disabled={isSuperAdminRole || !perm.canActivate}
+                          onClick={() => handleTogglePermission(feat.id, 'canDelete', !!perm.canDelete)}
+                          className={`w-11 h-6 mx-auto rounded-full transition-colors relative cursor-pointer focus:outline-none ${
+                            perm.canDelete ? 'bg-rose-600' : 'bg-stone-300'
+                          } ${isSuperAdminRole || !perm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          title={perm.canDelete ? 'Interdire la suppression' : 'Autoriser la suppression'}
+                        >
+                          <span
+                            className={`w-5 h-5 rounded-full bg-white shadow-md block absolute top-0.5 transition-transform ${
+                              perm.canDelete ? 'translate-x-5.5' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </button>
+                        <span className="text-[10px] font-mono mt-1 block font-semibold text-stone-600">
+                          {perm.canDelete ? 'Autorisé' : 'Bloqué'}
                         </span>
                       </td>
 
@@ -776,7 +910,7 @@ export const RolePermissionsMatrix: React.FC = () => {
                     {/* Ligne dépliée des Sous-Fonctionnalités Détaillées */}
                     {isExpanded && feat.subFeatures && (
                       <tr className="bg-gradient-to-r from-stone-50 via-amber-50/15 to-stone-50 border-b-2 border-stone-200">
-                        <td colSpan={5} className="py-4 px-4 sm:px-6">
+                        <td colSpan={6} className="py-4 px-4 sm:px-6">
                           <div className="space-y-3">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white p-3 rounded-xl border border-stone-200 shadow-2xs">
                               <div className="flex items-center gap-2">
@@ -785,86 +919,201 @@ export const RolePermissionsMatrix: React.FC = () => {
                                 </div>
                                 <div>
                                   <span className="font-serif font-bold text-xs text-stone-900 uppercase tracking-wide block">
-                                    Sous-fonctionnalités &amp; Détails Opérationnels : {feat.name}
+                                    Sous-fonctionnalités &amp; Permissions Granulaires : {feat.name}
                                   </span>
                                   <span className="text-[10px] text-stone-500">
-                                    Périmètre fin gouverné par 1. Activer (Accès), 2. Ajouter (Création) et 3. Modifier (Édition)
+                                    Contrôle fin indépendant : 1. Activer (Vue), 2. Ajouter (+), 3. Modifier (Édit) et 4. Supprimer (Corbeille)
                                   </span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="text-[10px] font-mono font-bold bg-[#C5A880]/15 text-[#8c6b3e] px-2.5 py-1 rounded-md border border-[#C5A880]/30">
-                                  {feat.subFeatures.length} sous-modules actifs
+                                  {feat.subFeatures.length} sous-modules configurables
                                 </span>
                               </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {feat.subFeatures.map((sub, sIdx) => (
-                                <div
-                                  key={sub.id || sIdx}
-                                  className={`p-3.5 rounded-xl border transition-all ${
-                                    perm.canActivate
-                                      ? 'bg-white border-stone-200 shadow-2xs'
-                                      : 'bg-stone-100/70 border-stone-200/80 text-stone-400 opacity-75'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                                    <div className="flex items-center gap-1.5">
-                                      <div className="w-2 h-2 rounded-full bg-[#C5A880]" />
-                                      <span className="font-bold text-xs text-stone-900">
-                                        {sub.name}
-                                      </span>
-                                    </div>
-                                    {sub.badge && (
-                                      <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-stone-100 text-stone-700 border border-stone-200 shrink-0">
-                                        {sub.badge}
-                                      </span>
-                                    )}
-                                  </div>
+                              {feat.subFeatures.map((sub, sIdx) => {
+                                const subPerm = getSubPermission(feat.id, sub.id);
+                                const isSubAll = subPerm.canActivate && subPerm.canAdd && subPerm.canEdit && subPerm.canDelete;
+                                const isSubReadonly = subPerm.canActivate && !subPerm.canAdd && !subPerm.canEdit && !subPerm.canDelete;
 
-                                  <p className="text-[11px] text-stone-600 leading-relaxed mb-3">
-                                    {sub.description}
-                                  </p>
+                                return (
+                                  <div
+                                    key={sub.id || sIdx}
+                                    className={`p-3.5 rounded-xl border transition-all ${
+                                      subPerm.canActivate
+                                        ? 'bg-white border-stone-200 shadow-2xs'
+                                        : 'bg-stone-100/70 border-stone-200/80 text-stone-400 opacity-75'
+                                    }`}
+                                  >
+                                    {/* En-tête de la sous-fonctionnalité */}
+                                    <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <div
+                                          className={`w-2 h-2 rounded-full shrink-0 ${
+                                            subPerm.canActivate ? 'bg-[#C5A880]' : 'bg-stone-300'
+                                          }`}
+                                        />
+                                        <span className="font-bold text-xs text-stone-900 truncate">
+                                          {sub.name}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {sub.badge && (
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-stone-100 text-stone-700 border border-stone-200">
+                                            {sub.badge}
+                                          </span>
+                                        )}
+                                        {/* Badge état du sous-module */}
+                                        {isSubAll ? (
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                            Total
+                                          </span>
+                                        ) : isSubReadonly ? (
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                                            Lecture
+                                          </span>
+                                        ) : subPerm.canActivate ? (
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                            Partiel
+                                          </span>
+                                        ) : (
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-stone-100 text-stone-500 border border-stone-200">
+                                            Bloqué
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
 
-                                  {/* Statuts des 3 permissions pour cette sous-fonctionnalité */}
-                                  <div className="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono">
-                                    <span className="text-stone-500 font-semibold text-[10px]">Droits effectifs :</span>
-                                    <div className="flex items-center gap-1.5">
-                                      <span
-                                        className={`px-2 py-0.5 rounded font-bold ${
-                                          perm.canActivate
-                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                            : 'bg-stone-100 text-stone-400 border border-stone-200'
-                                        }`}
-                                        title="Activer : Consultation de la sous-fonctionnalité"
+                                    <p className="text-[11px] text-stone-600 leading-relaxed mb-3">
+                                      {sub.description}
+                                    </p>
+
+                                    {/* Préréglages rapides pour ce sous-module */}
+                                    <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-stone-100 text-[10px]">
+                                      <span className="text-stone-400 font-semibold text-[10px]">Préréglage :</span>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          disabled={isSuperAdminRole}
+                                          onClick={() => handleSetSubFeaturePreset(feat.id, sub.id, 'all')}
+                                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors cursor-pointer ${
+                                            isSubAll
+                                              ? 'bg-emerald-600 text-white border-emerald-600'
+                                              : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                          } ${isSuperAdminRole ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                          title="Accès complet (Activer + Ajouter + Modifier + Supprimer)"
+                                        >
+                                          Tout
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={isSuperAdminRole}
+                                          onClick={() => handleSetSubFeaturePreset(feat.id, sub.id, 'readonly')}
+                                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors cursor-pointer ${
+                                            isSubReadonly
+                                              ? 'bg-blue-600 text-white border-blue-600'
+                                              : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                          } ${isSuperAdminRole ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                          title="Lecture seule (Activer uniquement)"
+                                        >
+                                          Lecture
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={isSuperAdminRole}
+                                          onClick={() => handleSetSubFeaturePreset(feat.id, sub.id, 'none')}
+                                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors cursor-pointer ${
+                                            !subPerm.canActivate
+                                              ? 'bg-stone-700 text-white border-stone-700'
+                                              : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
+                                          } ${isSuperAdminRole ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                          title="Désactiver l'accès"
+                                        >
+                                          Bloquer
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* 4 Boutons à Bascule Interactifs (Activer, Ajouter, Modifier, Supprimer) */}
+                                    <div className="grid grid-cols-4 gap-1.5 pt-1 text-[10px] font-mono">
+                                      {/* 1. Activer (Vue) */}
+                                      <button
+                                        type="button"
+                                        disabled={isSuperAdminRole}
+                                        onClick={() => handleToggleSubPermission(feat.id, sub.id, 'canActivate', subPerm.canActivate)}
+                                        className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                                          subPerm.canActivate
+                                            ? 'bg-emerald-500/15 border-emerald-400 text-emerald-800 font-bold'
+                                            : 'bg-stone-100 border-stone-200 text-stone-400'
+                                        } ${isSuperAdminRole ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        title={subPerm.canActivate ? 'Désactiver la consultation' : 'Autoriser la consultation'}
                                       >
-                                        Vue : {perm.canActivate ? 'Actif' : 'Inactif'}
-                                      </span>
-                                      <span
-                                        className={`px-2 py-0.5 rounded font-bold ${
-                                          perm.canAdd
-                                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                                            : 'bg-stone-100 text-stone-400 border border-stone-200'
-                                        }`}
-                                        title="Ajouter : Saisie de nouvelles données"
+                                        <span className="text-[9px] uppercase font-bold text-stone-500">Vue</span>
+                                        <span className="text-[10px] font-bold mt-0.5">
+                                          {subPerm.canActivate ? 'Actif' : 'Inactif'}
+                                        </span>
+                                      </button>
+
+                                      {/* 2. Ajouter (+) */}
+                                      <button
+                                        type="button"
+                                        disabled={isSuperAdminRole || !subPerm.canActivate}
+                                        onClick={() => handleToggleSubPermission(feat.id, sub.id, 'canAdd', subPerm.canAdd)}
+                                        className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                                          subPerm.canAdd
+                                            ? 'bg-blue-500/15 border-blue-400 text-blue-800 font-bold'
+                                            : 'bg-stone-100 border-stone-200 text-stone-400'
+                                        } ${isSuperAdminRole || !subPerm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        title={subPerm.canAdd ? 'Bloquer la création' : 'Autoriser la création (+)'}
                                       >
-                                        Ajout : {perm.canAdd ? 'Autorisé' : 'Bloqué'}
-                                      </span>
-                                      <span
-                                        className={`px-2 py-0.5 rounded font-bold ${
-                                          perm.canEdit
-                                            ? 'bg-purple-100 text-purple-800 border border-purple-300'
-                                            : 'bg-stone-100 text-stone-400 border border-stone-200'
-                                        }`}
-                                        title="Modifier : Édition et suppression"
+                                        <span className="text-[9px] uppercase font-bold text-stone-500">Ajout</span>
+                                        <span className="text-[10px] font-bold mt-0.5">
+                                          {subPerm.canAdd ? 'Oui' : 'Non'}
+                                        </span>
+                                      </button>
+
+                                      {/* 3. Modifier (Édit) */}
+                                      <button
+                                        type="button"
+                                        disabled={isSuperAdminRole || !subPerm.canActivate}
+                                        onClick={() => handleToggleSubPermission(feat.id, sub.id, 'canEdit', subPerm.canEdit)}
+                                        className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                                          subPerm.canEdit
+                                            ? 'bg-purple-500/15 border-purple-400 text-purple-800 font-bold'
+                                            : 'bg-stone-100 border-stone-200 text-stone-400'
+                                        } ${isSuperAdminRole || !subPerm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        title={subPerm.canEdit ? 'Bloquer la modification' : 'Autoriser la modification'}
                                       >
-                                        Modif : {perm.canEdit ? 'Autorisé' : 'Bloqué'}
-                                      </span>
+                                        <span className="text-[9px] uppercase font-bold text-stone-500">Modif</span>
+                                        <span className="text-[10px] font-bold mt-0.5">
+                                          {subPerm.canEdit ? 'Oui' : 'Non'}
+                                        </span>
+                                      </button>
+
+                                      {/* 4. Supprimer (Del) */}
+                                      <button
+                                        type="button"
+                                        disabled={isSuperAdminRole || !subPerm.canActivate}
+                                        onClick={() => handleToggleSubPermission(feat.id, sub.id, 'canDelete', subPerm.canDelete)}
+                                        className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                                          subPerm.canDelete
+                                            ? 'bg-rose-500/15 border-rose-400 text-rose-800 font-bold'
+                                            : 'bg-stone-100 border-stone-200 text-stone-400'
+                                        } ${isSuperAdminRole || !subPerm.canActivate ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        title={subPerm.canDelete ? 'Bloquer la suppression' : 'Autoriser la suppression'}
+                                      >
+                                        <span className="text-[9px] uppercase font-bold text-stone-500">Suppr</span>
+                                        <span className="text-[10px] font-bold mt-0.5">
+                                          {subPerm.canDelete ? 'Oui' : 'Non'}
+                                        </span>
+                                      </button>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         </td>

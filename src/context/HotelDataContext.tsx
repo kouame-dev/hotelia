@@ -48,6 +48,7 @@ import {
   ConsumableCategory,
   AppFeatureId,
   FeaturePermissionConfig,
+  SubFeaturePermissionConfig,
   AppRoleDefinition,
   ActiveUserSession,
   EmailReminderLog,
@@ -62,7 +63,8 @@ import {
 } from '../utils/emailReminderService.ts';
 import {
   DEFAULT_ROLE_PERMISSIONS,
-  INITIAL_ROLES_DEFINITIONS
+  INITIAL_ROLES_DEFINITIONS,
+  buildSubFeaturePermissions
 } from '../data/defaultRolePermissions.ts';
 import {
   INITIAL_ROOM_TYPES,
@@ -173,13 +175,15 @@ interface HotelDataContextType {
   toggleUserStatus: (id: string) => void;
   switchUserRole: (keyOrRole: string) => void;
 
-  // 3b. Gestion Dynamique des Rôles & Permissions par Fonctionnalité (Ajouter, Modifier, Activer)
+  // 3b. Gestion Dynamique des Rôles & Permissions par Fonctionnalité (Ajouter, Modifier, Supprimer, Activer)
   rolesList: AppRoleDefinition[];
   updateRolePermissions: (roleName: UserRole, permissions: Record<AppFeatureId, FeaturePermissionConfig>) => void;
+  updateRoleSubFeaturePermission: (roleName: UserRole, featureId: AppFeatureId, subFeatureId: string, subPerm: Partial<SubFeaturePermissionConfig>) => void;
   resetRolePermissionsToDefault: (roleName: UserRole) => void;
   updateUserFeaturePermissions: (userId: string, permissions: Partial<Record<AppFeatureId, FeaturePermissionConfig>>) => void;
-  hasPermission: (featureId: AppFeatureId, action?: 'activate' | 'add' | 'edit') => boolean;
-  canUserPerform: (userId: string, featureId: AppFeatureId, action?: 'activate' | 'add' | 'edit') => boolean;
+  updateUserSubFeaturePermission: (userId: string, featureId: AppFeatureId, subFeatureId: string, subPerm: Partial<SubFeaturePermissionConfig>) => void;
+  hasPermission: (featureId: AppFeatureId, action?: 'activate' | 'add' | 'edit' | 'delete', subFeatureId?: string) => boolean;
+  canUserPerform: (userId: string, featureId: AppFeatureId, action?: 'activate' | 'add' | 'edit' | 'delete', subFeatureId?: string) => boolean;
   addCustomRole: (newRole: AppRoleDefinition) => void;
   deleteCustomRole: (roleId: string) => void;
 
@@ -704,11 +708,34 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // --- C2. Gestion Dynamique des Rôles & Permissions par Fonctionnalité (Ajouter, Modifier, Activer) ---
+  // --- C2. Gestion Dynamique des Rôles & Permissions par Fonctionnalité (Ajouter, Modifier, Supprimer, Activer) ---
   const [rolesList, setRolesList] = useState<AppRoleDefinition[]>(() => {
     try {
       const saved = safeGetItem('hotelia_roles_permissions');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Migration automatique des permissions pour intégrer les sous-fonctionnalités et la suppression
+          return parsed.map((role: AppRoleDefinition) => {
+            const defaultRolePerms = DEFAULT_ROLE_PERMISSIONS[role.roleName];
+            const updatedPerms = { ...role.permissions };
+            (Object.keys(DEFAULT_ROLE_PERMISSIONS['Directeur Général']) as AppFeatureId[]).forEach((fId) => {
+              const currentFeat = updatedPerms[fId];
+              const defaultFeat = defaultRolePerms?.[fId];
+              if (!currentFeat) {
+                updatedPerms[fId] = defaultFeat || { canActivate: false, canAdd: false, canEdit: false, canDelete: false, subFeatures: {} };
+              } else if (!currentFeat.subFeatures || Object.keys(currentFeat.subFeatures).length === 0) {
+                updatedPerms[fId] = {
+                  ...currentFeat,
+                  canDelete: currentFeat.canDelete !== undefined ? currentFeat.canDelete : (defaultFeat?.canDelete ?? false),
+                  subFeatures: defaultFeat?.subFeatures || buildSubFeaturePermissions(fId, currentFeat)
+                };
+              }
+            });
+            return { ...role, permissions: updatedPerms };
+          });
+        }
+      }
     } catch {}
     return INITIAL_ROLES_DEFINITIONS;
   });
@@ -724,6 +751,50 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           ? { ...role, permissions: { ...role.permissions, ...permissions } }
           : role
       )
+    );
+  };
+
+  const updateRoleSubFeaturePermission = (
+    roleName: UserRole,
+    featureId: AppFeatureId,
+    subFeatureId: string,
+    subPerm: Partial<SubFeaturePermissionConfig>
+  ) => {
+    setRolesList((prev) =>
+      prev.map((role) => {
+        if (role.roleName !== roleName) return role;
+        const currentFeat = role.permissions[featureId] || {
+          canActivate: false,
+          canAdd: false,
+          canEdit: false,
+          canDelete: false,
+          subFeatures: {}
+        };
+        const currentSub = currentFeat.subFeatures?.[subFeatureId] || {
+          canActivate: currentFeat.canActivate,
+          canAdd: currentFeat.canAdd,
+          canEdit: currentFeat.canEdit,
+          canDelete: currentFeat.canDelete ?? false
+        };
+        const updatedSub: SubFeaturePermissionConfig = {
+          ...currentSub,
+          ...subPerm
+        };
+
+        return {
+          ...role,
+          permissions: {
+            ...role.permissions,
+            [featureId]: {
+              ...currentFeat,
+              subFeatures: {
+                ...(currentFeat.subFeatures || {}),
+                [subFeatureId]: updatedSub
+              }
+            }
+          }
+        };
+      })
     );
   };
 
@@ -753,6 +824,55 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   };
 
+  const updateUserSubFeaturePermission = (
+    userId: string,
+    featureId: AppFeatureId,
+    subFeatureId: string,
+    subPerm: Partial<SubFeaturePermissionConfig>
+  ) => {
+    setUserProfiles((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        if (next[key]?.id === userId) {
+          const user = next[key];
+          const customPerms = { ...(user.customFeaturePermissions || {}) };
+          const currentFeat = customPerms[featureId] || {
+            canActivate: false,
+            canAdd: false,
+            canEdit: false,
+            canDelete: false,
+            subFeatures: {}
+          };
+          const currentSub = currentFeat.subFeatures?.[subFeatureId] || {
+            canActivate: currentFeat.canActivate,
+            canAdd: currentFeat.canAdd,
+            canEdit: currentFeat.canEdit,
+            canDelete: currentFeat.canDelete ?? false
+          };
+          const updatedSub: SubFeaturePermissionConfig = {
+            ...currentSub,
+            ...subPerm
+          };
+
+          customPerms[featureId] = {
+            ...currentFeat,
+            subFeatures: {
+              ...(currentFeat.subFeatures || {}),
+              [subFeatureId]: updatedSub
+            }
+          };
+
+          next[key] = {
+            ...user,
+            customFeaturePermissions: customPerms
+          };
+          break;
+        }
+      }
+      return next;
+    });
+  };
+
   const addCustomRole = (newRole: AppRoleDefinition) => {
     setRolesList((prev) => [...prev, newRole]);
   };
@@ -761,7 +881,12 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setRolesList((prev) => prev.filter((r) => r.id !== roleId));
   };
 
-  const canUserPerform = (userId: string, featureId: AppFeatureId, action: 'activate' | 'add' | 'edit' = 'activate'): boolean => {
+  const canUserPerform = (
+    userId: string,
+    featureId: AppFeatureId,
+    action: 'activate' | 'add' | 'edit' | 'delete' = 'activate',
+    subFeatureId?: string
+  ): boolean => {
     const user = (Object.values(userProfiles) as UserProfile[]).find((u) => u.id === userId);
     if (!user) return false;
     if (user.status === 'suspendu') return false;
@@ -769,12 +894,20 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // 1. Priorité aux permissions personnalisées spécifiques à cet utilisateur
     if (user.customFeaturePermissions && user.customFeaturePermissions[featureId]) {
       const cfg = user.customFeaturePermissions[featureId]!;
+      if (subFeatureId && cfg.subFeatures && cfg.subFeatures[subFeatureId]) {
+        const subCfg = cfg.subFeatures[subFeatureId];
+        if (action === 'activate') return !!subCfg.canActivate;
+        if (action === 'add') return !!subCfg.canAdd;
+        if (action === 'edit') return !!subCfg.canEdit;
+        if (action === 'delete') return !!subCfg.canDelete;
+      }
       if (action === 'activate') return !!cfg.canActivate;
       if (action === 'add') return !!cfg.canAdd;
       if (action === 'edit') return !!cfg.canEdit;
+      if (action === 'delete') return !!cfg.canDelete;
     }
 
-    // 2. Directeur Général et Admin ont accès intégral
+    // 2. Directeur Général et Admin ont accès souverain
     if (user.role === 'Directeur Général' || user.role === 'Admin') {
       return true;
     }
@@ -783,17 +916,29 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const roleDef = rolesList.find((r) => r.roleName === user.role);
     if (roleDef && roleDef.permissions && roleDef.permissions[featureId]) {
       const perm = roleDef.permissions[featureId];
+      if (subFeatureId && perm.subFeatures && perm.subFeatures[subFeatureId]) {
+        const subPerm = perm.subFeatures[subFeatureId];
+        if (action === 'activate') return !!subPerm.canActivate;
+        if (action === 'add') return !!subPerm.canAdd;
+        if (action === 'edit') return !!subPerm.canEdit;
+        if (action === 'delete') return !!subPerm.canDelete;
+      }
       if (action === 'activate') return !!perm.canActivate;
       if (action === 'add') return !!perm.canAdd;
       if (action === 'edit') return !!perm.canEdit;
+      if (action === 'delete') return !!perm.canDelete;
     }
 
     // 4. Fallback par défaut
     return false;
   };
 
-  const hasPermission = (featureId: AppFeatureId, action: 'activate' | 'add' | 'edit' = 'activate'): boolean => {
-    return canUserPerform(currentUserProfile.id, featureId, action);
+  const hasPermission = (
+    featureId: AppFeatureId,
+    action: 'activate' | 'add' | 'edit' | 'delete' = 'activate',
+    subFeatureId?: string
+  ): boolean => {
+    return canUserPerform(currentUserProfile.id, featureId, action, subFeatureId);
   };
 
   // --- C3. Suivi Simplifié des Employés Connectés & Réinitialisation des Accès en 1 Clic ---
@@ -4906,11 +5051,13 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         deleteUserProfile,
         toggleUserStatus,
         switchUserRole,
-        // 3b. Gestion Dynamique des Rôles & Permissions par Fonctionnalité
+        // 3b. Gestion Dynamique des Rôles & Permissions par Fonctionnalité & Sous-Fonctionnalité
         rolesList,
         updateRolePermissions,
+        updateRoleSubFeaturePermission,
         resetRolePermissionsToDefault,
         updateUserFeaturePermissions,
+        updateUserSubFeaturePermission,
         hasPermission,
         canUserPerform,
         addCustomRole,
