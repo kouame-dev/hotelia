@@ -891,45 +891,87 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!user) return false;
     if (user.status === 'suspendu') return false;
 
-    // 1. Priorité aux permissions personnalisées spécifiques à cet utilisateur
+    // 1. Priorité aux permissions personnalisées spécifiques à cet utilisateur (surcharges individuelles)
     if (user.customFeaturePermissions && user.customFeaturePermissions[featureId]) {
       const cfg = user.customFeaturePermissions[featureId]!;
       if (subFeatureId && cfg.subFeatures && cfg.subFeatures[subFeatureId]) {
         const subCfg = cfg.subFeatures[subFeatureId];
         if (action === 'activate') return !!subCfg.canActivate;
-        if (action === 'add') return !!subCfg.canAdd;
-        if (action === 'edit') return !!subCfg.canEdit;
-        if (action === 'delete') return !!subCfg.canDelete;
+        if (action === 'add') return !!subCfg.canAdd && !!subCfg.canActivate;
+        if (action === 'edit') return !!subCfg.canEdit && !!subCfg.canActivate;
+        if (action === 'delete') return !!subCfg.canDelete && !!subCfg.canActivate;
       }
       if (action === 'activate') return !!cfg.canActivate;
-      if (action === 'add') return !!cfg.canAdd;
-      if (action === 'edit') return !!cfg.canEdit;
-      if (action === 'delete') return !!cfg.canDelete;
+      if (action === 'add') return !!cfg.canAdd && !!cfg.canActivate;
+      if (action === 'edit') return !!cfg.canEdit && !!cfg.canActivate;
+      if (action === 'delete') return !!cfg.canDelete && !!cfg.canActivate;
     }
 
-    // 2. Directeur Général et Admin ont accès souverain
-    if (user.role === 'Directeur Général' || user.role === 'Admin') {
+    // 2. Directeur Général et Admin ont accès souverain par défaut
+    const userRoleStr = (user.role || '').toLowerCase();
+    const isDGUser =
+      userRoleStr.includes('directeur général') ||
+      userRoleStr.includes('directeur general') ||
+      userRoleStr.includes('super admin') ||
+      userRoleStr.includes('administrateur') ||
+      userRoleStr === 'admin' ||
+      userRoleStr === 'dg';
+
+    if (isDGUser) {
       return true;
     }
 
-    // 3. Matrice de permissions selon le rôle configuré
-    const roleDef = rolesList.find((r) => r.roleName === user.role);
+    // 3. Matrice de permissions selon le rôle configuré (recherche tolérante)
+    const roleDef = rolesList.find(
+      (r) =>
+        r.roleName.toLowerCase() === userRoleStr ||
+        r.roleName === user.role ||
+        (userRoleStr.includes('caisse restaurant') && r.roleName === 'Caisse Restaurant') ||
+        (userRoleStr.includes('directeur restaurant') && r.roleName === 'Directeur Restaurant') ||
+        (userRoleStr.includes('caisse') && r.roleName === 'Caisse') ||
+        (userRoleStr.includes('réception') && r.roleName === 'Chef de Réception') ||
+        (userRoleStr.includes('reception') && r.roleName === 'Chef de Réception')
+    );
+
     if (roleDef && roleDef.permissions && roleDef.permissions[featureId]) {
       const perm = roleDef.permissions[featureId];
       if (subFeatureId && perm.subFeatures && perm.subFeatures[subFeatureId]) {
         const subPerm = perm.subFeatures[subFeatureId];
         if (action === 'activate') return !!subPerm.canActivate;
-        if (action === 'add') return !!subPerm.canAdd;
-        if (action === 'edit') return !!subPerm.canEdit;
-        if (action === 'delete') return !!subPerm.canDelete;
+        if (action === 'add') return !!subPerm.canAdd && !!subPerm.canActivate;
+        if (action === 'edit') return !!subPerm.canEdit && !!subPerm.canActivate;
+        if (action === 'delete') return !!subPerm.canDelete && !!subPerm.canActivate;
       }
       if (action === 'activate') return !!perm.canActivate;
-      if (action === 'add') return !!perm.canAdd;
-      if (action === 'edit') return !!perm.canEdit;
-      if (action === 'delete') return !!perm.canDelete;
+      if (action === 'add') return !!perm.canAdd && !!perm.canActivate;
+      if (action === 'edit') return !!perm.canEdit && !!perm.canActivate;
+      if (action === 'delete') return !!perm.canDelete && !!perm.canActivate;
     }
 
-    // 4. Fallback par défaut
+    // 4. Fallback si rôle présent dans DEFAULT_ROLE_PERMISSIONS
+    const defaultPerms = DEFAULT_ROLE_PERMISSIONS[user.role as UserRole];
+    if (defaultPerms && defaultPerms[featureId]) {
+      const defPerm = defaultPerms[featureId];
+      if (subFeatureId && defPerm.subFeatures && defPerm.subFeatures[subFeatureId]) {
+        const sub = defPerm.subFeatures[subFeatureId];
+        if (action === 'activate') return !!sub.canActivate;
+        if (action === 'add') return !!sub.canAdd && !!sub.canActivate;
+        if (action === 'edit') return !!sub.canEdit && !!sub.canActivate;
+        if (action === 'delete') return !!sub.canDelete && !!sub.canActivate;
+      }
+      if (action === 'activate') return !!defPerm.canActivate;
+      if (action === 'add') return !!defPerm.canAdd && !!defPerm.canActivate;
+      if (action === 'edit') return !!defPerm.canEdit && !!defPerm.canActivate;
+      if (action === 'delete') return !!defPerm.canDelete && !!defPerm.canActivate;
+    }
+
+    // 5. Fallback de compatibilité sur le tableau permissions[]
+    if (user.permissions && Array.isArray(user.permissions)) {
+      if (user.permissions.includes('all')) return true;
+      if (action === 'activate' && user.permissions.includes(featureId as string)) return true;
+    }
+
+    // 6. Fallback par défaut
     return false;
   };
 

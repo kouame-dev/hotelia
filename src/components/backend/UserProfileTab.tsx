@@ -57,6 +57,7 @@ export const UserProfileTab: React.FC = () => {
 
   // Active section inside User Tab: 'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile'
   const [activeSection, setActiveSection] = useState<'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile'>('accounts');
+  const [permissionsTargetUserId, setPermissionsTargetUserId] = useState<string | null>(null);
 
   // --- Local form state for Personal Profile ---
   const [nom, setNom] = useState(currentUserProfile.nom);
@@ -344,7 +345,12 @@ export const UserProfileTab: React.FC = () => {
       {/* ========================================================================= */}
       {/* SECTION B : MATRICE DE CONFIGURATION DES RÔLES & PERMISSIONS (RBAC)      */}
       {/* ========================================================================= */}
-      {activeSection === 'permissions_matrix' && <RolePermissionsMatrix />}
+      {activeSection === 'permissions_matrix' && (
+        <RolePermissionsMatrix
+          initialUserId={permissionsTargetUserId || undefined}
+          initialTargetType={permissionsTargetUserId ? 'user' : 'role'}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* SECTION C : EMPLOYÉS CONNECTÉS & SESSIONS EN DIRECT (1 CLIC)              */}
@@ -574,7 +580,14 @@ export const UserProfileTab: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 switchUserRole(user.id);
-                                setSuccessMessage(`Session basculée sur le profil "${user.nom}" (${user.role}).`);
+                                try {
+                                  localStorage.setItem(
+                                    'hotelia_backend_current_user',
+                                    JSON.stringify({ nom: user.nom, role: user.role, email: user.email })
+                                  );
+                                  localStorage.setItem('hotelia_active_user_key', user.username || user.id);
+                                } catch {}
+                                setSuccessMessage(`Session basculée sur le profil "${user.nom}" (${user.role}). Permissions appliquées immédiatement.`);
                                 setTimeout(() => setSuccessMessage(null), 3000);
                               }}
                               className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
@@ -591,9 +604,12 @@ export const UserProfileTab: React.FC = () => {
                             {/* Configurer les permissions */}
                             <button
                               type="button"
-                              onClick={() => setActiveSection('permissions_matrix')}
+                              onClick={() => {
+                                setPermissionsTargetUserId(user.id);
+                                setActiveSection('permissions_matrix');
+                              }}
                               className="p-1.5 rounded-lg hover:bg-[#C5A880]/20 text-[#C5A880] transition-all cursor-pointer"
-                              title="Configurer les permissions (Ajouter, Modifier, Activer)"
+                              title="Configurer les permissions individuelles de cet utilisateur (Ajouter, Modifier, Activer, Supprimer)"
                             >
                               <SlidersHorizontal className="w-3.5 h-3.5" />
                             </button>

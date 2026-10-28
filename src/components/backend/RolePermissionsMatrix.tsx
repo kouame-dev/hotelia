@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { UserRole, AppFeatureId, FeaturePermissionConfig, SubFeaturePermissionConfig, AppRoleDefinition } from '../../types.ts';
 import {
@@ -45,10 +45,27 @@ import {
   ChevronDown,
   ChevronUp,
   ListTree,
-  Trash2
+  Trash2,
+  BookOpen,
+  HelpCircle,
+  LogIn,
+  Zap,
+  AlertCircle
 } from 'lucide-react';
 
-export const RolePermissionsMatrix: React.FC = () => {
+export interface RolePermissionsMatrixProps {
+  initialTargetType?: 'role' | 'user';
+  initialRoleName?: UserRole;
+  initialUserId?: string;
+  onSessionSwitched?: () => void;
+}
+
+export const RolePermissionsMatrix: React.FC<RolePermissionsMatrixProps> = ({
+  initialTargetType,
+  initialRoleName,
+  initialUserId,
+  onSessionSwitched
+}) => {
   const {
     rolesList,
     updateRolePermissions,
@@ -58,13 +75,24 @@ export const RolePermissionsMatrix: React.FC = () => {
     updateUserFeaturePermissions,
     updateUserSubFeaturePermission,
     addCustomRole,
-    currentUserProfile
+    currentUserProfile,
+    switchUserRole
   } = useHotelData();
 
   // Mode de configuration : par Rôle ou par Utilisateur spécifique
-  const [targetType, setTargetType] = useState<'role' | 'user'>('role');
-  const [selectedRoleName, setSelectedRoleName] = useState<UserRole>('Chef de Réception');
-  const [selectedUserId, setSelectedUserId] = useState<string>(usersList[1]?.id || 'usr-2');
+  const [targetType, setTargetType] = useState<'role' | 'user'>(initialTargetType || 'role');
+  const [selectedRoleName, setSelectedRoleName] = useState<UserRole>(initialRoleName || 'Chef de Réception');
+  const [selectedUserId, setSelectedUserId] = useState<string>(initialUserId || usersList[1]?.id || 'usr-2');
+
+  // Synchronisation dynamique si les props changent
+  useEffect(() => {
+    if (initialTargetType) setTargetType(initialTargetType);
+    if (initialUserId) setSelectedUserId(initialUserId);
+    if (initialRoleName) setSelectedRoleName(initialRoleName);
+  }, [initialTargetType, initialUserId, initialRoleName]);
+
+  // État du guide d'administration dépliable
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // Filtres d'affichage
   const [searchQuery, setSearchQuery] = useState('');
@@ -428,6 +456,39 @@ export const RolePermissionsMatrix: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
+            onClick={() => setIsGuideOpen(!isGuideOpen)}
+            className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer transition-all shadow-xs ${
+              isGuideOpen
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                : 'bg-stone-850 hover:bg-stone-800 text-stone-200 border-stone-700'
+            }`}
+            title="Consulter le guide pratique d'administration des permissions"
+          >
+            <BookOpen className="w-4 h-4 text-[#C5A880]" />
+            <span>{isGuideOpen ? 'Masquer le Guide' : '📖 Guide d\'Administration'}</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isGuideOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.setItem('hotelia_roles_permissions', JSON.stringify(rolesList));
+                localStorage.setItem('hotelia_user_profiles', JSON.stringify(usersList));
+                showToast('✅ Permissions vérifiées et synchronisées en direct avec succès !');
+              } catch {
+                showToast('Erreur lors de la sauvegarde locale.');
+              }
+            }}
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+            title="Forcer la synchronisation et la sauvegarde locale des permissions"
+          >
+            <Save className="w-4 h-4 stroke-[2.2]" />
+            <span>Synchroniser &amp; Sauvegarder</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsNewRoleModalOpen(true)}
             className="px-4 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition-all hover:scale-[1.01]"
           >
@@ -436,6 +497,101 @@ export const RolePermissionsMatrix: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Guide Pratique & Manuel d'Administration de la Grille des Permissions */}
+      {isGuideOpen && (
+        <div className="bg-gradient-to-br from-amber-50 via-white to-stone-50 border-2 border-amber-300/80 rounded-2xl p-6 shadow-sm space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-amber-200/80 pb-3">
+            <div className="flex items-center space-x-2 text-stone-900 font-serif font-bold text-base">
+              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-800">
+                <BookOpen className="w-5 h-5 text-amber-700" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-stone-900">
+                  Guide d'Administration &amp; Bonnes Pratiques de la Matrice des Permissions (RBAC)
+                </h3>
+                <p className="text-[11px] text-stone-600 font-sans font-normal">
+                  Comment piloter, distribuer et verrouiller les accès de l'établissement sans risque d'erreur
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsGuideOpen(false)}
+              className="p-1 rounded-lg hover:bg-amber-100 text-stone-500 transition-colors"
+              title="Fermer ce guide"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            {/* Colonne 1 : Hiérarchie Rôle vs Collaborateur */}
+            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs space-y-2">
+              <div className="flex items-center gap-2 text-blue-700 font-bold text-xs">
+                <Users className="w-4 h-4 text-blue-600" />
+                <span>1. Rôle Global vs Individu</span>
+              </div>
+              <p className="text-stone-600 leading-relaxed text-[11px]">
+                <strong>Rôle Global :</strong> Définit le modèle commun pour une fonction (ex: <em>Chef de Réception</em>, <em>Caisse</em>). Tous les employés ayant ce rôle héritent automatiquement de cette matrice.
+              </p>
+              <p className="text-stone-600 leading-relaxed text-[11px]">
+                <strong>Utilisateur Spécifique :</strong> Permet de déroger au rôle pour un employé donné (ex: donner l'accès <em>Stocks</em> à une caissière senior sans modifier le profil des autres caissiers).
+              </p>
+            </div>
+
+            {/* Colonne 2 : Les 4 Niveaux d'Habilitation */}
+            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs space-y-2">
+              <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>2. Les 4 Niveaux de Droits</span>
+              </div>
+              <ul className="text-stone-600 space-y-1.5 text-[11px] leading-snug">
+                <li>
+                  <strong className="text-emerald-800">👁️ Activer :</strong> Visibilité du bouton dans les menus et permission d'ouvrir l'écran. Si décoché, l'écran est inaccessible.
+                </li>
+                <li>
+                  <strong className="text-blue-800">➕ Ajouter :</strong> Possibilité de créer (ex: nouvelle réservation, nouveau versement).
+                </li>
+                <li>
+                  <strong className="text-purple-800">✏️ Modifier :</strong> Modification des données existantes (tarifs, dates, chambres).
+                </li>
+                <li>
+                  <strong className="text-rose-800">🗑️ Supprimer :</strong> Annulation définitive ou suppression d'enregistrements (réservé aux managers).
+                </li>
+              </ul>
+            </div>
+
+            {/* Colonne 3 : Sous-Fonctionnalités Granulaires */}
+            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs space-y-2">
+              <div className="flex items-center gap-2 text-purple-700 font-bold text-xs">
+                <ListTree className="w-4 h-4 text-purple-600" />
+                <span>3. Sous-Fonctionnalités (17 Domaines)</span>
+              </div>
+              <p className="text-stone-600 leading-relaxed text-[11px]">
+                Chacun des 17 domaines contient des <strong>sous-modules fins</strong>. Cliquez sur <em>« Déplier Détails »</em> pour affiner la sécurité :
+              </p>
+              <p className="text-stone-600 leading-relaxed text-[11px]">
+                Exemple : Autoriser l'enregistrement des <em>Nuitées</em> dans Réservations, tout en bloquant les <em>Passages Horaires</em> ou les <em>Acomptes</em>.
+              </p>
+            </div>
+
+            {/* Colonne 4 : Test Immédiat & Sauvegarde */}
+            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-2xs space-y-2">
+              <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
+                <Zap className="w-4 h-4 text-amber-600" />
+                <span>4. Sauvegarde &amp; Test Direct</span>
+              </div>
+              <p className="text-stone-600 leading-relaxed text-[11px]">
+                <strong>Temps Réel :</strong> Chaque case cochée/décochée est <em>instantanément enregistrée</em> en mémoire locale sécurisée de l'application.
+              </p>
+              <p className="text-stone-600 leading-relaxed text-[11px]">
+                <strong>Tester en 1 Clic :</strong> Cliquez sur <em>« ⚡ Tester la session »</em> pour basculer en direct sur le compte de l'utilisateur et vérifier son affichage sans changer de navigateur.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Sélecteur de Cible : Par Rôle Global vs Par Utilisateur Spécifique */}
       <div className="bg-white rounded-2xl border border-stone-200 p-5 shadow-xs space-y-4">
@@ -546,8 +702,8 @@ export const RolePermissionsMatrix: React.FC = () => {
         )}
 
         {/* Bannière récapitulative du rôle / utilisateur sélectionné */}
-        <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="space-y-0.5">
+        <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="space-y-0.5 max-w-xl">
             <span className="font-bold text-stone-900 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>
@@ -556,27 +712,52 @@ export const RolePermissionsMatrix: React.FC = () => {
                   : `Droits Personnalisés pour : ${activeUser?.nom} (${activeUser?.role})`}
               </span>
             </span>
-            <p className="text-stone-500 text-[11px]">
+            <p className="text-stone-500 text-[11px] leading-relaxed">
               {targetType === 'role'
                 ? activeRoleDef.description
-                : `Ce profil hérite par défaut des permissions du rôle ${activeUser?.role}, avec possibilité de surcharges individuelles ci-dessous.`}
+                : `Ce profil hérite par défaut des permissions du rôle ${activeUser?.role}. Toute case modifiée ci-dessous constitue une surcharge prioritaire sur ce compte.`}
             </p>
           </div>
 
-          {/* Compteurs de synthèse */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-mono font-bold text-[11px] border border-emerald-200">
-              Actifs : {stats.activeCount}/{stats.total}
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-900 font-mono font-bold text-[11px] border border-blue-200">
-              Ajout : {stats.addCount}/{stats.total}
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-900 font-mono font-bold text-[11px] border border-purple-200">
-              Modif : {stats.editCount}/{stats.total}
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-900 font-mono font-bold text-[11px] border border-rose-200">
-              Suppr : {stats.deleteCount}/{stats.total}
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 shrink-0">
+            {targetType === 'user' && activeUser && (
+              <button
+                type="button"
+                onClick={() => {
+                  switchUserRole(activeUser.id);
+                  onSessionSwitched?.();
+                  try {
+                    localStorage.setItem(
+                      'hotelia_backend_current_user',
+                      JSON.stringify({ nom: activeUser.nom, role: activeUser.role, email: activeUser.email })
+                    );
+                    localStorage.setItem('hotelia_active_user_key', activeUser.username || activeUser.id);
+                  } catch {}
+                  showToast(`⚡ Session basculée sur ${activeUser.nom} (${activeUser.role}) ! Vous opérez maintenant avec ses permissions.`);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                title="Prendre immédiatement le contrôle de ce compte pour tester ses restrictions et accès réels"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>Tester cette session en direct</span>
+              </button>
+            )}
+
+            {/* Compteurs de synthèse */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-mono font-bold text-[10px] border border-emerald-200">
+                Actifs : {stats.activeCount}/{stats.total}
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-blue-100 text-blue-900 font-mono font-bold text-[10px] border border-blue-200">
+                Ajout : {stats.addCount}/{stats.total}
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-purple-100 text-purple-900 font-mono font-bold text-[10px] border border-purple-200">
+                Modif : {stats.editCount}/{stats.total}
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-rose-100 text-rose-900 font-mono font-bold text-[10px] border border-rose-200">
+                Suppr : {stats.deleteCount}/{stats.total}
+              </span>
+            </div>
           </div>
         </div>
 

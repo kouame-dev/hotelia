@@ -157,6 +157,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     restaurantReservations,
     restaurantOrders,
     usersList,
+    rolesList,
     auditLogs,
     restaurantStockAlerts,
     unreadStockAlertsCount,
@@ -446,23 +447,13 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     }
   }, [activeTab, restaurantSubTab]);
 
-  // Synchroniser le profil de contexte avec l'utilisateur authentifié (user)
+  // Synchroniser le profil de contexte avec l'utilisateur authentifié au montage
   useEffect(() => {
-    logChromeDiagnostic('AdminBackOffice RoleSync', `Synchronisation du rôle utilisateur: "${user?.role}"`, {
-      targetRole: user?.role,
-      currentRole: currentUserProfile?.role
-    });
-    if (user?.role && switchUserRole) {
-      try {
-        switchUserRole(user.role);
-      } catch (err) {
-        logChromeDiagnostic('AdminBackOffice RoleSync', 'Échec switchUserRole', { error: err });
-      }
-    }
-  }, [user?.role, switchUserRole]);
+    logChromeDiagnostic('AdminBackOffice RoleSync', `Profil actif vérifié: "${currentUserProfile?.role || user?.role}"`);
+  }, [currentUserProfile?.role]);
 
-  // Détermination ultra-robuste et infaillible du rôle utilisateur
-  const userRoleStr = (user?.role || currentUserProfile?.role || '').trim();
+  // Détermination ultra-robuste et infaillible du rôle utilisateur actif
+  const userRoleStr = (currentUserProfile?.role || user?.role || '').trim();
   const lowerRole = userRoleStr.toLowerCase();
 
   const isCaisseRestaurant =
@@ -506,30 +497,80 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       lowerRole.includes('admin')
     );
 
-  // Guard de routage : Si un utilisateur restreint tente d'accéder à un onglet interdit,
-  // Dashboard Revenus, Facture Globale, Journal d'Audit, Alertes Stocks et Profil restent 100% ACCESSIBLES ET GARANTIS POUR TOUS LES RÔLES.
+  // Mapping de chaque onglet vers son identifiant de fonctionnalité dans la matrice RBAC
+  const tabFeatureMap: Record<BackOfficeTab, AppFeatureId> = {
+    dashboard: 'dashboard',
+    gantt: 'gantt',
+    calendar: 'gantt',
+    reservations: 'reservations',
+    chambres: 'chambres',
+    maintenance: 'chambres',
+    services: 'services',
+    facture_globale: 'facture_globale',
+    pos: 'pos',
+    restaurant: 'restaurant',
+    cuisine: 'cuisine',
+    stock: 'stock',
+    stock_alerts: 'stock_alerts',
+    finance: 'finance',
+    versements: 'finance',
+    expenses: 'expenses',
+    loyalty: 'loyalty',
+    audit: 'audit',
+    profile: 'profile',
+    settings: 'settings',
+    antioverbooking: 'gantt',
+    pricing: 'chambres',
+    erd: 'settings'
+  };
+
+  // Fonction centrale de vérification des permissions pour un onglet
+  const isTabAllowed = (tab: BackOfficeTab): boolean => {
+    // 1. Le Directeur Général / Super Admin a un droit souverain sur tous les modules
+    if (isDG) return true;
+
+    // 2. Le profil personnel et le journal d'audit restent consultables
+    if (tab === 'profile' || tab === 'audit') return true;
+
+    // 3. Versements de caisse : autorisé si permission 'finance' ou profil de caisse/réception
+    if (tab === 'versements') {
+      return hasPermission('finance', 'activate') || isCaisse || isCaisseRestaurant || isChefReception;
+    }
+
+    // 4. Vérification dynamique via hasPermission
+    const featId = tabFeatureMap[tab];
+    if (!featId) return true;
+
+    return hasPermission(featId, 'activate');
+  };
+
+  // Guard de routage dynamique : redirige UNIQUEMENT si l'onglet en cours n'est PAS autorisé par la matrice des permissions
   useEffect(() => {
-    if (activeTab === 'dashboard' || activeTab === 'facture_globale' || activeTab === 'profile' || activeTab === 'audit' || activeTab === 'stock_alerts' || activeTab === 'versements') {
+    if (isTabAllowed(activeTab)) {
       return;
     }
-    if (isCaisseRestaurant && activeTab !== 'restaurant' && activeTab !== 'cuisine' && activeTab !== 'pos') {
-      logChromeDiagnostic('AdminBackOffice RoleGuard', `Redirection automatique Caisse Restaurant vers restaurant depuis "${activeTab}"`);
-      setActiveTab('restaurant');
-    } else if (
-      isDirecteurRestaurant &&
-      activeTab !== 'restaurant' &&
-      activeTab !== 'cuisine' &&
-      activeTab !== 'pos' &&
-      activeTab !== 'stock' &&
-      activeTab !== 'services'
-    ) {
-      logChromeDiagnostic('AdminBackOffice RoleGuard', `Redirection automatique Directeur Restaurant vers restaurant depuis "${activeTab}"`);
-      setActiveTab('restaurant');
-    } else if (isCaisse && activeTab !== 'reservations' && activeTab !== 'cuisine' && activeTab !== 'gantt' && activeTab !== 'calendar') {
-      logChromeDiagnostic('AdminBackOffice RoleGuard', `Redirection automatique Caisse Hôtel vers reservations depuis "${activeTab}"`);
-      setActiveTab('reservations');
-    }
-  }, [isCaisseRestaurant, isDirecteurRestaurant, isCaisse, activeTab]);
+
+    logChromeDiagnostic('AdminBackOffice RoleGuard', `Onglet "${activeTab}" non autorisé pour ${currentUserProfile.nom} (${currentUserProfile.role}). Redirection vers un onglet autorisé.`);
+
+    // Ordre de priorité des onglets de repli autorisés
+    const candidateTabs: BackOfficeTab[] = [
+      'dashboard',
+      'reservations',
+      'gantt',
+      'calendar',
+      'restaurant',
+      'pos',
+      'cuisine',
+      'versements',
+      'facture_globale',
+      'stock',
+      'chambres',
+      'profile'
+    ];
+
+    const fallback = candidateTabs.find((t) => isTabAllowed(t)) || 'profile';
+    setActiveTab(fallback);
+  }, [activeTab, currentUserProfile.id, currentUserProfile.role, rolesList]);
 
   const handleTabClick = (tab: BackOfficeTab) => {
     logChromeDiagnostic('AdminBackOffice Navigation', `Changement d'onglet demandé: "${tab}"`, {
@@ -539,61 +580,23 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       userNom: currentUserProfile?.nom
     });
 
-    // 0. Le profil et module de gestion reste accessible
-    if (tab === 'profile') {
-      setActiveTab('profile');
+    // Vérifier les droits dynamiques
+    if (!isTabAllowed(tab)) {
+      const featId = tabFeatureMap[tab] || tab;
+      setRestrictedModalMessage(
+        `Accès Restreint : Votre compte (${currentUserProfile.nom} - ${currentUserProfile.role}) ne dispose pas de la permission d'activer le module "${featId}". Le Directeur Général peut configurer ou réactiver vos droits d'accès dans le module Gestion des Utilisateurs & Permissions.`
+      );
       return;
     }
 
-    // 0b. Versements de caisse accessible pour Chef de Réception, DG et Caissiers
-    if (tab === 'versements') {
-      setActiveTab('versements');
-      return;
-    }
-
-    // 1. Contrôle dynamique par la Matrice de Permissions RBAC (hasPermission)
-    const featureMap: Record<string, AppFeatureId> = {
-      dashboard: 'dashboard',
-      gantt: 'gantt',
-      calendar: 'gantt',
-      reservations: 'reservations',
-      chambres: 'chambres',
-      maintenance: 'chambres',
-      services: 'services',
-      facture_globale: 'facture_globale',
-      pos: 'pos',
-      restaurant: 'restaurant',
-      cuisine: 'cuisine',
-      stock: 'stock',
-      stock_alerts: 'stock_alerts',
-      finance: 'finance',
-      versements: 'finance',
-      expenses: 'expenses',
-      loyalty: 'loyalty',
-      audit: 'audit',
-      profile: 'profile',
-      settings: 'settings'
-    };
-
-    const targetFeat = featureMap[tab];
-    if (targetFeat && !isDG) {
-      const isAllowed = hasPermission(targetFeat, 'activate');
-      if (!isAllowed) {
-        setRestrictedModalMessage(
-          `Accès Restreint : Votre compte (${currentUserProfile.nom} - ${currentUserProfile.role}) ne dispose pas de la permission d'activer le module "${targetFeat}". Le Directeur Général peut configurer ou réactiver vos droits d'accès dans le module Gestion des Utilisateurs & Permissions.`
-        );
-        return;
-      }
-    }
-
-    // 2. Gestion du Point de Vente (POS)
+    // Gestion du Point de Vente (POS)
     if (tab === 'pos') {
       setActiveTab('restaurant');
       setRestaurantSubTab('pos');
       return;
     }
 
-    // 3. Navigation autorisée
+    // Navigation autorisée
     setActiveTab(tab);
   };
 
@@ -860,8 +863,64 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             </div>
           </div>
 
-          {/* Sub-Navigation Tabs : Menu Principal Regroupé en SEULEMENT 3 Onglets Modales */}
+          {/* Sub-Navigation Tabs : Menu Principal Regroupé avec Accès Direct Planning Gantt & Calendrier Interactif */}
           <div className="flex items-center space-x-2 sm:space-x-3 py-2 border-t border-stone-800 text-xs overflow-x-auto no-scrollbar">
+            {/* 🌟 VUE CAISSE HÔTEL : Accès Prioritaire Direct au Planning Gantt et au Calendrier Interactif des Chambres */}
+            {isCaisse && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('gantt')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'gantt'
+                      ? 'bg-blue-600 text-white border-2 border-blue-400 shadow-lg ring-2 ring-blue-500/35'
+                      : 'bg-blue-950/70 text-blue-200 border-2 border-blue-500/60 hover:bg-blue-900 hover:text-white'
+                  }`}
+                  title="Planning Gantt d'occupation des chambres (vue chronologique 24h/24)"
+                >
+                  <Calendar className="w-4 h-4 text-blue-400" />
+                  <span>Planning Gantt Chambres</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/25 text-blue-300 border border-blue-500/40">
+                    Occupation 24h
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('calendar')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'calendar'
+                      ? 'bg-[#C5A880] text-slate-950 border-2 border-amber-300 shadow-lg ring-2 ring-[#C5A880]/35'
+                      : 'bg-stone-900/80 text-[#C5A880] border-2 border-[#C5A880]/50 hover:bg-stone-850 hover:text-white'
+                  }`}
+                  title="Calendrier Interactif d'occupation des 6 chambres (vue mensuelle)"
+                >
+                  <CalendarDays className="w-4 h-4 text-[#C5A880]" />
+                  <span>Calendrier Interactif des Chambres</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/30">
+                    Mois
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('reservations')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'reservations'
+                      ? 'bg-[#FF9900] text-slate-950 border-2 border-amber-300 shadow-lg ring-2 ring-[#FF9900]/35'
+                      : 'bg-stone-900/60 text-[#FF9900] border border-[#FF9900]/40 hover:bg-stone-850 hover:text-white'
+                  }`}
+                  title="Gestion et saisie des réservations de chambres"
+                >
+                  <CalendarCheck className="w-4 h-4 text-[#FF9900]" />
+                  <span>Réservations</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#FF9900]/20 text-[#FF9900] border border-[#FF9900]/30">
+                    {pendingReservationsCount > 0 ? `${pendingReservationsCount} attente` : 'Hôtel'}
+                  </span>
+                </button>
+              </>
+            )}
+
             {/* Onglet Modal 1 : Pôle Hébergement & Chambres */}
             <button
               type="button"
@@ -879,6 +938,45 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-blue-300 opacity-80" />
             </button>
+
+            {/* Accès Direct Planning Gantt & Calendrier pour les autres rôles */}
+            {!isCaisse && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('gantt')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'gantt'
+                      ? 'bg-blue-600 text-white border-2 border-blue-400 shadow-lg ring-2 ring-blue-500/35'
+                      : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
+                  }`}
+                  title="Planning Gantt d'occupation des chambres (vue chronologique 24h/24)"
+                >
+                  <Calendar className="w-4 h-4 text-blue-400" />
+                  <span>Planning Gantt</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    24h
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('calendar')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'calendar'
+                      ? 'bg-[#C5A880] text-slate-950 border-2 border-amber-300 shadow-lg ring-2 ring-[#C5A880]/35'
+                      : 'bg-stone-900/40 text-[#C5A880] border border-stone-800 hover:bg-stone-800 hover:text-white'
+                  }`}
+                  title="Calendrier Interactif d'occupation des chambres"
+                >
+                  <CalendarDays className="w-4 h-4 text-[#C5A880]" />
+                  <span>Calendrier Interactif</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/30">
+                    Mois
+                  </span>
+                </button>
+              </>
+            )}
 
             {/* Onglet Modal 2 : Pôle Restauration & Stocks */}
             <button
@@ -1038,7 +1136,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {currentPole === 'hebergement' && (
+            {(currentPole === 'hebergement' || isCaisse) && (
               <div className="flex items-center bg-stone-900 border border-stone-700/80 rounded-xl p-0.5 shadow-inner">
                 <button
                   type="button"
@@ -1048,7 +1146,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       ? 'bg-blue-600 text-white font-bold shadow-xs'
                       : 'text-stone-300 hover:text-white'
                   }`}
-                  title="Basculer vers le Gantt Journalier 24h"
+                  title="Basculer vers le Planning Gantt Journalier 24h d'occupation des chambres"
                 >
                   <Calendar className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Gantt 24h</span>
@@ -1061,7 +1159,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       ? 'bg-[#C5A880] text-slate-950 font-bold shadow-xs'
                       : 'text-stone-300 hover:text-white'
                   }`}
-                  title="Basculer vers le Calendrier Mensuel"
+                  title="Basculer vers le Calendrier Interactif des Chambres"
                 >
                   <CalendarDays className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Calendrier Mois</span>
@@ -1243,21 +1341,21 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
 
         {/* Tab 0 : Tableau de Bord des Revenus & Ventes (Quotidien & Mensuel) */}
-        {activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && isTabAllowed('dashboard') && (
           <ErrorBoundary fallbackTitle="Erreur sur le tableau de bord des revenus">
             <RevenueDashboardTab onGoToFullStock={() => handleTabClick('stock')} />
           </ErrorBoundary>
         )}
 
         {/* Tab 1 : Planning Gantt */}
-        {activeTab === 'gantt' && !isCaisseRestaurant && (
+        {activeTab === 'gantt' && isTabAllowed('gantt') && (
           <ErrorBoundary fallbackTitle="Erreur sur le planning Gantt">
             <AdminGanttDashboard onNavigateToCalendar={() => setActiveTab('calendar')} />
           </ErrorBoundary>
         )}
 
         {/* Tab 1b : Calendrier Mensuel d'Occupation des Chambres */}
-        {activeTab === 'calendar' && !isCaisseRestaurant && (
+        {activeTab === 'calendar' && isTabAllowed('calendar') && (
           <ErrorBoundary fallbackTitle="Erreur sur le calendrier d'occupation">
             <RoomOccupancyCalendarTab
               onNavigateToReservation={(resId) => {
@@ -1271,14 +1369,14 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
 
         {/* Tab Réservations de Chambres avec Sous-Menus */}
-        {activeTab === 'reservations' && !isCaisseRestaurant && (
+        {activeTab === 'reservations' && isTabAllowed('reservations') && (
           <ErrorBoundary fallbackTitle="Erreur sur la gestion des réservations">
             <ReservationManagementTab key={reservationSubTab} initialSubTab={reservationSubTab} />
           </ErrorBoundary>
         )}
 
         {/* Tab Dédié Restaurant (Plan de Tables, POS Restaurant, Réservations Tables, KDS, Menu) */}
-        {activeTab === 'restaurant' && (!isCaisse || restaurantSubTab === 'commandes') && (
+        {activeTab === 'restaurant' && isTabAllowed('restaurant') && (
           <ErrorBoundary fallbackTitle="Erreur sur le module Restaurant">
             <RestaurantManagementTab
               key={`rest-${restaurantSubTab}`}
@@ -1292,49 +1390,49 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
 
         {/* Tab Dédié Cuisine et Suivi KDS (Kitchen Display System en temps réel) */}
-        {activeTab === 'cuisine' && (
+        {activeTab === 'cuisine' && isTabAllowed('cuisine') && (
           <ErrorBoundary fallbackTitle="Erreur sur l'affichage KDS Cuisine">
             <KitchenDisplaySystemTab />
           </ErrorBoundary>
         )}
 
         {/* Tab Point de Vente (POS) */}
-        {activeTab === 'pos' && (
+        {activeTab === 'pos' && isTabAllowed('pos') && (
           <ErrorBoundary fallbackTitle="Erreur sur le terminal Point de Vente (POS)">
             <PosSystemTab />
           </ErrorBoundary>
         )}
 
         {/* Tab Services Payants */}
-        {activeTab === 'services' && (
+        {activeTab === 'services' && isTabAllowed('services') && (
           <ErrorBoundary fallbackTitle="Erreur sur les services payants">
             <PaidServicesTab />
           </ErrorBoundary>
         )}
 
         {/* Tab Facture Globale Consolidée */}
-        {activeTab === 'facture_globale' && (
+        {activeTab === 'facture_globale' && isTabAllowed('facture_globale') && (
           <ErrorBoundary fallbackTitle="Erreur sur la facturation globale FNE">
             <GlobalInvoiceView />
           </ErrorBoundary>
         )}
 
         {/* Tab Journal d'Audit des Réservations */}
-        {activeTab === 'audit' && (
+        {activeTab === 'audit' && isTabAllowed('audit') && (
           <ErrorBoundary fallbackTitle="Erreur sur le journal d'audit">
             <ReservationAuditLogTab />
           </ErrorBoundary>
         )}
 
         {/* Tab Gestion de Stock & Approvisionnements */}
-        {activeTab === 'stock' && !isCaisse && (
+        {activeTab === 'stock' && isTabAllowed('stock') && (
           <ErrorBoundary fallbackTitle="Erreur sur la gestion des stocks">
             <StockManagementTab />
           </ErrorBoundary>
         )}
 
         {/* Tab Alertes Stocks & Réapprovisionnement Restaurant */}
-        {activeTab === 'stock_alerts' && (
+        {activeTab === 'stock_alerts' && isTabAllowed('stock_alerts') && (
           <ErrorBoundary fallbackTitle="Erreur sur les alertes de stock">
             <RestaurantStockAlertsTab
               onGoToStockModule={() => handleTabClick('stock')}
@@ -1344,21 +1442,21 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
 
         {/* Tab Fidélité, Comptes Clients, Coupons Promo & Campagnes SMS / Push */}
-        {activeTab === 'loyalty' && !isCaisse && (
+        {activeTab === 'loyalty' && isTabAllowed('loyalty') && (
           <ErrorBoundary fallbackTitle="Erreur sur le module fidélité & marketing">
             <LoyaltyAndMarketingTab />
           </ErrorBoundary>
         )}
 
         {/* Tab 2 : Gestion Complète des Chambres & Types de Chambres */}
-        {activeTab === 'chambres' && !isCaisse && (
+        {activeTab === 'chambres' && isTabAllowed('chambres') && (
           <ErrorBoundary fallbackTitle="Erreur sur la gestion des chambres">
             <RoomManagementTab />
           </ErrorBoundary>
         )}
 
         {/* Tab 2b : Maintenance, Réparations & Blocage des Chambres */}
-        {activeTab === 'maintenance' && !isCaisse && !isCaisseRestaurant && (
+        {activeTab === 'maintenance' && isTabAllowed('maintenance') && (
           <ErrorBoundary fallbackTitle="Erreur sur le tableau de bord de maintenance">
             <MaintenanceDashboard
               onNavigateToRooms={() => setActiveTab('chambres')}
@@ -1368,72 +1466,63 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         )}
 
         {/* Tab 3 : Rapports Financiers */}
-        {activeTab === 'finance' && isDG && (
+        {activeTab === 'finance' && isTabAllowed('finance') && (
           <ErrorBoundary fallbackTitle="Erreur sur les rapports financiers">
             <FinancialReportTab onGoToRevenueDashboard={() => handleTabClick('dashboard')} />
           </ErrorBoundary>
         )}
 
         {/* Tab 3b : Gestion des Caisses & Clôtures de Shift (Matin & Soir) */}
-        {activeTab === 'versements' && (
+        {activeTab === 'versements' && isTabAllowed('versements') && (
           <ErrorBoundary fallbackTitle="Erreur sur la gestion des caisses et versements">
             <CashRegisterManagementTab />
           </ErrorBoundary>
         )}
 
         {/* Tab 4 : Module Dépenses */}
-        {activeTab === 'expenses' && isDG && (
+        {activeTab === 'expenses' && isTabAllowed('expenses') && (
           <ErrorBoundary fallbackTitle="Erreur sur le module des dépenses">
             <ExpensesTab />
           </ErrorBoundary>
         )}
 
         {/* Tab 5 : Profil Utilisateur & Gestion des Comptes (Super Admin) */}
-        {activeTab === 'profile' && (
+        {activeTab === 'profile' && isTabAllowed('profile') && (
           <ErrorBoundary fallbackTitle="Erreur sur le profil utilisateur">
             <UserProfileTab />
           </ErrorBoundary>
         )}
 
         {/* Tab 6 : Paramètres de l'Application */}
-        {activeTab === 'settings' && isDG && (
+        {activeTab === 'settings' && isTabAllowed('settings') && (
           <ErrorBoundary fallbackTitle="Erreur sur les paramètres de l'hôtel">
             <HotelSettingsTab initialSubSection={settingsSubSection} />
           </ErrorBoundary>
         )}
 
         {/* Tab 7 : Code PostgreSQL Anti-Surbooking */}
-        {activeTab === 'antioverbooking' && isDG && (
+        {activeTab === 'antioverbooking' && isTabAllowed('antioverbooking') && (
           <ErrorBoundary fallbackTitle="Erreur sur le module anti-surbooking">
             <AntiOverbookingCode />
           </ErrorBoundary>
         )}
 
         {/* Tab 8 : Testeur API Prix */}
-        {activeTab === 'pricing' && isDG && (
+        {activeTab === 'pricing' && isTabAllowed('pricing') && (
           <ErrorBoundary fallbackTitle="Erreur sur le simulateur de prix">
             <PricingFunctionPlayground />
           </ErrorBoundary>
         )}
 
         {/* Tab 9 : Diagramme ERD */}
-        {activeTab === 'erd' && isDG && (
+        {activeTab === 'erd' && isTabAllowed('erd') && (
           <ErrorBoundary fallbackTitle="Erreur sur le diagramme ERD">
             <ErdDiagram />
           </ErrorBoundary>
         )}
 
         {/* Filet de sécurité anti-page blanche : si l'onglet demandé est restreint pour le rôle connecté */}
-        {(
-          (activeTab === 'gantt' && isCaisseRestaurant) ||
-          (activeTab === 'calendar' && isCaisseRestaurant) ||
-          (activeTab === 'reservations' && isCaisseRestaurant) ||
-          (activeTab === 'stock' && isCaisse) ||
-          (activeTab === 'loyalty' && isCaisse) ||
-          (activeTab === 'chambres' && isCaisse) ||
-          (activeTab === 'restaurant' && isCaisse && restaurantSubTab !== 'commandes') ||
-          ((activeTab === 'finance' || activeTab === 'expenses' || activeTab === 'settings' || activeTab === 'antioverbooking' || activeTab === 'pricing' || activeTab === 'erd') && !isDG)
-        ) && (
+        {!isTabAllowed(activeTab) && (
           <div className="bg-white rounded-3xl border border-stone-200 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm space-y-4 my-8 animate-in fade-in">
             <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center mx-auto border border-amber-200">
               <ShieldCheck className="w-8 h-8 stroke-[2.2]" />
@@ -1442,7 +1531,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               Accès restreint à cet onglet
             </h3>
             <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto leading-relaxed">
-              Votre compte actuel avec le rôle <strong>{currentUserProfile.role}</strong> ne dispose pas des privilèges suffisants pour ouvrir le module <strong>{activeTab}</strong>.
+              Votre compte actuel avec le rôle <strong>{currentUserProfile.role}</strong> ({currentUserProfile.nom}) ne dispose pas des privilèges suffisants pour ouvrir le module <strong>{tabFeatureMap[activeTab] || activeTab}</strong>.
             </p>
             <div className="pt-2 flex items-center justify-center gap-3">
               <button

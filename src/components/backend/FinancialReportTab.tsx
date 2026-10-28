@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
 import { PaymentMethod } from '../../types.ts';
+import { MonthlyOccupancyAndRoomTypeRevenueChart } from './MonthlyOccupancyAndRoomTypeRevenueChart.tsx';
 import {
   PieChart,
   BarChart3,
@@ -15,7 +16,8 @@ import {
   Building,
   CheckCircle2,
   Sparkles,
-  ArrowUpRight
+  ArrowUpRight,
+  Bed
 } from 'lucide-react';
 
 export type ReportPeriod = 'jour' | 'semaine' | 'annee' | 'personnalise';
@@ -472,6 +474,9 @@ export const FinancialReportTab: React.FC<FinancialReportTabProps> = ({ onGoToRe
           </div>
         </div>
       </div>
+
+      {/* GRAPHIQUES DYNAMIQUES RECHARTS : TAUX D'OCCUPATION MENSUEL & RÉPARTITION PAR TYPE DE CHAMBRE */}
+      <MonthlyOccupancyAndRoomTypeRevenueChart />
 
       {/* TABLEAU DES ENCAISSEMENTS DÉTAILLÉS */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">

@@ -6,6 +6,7 @@ import { ForecastRevenueChart } from './ForecastRevenueChart.tsx';
 import { DailyExpensesChart } from './DailyExpensesChart.tsx';
 import { MobileMoneyVsExpensesChart } from './MobileMoneyVsExpensesChart.tsx';
 import { HotelKpisVisualization } from './HotelKpisVisualization.tsx';
+import { MonthlyOccupancyAndRoomTypeRevenueChart } from './MonthlyOccupancyAndRoomTypeRevenueChart.tsx';
 import {
   BarChart3,
   TrendingUp,
@@ -41,7 +42,7 @@ import {
 } from 'lucide-react';
 import { MultiWarehouseStockDashboardWidget } from './MultiWarehouseStockDashboardWidget.tsx';
 
-export type GranularityView = 'consolidated' | 'kpis' | 'daily' | 'monthly' | 'forecast' | 'expenses' | 'mobile_money_expenses' | 'multi_stock';
+export type GranularityView = 'consolidated' | 'kpis' | 'occupancy_room_revenue' | 'daily' | 'monthly' | 'forecast' | 'expenses' | 'mobile_money_expenses' | 'multi_stock';
 export type RevenueStreamFilter = 'all' | 'reservations' | 'sales';
 export type ChartDisplayStyle = 'stacked' | 'grouped';
 
@@ -1468,6 +1469,22 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
 
             <button
               type="button"
+              onClick={() => setGranularity('occupancy_room_revenue')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                granularity === 'occupancy_room_revenue'
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-extrabold shadow-md scale-[1.02] ring-1 ring-blue-400'
+                  : 'text-blue-300 hover:text-white hover:bg-stone-800/80'
+              }`}
+            >
+              <Bed className="w-3.5 h-3.5 text-blue-400" />
+              <span>🏨 Taux d'Occupation &amp; Recettes / Chambre</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] bg-blue-500/30 text-blue-200 font-mono font-bold">
+                Recharts
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setGranularity('forecast')}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 granularity === 'forecast'
@@ -1732,6 +1749,13 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
       {/* ========================================================================= */}
       {(granularity === 'consolidated' || granularity === 'kpis') && (
         <HotelKpisVisualization initialMonth={selectedMonth} initialYear={selectedYear} />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3a-bis. MODULE RECHARTS : TAUX D'OCCUPATION MENSUEL & RECETTES / CHAMBRE  */}
+      {/* ========================================================================= */}
+      {(granularity === 'consolidated' || granularity === 'occupancy_room_revenue') && (
+        <MonthlyOccupancyAndRoomTypeRevenueChart />
       )}
 
       {/* ========================================================================= */}
