@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { RolePermissionsMatrix } from './RolePermissionsMatrix.tsx';
 import { ConnectedEmployeesSection } from './ConnectedEmployeesSection.tsx';
+import { AclPermissionsDiagnosticTab } from './AclPermissionsDiagnosticTab.tsx';
 
 const QUICK_AVATARS = [
   { label: 'Directeur (H)', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' },
@@ -55,8 +56,8 @@ export const UserProfileTab: React.FC = () => {
     toggleUserStatus
   } = useHotelData();
 
-  // Active section inside User Tab: 'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile'
-  const [activeSection, setActiveSection] = useState<'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile'>('accounts');
+  // Active section inside User Tab: 'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile' | 'diagnostic_acl'
+  const [activeSection, setActiveSection] = useState<'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile' | 'diagnostic_acl'>('accounts');
   const [permissionsTargetUserId, setPermissionsTargetUserId] = useState<string | null>(null);
 
   // --- Local form state for Personal Profile ---
@@ -330,6 +331,22 @@ export const UserProfileTab: React.FC = () => {
 
         <button
           type="button"
+          onClick={() => setActiveSection('diagnostic_acl')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${
+            activeSection === 'diagnostic_acl'
+              ? 'bg-[#1C1B18] text-white shadow-sm ring-2 ring-emerald-500/50'
+              : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4 text-emerald-500" />
+          <span>Diagnostic ACL &amp; Resync Hébergement</span>
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+            Audit Live
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveSection('profile')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${
             activeSection === 'profile'
@@ -341,6 +358,18 @@ export const UserProfileTab: React.FC = () => {
           <span>Mon Profil Personnel &amp; Sécurité</span>
         </button>
       </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION E : DIAGNOSTIC ACL & RESYNCHRONISATION IMMÉDIATE HÉBERGEMENT      */}
+      {/* ========================================================================= */}
+      {activeSection === 'diagnostic_acl' && (
+        <AclPermissionsDiagnosticTab
+          onOpenRoleMatrix={(userId) => {
+            if (userId) setPermissionsTargetUserId(userId);
+            setActiveSection('permissions_matrix');
+          }}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* SECTION B : MATRICE DE CONFIGURATION DES RÔLES & PERMISSIONS (RBAC)      */}

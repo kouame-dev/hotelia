@@ -32,9 +32,16 @@ export const RoomManagementTab: React.FC = () => {
     chambres,
     addChambre,
     updateChambre,
-    deleteChambre
+    deleteChambre,
+    currentUserProfile,
+    hasPermission
   } = useHotelData();
   const { formatPrice } = useHotelSettings();
+
+  const isDG = currentUserProfile.role === 'Directeur Général';
+  const canAddRoom = isDG || hasPermission('chambres', 'add');
+  const canEditRoom = isDG || hasPermission('chambres', 'edit');
+  const canDeleteRoom = isDG || hasPermission('chambres', 'delete');
 
   const [activeSubTab, setActiveSubTab] = useState<'chambres' | 'types'>('chambres');
   const [filterType, setFilterType] = useState<string>('tous');
@@ -246,25 +253,27 @@ export const RoomManagementTab: React.FC = () => {
         </div>
 
         {/* Boutons d'action rapide */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleOpenNewTypeModal}
-            className="px-3.5 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold text-xs flex items-center gap-1.5 transition-all"
-          >
-            <Layers className="w-4 h-4 text-[#C5A880]" />
-            <span>Nouveau Type</span>
-          </button>
+        {canAddRoom && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleOpenNewTypeModal}
+              className="px-3.5 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-semibold text-xs flex items-center gap-1.5 transition-all"
+            >
+              <Layers className="w-4 h-4 text-[#C5A880]" />
+              <span>Nouveau Type</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleOpenNewRoomModal}
-            className="px-4 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Ajouter une Chambre</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={handleOpenNewRoomModal}
+              className="px-4 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Ajouter une Chambre</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Onglets secondaires : Liste des Chambres VS Types de Chambres */}
@@ -431,24 +440,30 @@ export const RoomManagementTab: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <div className="inline-flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleEditRoom(c)}
-                              className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
-                              title="Modifier la chambre"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRoom(c)}
-                              className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors"
-                              title="Supprimer la chambre"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          {(canEditRoom || canDeleteRoom) && (
+                            <div className="inline-flex items-center gap-1.5">
+                              {canEditRoom && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditRoom(c)}
+                                  className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
+                                  title="Modifier la chambre"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              {canDeleteRoom && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRoom(c)}
+                                  className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors"
+                                  title="Supprimer la chambre"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -529,24 +544,30 @@ export const RoomManagementTab: React.FC = () => {
                 </div>
 
                 {/* Boutons d'édition */}
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
-                  <button
-                    type="button"
-                    onClick={() => handleEditType(type)}
-                    className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>Modifier</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteType(type)}
-                    className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Supprimer</span>
-                  </button>
-                </div>
+                {(canEditRoom || canDeleteRoom) && (
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-stone-100">
+                    {canEditRoom && (
+                      <button
+                        type="button"
+                        onClick={() => handleEditType(type)}
+                        className="px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Modifier</span>
+                      </button>
+                    )}
+                    {canDeleteRoom && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteType(type)}
+                        className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Supprimer</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

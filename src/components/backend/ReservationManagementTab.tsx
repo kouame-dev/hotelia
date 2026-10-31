@@ -63,7 +63,8 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     pendingReservationsCount,
     completedReservationsCount,
     cancelledReservationsCount,
-    auditLogs
+    auditLogs,
+    hasPermission
   } = useHotelData();
 
   const { formatPrice, settings } = useHotelSettings();
@@ -71,6 +72,15 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
   // Sous-menu actif
   const [activeSubTab, setActiveSubTab] = useState<ReservationSubTab>(initialSubTab);
   const [auditReservationFilter, setAuditReservationFilter] = useState<string | undefined>(undefined);
+
+  // Redirection automatique si le sous-onglet actif n'est pas autorisé
+  React.useEffect(() => {
+    if (activeSubTab === 'ajouter' && !hasPermission('reservations', 'add')) {
+      setActiveSubTab('toutes');
+    } else if (activeSubTab === 'audit' && !hasPermission('audit', 'activate')) {
+      setActiveSubTab('toutes');
+    }
+  }, [activeSubTab, hasPermission]);
 
   // Colonnes pour l'export Excel & PDF
   const reservationExportColumns: ExportColumn<ReservationItem>[] = [
@@ -628,20 +638,22 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
           </div>
 
           {/* Bouton rapide d'ajout -> ORANGE CATERPILLAR */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('ajouter')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer ${
-                activeSubTab === 'ajouter'
-                  ? 'bg-[#FF9900] text-slate-950 border-2 border-[#D97706] ring-2 ring-amber-500/40'
-                  : 'bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold border border-[#D97706]'
-              }`}
-            >
-              <Plus className="w-4 h-4 text-slate-950" />
-              <span>Ajouter une réservation</span>
-            </button>
-          </div>
+          {hasPermission('reservations', 'add') && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveSubTab('ajouter')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer ${
+                  activeSubTab === 'ajouter'
+                    ? 'bg-[#FF9900] text-slate-950 border-2 border-[#D97706] ring-2 ring-amber-500/40'
+                    : 'bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold border border-[#D97706]'
+                }`}
+              >
+                <Plus className="w-4 h-4 text-slate-950" />
+                <span>Ajouter une réservation</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Barre de métriques rapides avec background-colors intenses (Orange Caterpillar, Bleu Nuit, Vert Émeraude, Violet Royal) */}
@@ -707,18 +719,20 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
       {/* 2. SOUS-MENUS DE NAVIGATION (Onglets avec background-colors distinctes) */}
       <div className="bg-[#141414] rounded-2xl border-2 border-stone-800 p-2.5 shadow-lg flex items-center gap-2 overflow-x-auto no-scrollbar">
         {/* Sous-menu 1 : Ajouter une réservation -> ORANGE CATERPILLAR */}
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('ajouter')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
-            activeSubTab === 'ajouter'
-              ? 'bg-[#FF9900] text-slate-950 border-2 border-[#D97706] shadow-md ring-2 ring-amber-500/40'
-              : 'bg-[#FF9900]/25 text-[#FF9900] border border-[#FF9900]/60 hover:bg-[#FF9900] hover:text-slate-950'
-          }`}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Ajouter une réservation</span>
-        </button>
+        {hasPermission('reservations', 'add') && (
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('ajouter')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
+              activeSubTab === 'ajouter'
+                ? 'bg-[#FF9900] text-slate-950 border-2 border-[#D97706] shadow-md ring-2 ring-amber-500/40'
+                : 'bg-[#FF9900]/25 text-[#FF9900] border border-[#FF9900]/60 hover:bg-[#FF9900] hover:text-slate-950'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Ajouter une réservation</span>
+          </button>
+        )}
 
         {/* Sous-menu 2 : En attente -> AMBRE / ORANGE VIF */}
         <button
@@ -806,27 +820,29 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
         </button>
 
         {/* Sous-menu 7 : Journal d'Audit -> AMBRE / OR */}
-        <button
-          type="button"
-          onClick={() => {
-            setAuditReservationFilter(undefined);
-            setActiveSubTab('audit');
-          }}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
-            activeSubTab === 'audit'
-              ? 'bg-amber-500 text-stone-950 border-2 border-amber-300 shadow-md ring-2 ring-amber-400/40 font-extrabold'
-              : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
-          }`}
-          title="Historique et journal d'audit de chaque modification, création et annulation"
-        >
-          <History className="w-4 h-4 text-amber-400" />
-          <span>Journal d'Audit</span>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold font-mono ${
-            activeSubTab === 'audit' ? 'bg-stone-950 text-amber-300' : 'bg-amber-500 text-stone-950'
-          }`}>
-            {auditLogs.length}
-          </span>
-        </button>
+        {hasPermission('audit', 'activate') && (
+          <button
+            type="button"
+            onClick={() => {
+              setAuditReservationFilter(undefined);
+              setActiveSubTab('audit');
+            }}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shadow-xs ${
+              activeSubTab === 'audit'
+                ? 'bg-amber-500 text-stone-950 border-2 border-amber-300 shadow-md ring-2 ring-amber-400/40 font-extrabold'
+                : 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
+            }`}
+            title="Historique et journal d'audit de chaque modification, création et annulation"
+          >
+            <History className="w-4 h-4 text-amber-400" />
+            <span>Journal d'Audit</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold font-mono ${
+              activeSubTab === 'audit' ? 'bg-stone-950 text-amber-300' : 'bg-amber-500 text-stone-950'
+            }`}>
+              {auditLogs.length}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* 3. CONTENU : SOUS-MENU "AJOUTER UNE RÉSERVATION" */}
@@ -1752,8 +1768,8 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Action 1 : Valider si en attente */}
-                          {res.statutReservation === 'en_attente' && (
+                          {/* Action 1 : Valider si en attente (Modifier) */}
+                          {res.statutReservation === 'en_attente' && hasPermission('reservations', 'edit') && (
                             <button
                               type="button"
                               onClick={() => updateReservationStatus(res.id, 'confirmee')}
@@ -1765,8 +1781,8 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                             </button>
                           )}
 
-                          {/* Action 2 : Marquer terminée si confirmée ou en cours */}
-                          {(res.statutReservation === 'confirmee' || res.statutReservation === 'en_cours') && (
+                          {/* Action 2 : Marquer terminée si confirmée ou en cours (Modifier) */}
+                          {(res.statutReservation === 'confirmee' || res.statutReservation === 'en_cours') && hasPermission('reservations', 'edit') && (
                             <button
                               type="button"
                               onClick={() => updateReservationStatus(res.id, 'terminee')}
@@ -1789,20 +1805,22 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                           </button>
 
                           {/* Action 3b : Historique & Journal d'Audit de cette réservation */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAuditReservationFilter(res.id);
-                              setActiveSubTab('audit');
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-amber-100 text-stone-600 hover:text-amber-900 transition-all cursor-pointer"
-                            title="Consulter l'historique d'audit & modifications de cette réservation"
-                          >
-                            <History className="w-4 h-4 text-amber-600" />
-                          </button>
+                          {hasPermission('audit', 'activate') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAuditReservationFilter(res.id);
+                                setActiveSubTab('audit');
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-amber-100 text-stone-600 hover:text-amber-900 transition-all cursor-pointer"
+                              title="Consulter l'historique d'audit & modifications de cette réservation"
+                            >
+                              <History className="w-4 h-4 text-amber-600" />
+                            </button>
+                          )}
 
-                          {/* Action 4 : Annuler (si non terminée et non annulée) */}
-                          {res.statutReservation !== 'annulee' && res.statutReservation !== 'terminee' && (
+                          {/* Action 4 : Annuler (si non terminée et non annulée - Droit de suppression/annulation) */}
+                          {res.statutReservation !== 'annulee' && res.statutReservation !== 'terminee' && hasPermission('reservations', 'delete') && (
                             <button
                               type="button"
                               onClick={() => {
@@ -1816,8 +1834,8 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                             </button>
                           )}
 
-                          {/* Action 5 : Réactiver si annulée */}
-                          {res.statutReservation === 'annulee' && (
+                          {/* Action 5 : Réactiver si annulée (Modifier) */}
+                          {res.statutReservation === 'annulee' && hasPermission('reservations', 'edit') && (
                             <button
                               type="button"
                               onClick={() => updateReservationStatus(res.id, 'en_attente')}
@@ -1829,19 +1847,21 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                             </button>
                           )}
 
-                          {/* Action 6 : Supprimer */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Supprimer définitivement la réservation de ${res.clientNom} ?`)) {
-                                deleteReservation(res.id);
-                              }
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-400 hover:text-rose-600 transition-all cursor-pointer"
-                            title="Supprimer la réservation"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Action 6 : Supprimer définitivement (Supprimer) */}
+                          {hasPermission('reservations', 'delete') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Supprimer définitivement la réservation de ${res.clientNom} ?`)) {
+                                  deleteReservation(res.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-400 hover:text-rose-600 transition-all cursor-pointer"
+                              title="Supprimer la réservation"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

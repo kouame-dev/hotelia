@@ -136,26 +136,79 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
     chambres,
     reservations,
     restaurantStockAlerts,
-    unreadStockAlertsCount
+    unreadStockAlertsCount,
+    hasPermission
   } = useHotelData();
 
   const { settings, formatPrice } = useHotelSettings();
 
-  // Role permissions
+  // Role permissions & granular RBAC checks
   const isCaisseRestaurant = currentUserProfile.role === 'Caisse Restaurant';
-  const isAdminRestaurant = currentUserProfile.role === 'Directeur Restaurant' || currentUserProfile.role === 'Directeur Général';
+  const isDG = currentUserProfile.role === 'Directeur Général';
+  const isAdminRestaurant = currentUserProfile.role === 'Directeur Restaurant' || isDG;
 
-  // Sub-tabs
-  const [activeSubTab, setActiveSubTab] = useState<RestSubTab>(initialSubTab);
+  // Actions granulaires (Ajout / Modification / Suppression)
+  const canAddDish = isDG || hasPermission('restaurant', 'add');
+  const canEditDish = isDG || hasPermission('restaurant', 'edit');
+  const canDeleteDish = isDG || hasPermission('restaurant', 'delete');
+  const canAddTable = isDG || hasPermission('restaurant', 'add');
+  const canAddReservation = isDG || hasPermission('restaurant', 'add');
+  const canEditReservation = isDG || hasPermission('restaurant', 'edit');
+  const canDeleteReservation = isDG || hasPermission('restaurant', 'delete');
+
+  // Filtrage intelligent des sous-onglets Restaurant selon les permissions accordées
+  const isRestSubTabAllowed = (tab: RestSubTab): boolean => {
+    if (isDG) return true;
+    switch (tab) {
+      case 'pos':
+        return hasPermission('pos', 'activate');
+      case 'tables':
+        return hasPermission('restaurant', 'activate');
+      case 'reservations':
+        return hasPermission('restaurant', 'activate');
+      case 'menu':
+        return hasPermission('restaurant', 'activate');
+      case 'commandes':
+        return hasPermission('cuisine', 'activate') || hasPermission('restaurant', 'activate');
+      case 'caisse':
+        return hasPermission('pos', 'activate') || hasPermission('finance', 'activate');
+      default:
+        return true;
+    }
+  };
+
+  const availableSubTabs = useMemo(() => {
+    const allTabs: RestSubTab[] = ['pos', 'tables', 'commandes', 'reservations', 'menu', 'caisse'];
+    return allTabs.filter(tab => isRestSubTabAllowed(tab));
+  }, [currentUserProfile.role, hasPermission]);
+
+  // Sub-tabs state
+  const [activeSubTab, setActiveSubTab] = useState<RestSubTab>(() => {
+    if (initialSubTab && isRestSubTabAllowed(initialSubTab)) {
+      return initialSubTab;
+    }
+    return availableSubTabs[0] || 'pos';
+  });
 
   // Synchroniser avec initialSubTab passé par le parent (AdminBackOffice)
   React.useEffect(() => {
-    if (initialSubTab) {
+    if (initialSubTab && isRestSubTabAllowed(initialSubTab)) {
       setActiveSubTab(initialSubTab);
     }
   }, [initialSubTab]);
 
+  // Bascule automatique si le sous-onglet en cours n'est plus permis pour l'utilisateur
+  React.useEffect(() => {
+    if (availableSubTabs.length > 0 && !isRestSubTabAllowed(activeSubTab)) {
+      setActiveSubTab(availableSubTabs[0]);
+      if (onSubTabChange) {
+        onSubTabChange(availableSubTabs[0]);
+      }
+    }
+  }, [activeSubTab, availableSubTabs]);
+
   const handleSubTabChange = (tab: RestSubTab) => {
+    if (!isRestSubTabAllowed(tab)) return;
     setActiveSubTab(tab);
     if (onSubTabChange) {
       onSubTabChange(tab);
@@ -791,97 +844,111 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
           </div>
         </div>
 
-        {/* Sub-navigation bar */}
+        {/* Sub-navigation bar - Aéré et filtré selon les permissions accordées */}
         <div className="mt-5 pt-4 border-t border-stone-800/80 flex items-center justify-between overflow-x-auto gap-2 no-scrollbar">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              type="button"
-              onClick={() => handleSubTabChange('pos')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeSubTab === 'pos'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <Utensils className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Point de Vente (POS)</span>
-            </button>
+            {isRestSubTabAllowed('pos') && (
+              <button
+                type="button"
+                onClick={() => handleSubTabChange('pos')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'pos'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
+                }`}
+              >
+                <Utensils className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Point de Vente (POS)</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => handleSubTabChange('tables')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeSubTab === 'tables'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <Building className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Plan de Salle ({restaurantTables.length})</span>
-            </button>
+            {isRestSubTabAllowed('tables') && (
+              <button
+                type="button"
+                onClick={() => handleSubTabChange('tables')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'tables'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
+                }`}
+              >
+                <Building className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Plan de Salle ({restaurantTables.length})</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => handleSubTabChange('reservations')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeSubTab === 'reservations'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Réservations de Tables</span>
-              {stats.reservationsAttenteCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white animate-pulse">
-                  {stats.reservationsAttenteCount}
-                </span>
-              )}
-            </button>
+            {isRestSubTabAllowed('reservations') && (
+              <button
+                type="button"
+                onClick={() => handleSubTabChange('reservations')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'reservations'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Réservations de Tables</span>
+                {stats.reservationsAttenteCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white animate-pulse">
+                    {stats.reservationsAttenteCount}
+                  </span>
+                )}
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => handleSubTabChange('menu')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeSubTab === 'menu'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Carte &amp; Menu</span>
-            </button>
+            {isRestSubTabAllowed('menu') && (
+              <button
+                type="button"
+                onClick={() => handleSubTabChange('menu')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'menu'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Carte &amp; Menu</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => handleSubTabChange('commandes')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeSubTab === 'commandes'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Cuisine &amp; Suivi ({stats.activeOrdersCount})</span>
-            </button>
+            {isRestSubTabAllowed('commandes') && (
+              <button
+                type="button"
+                onClick={() => handleSubTabChange('commandes')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'commandes'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Cuisine &amp; Suivi ({stats.activeOrdersCount})</span>
+              </button>
+            )}
 
-            <button
-              type="button"
-              onClick={() => handleSubTabChange('caisse')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeSubTab === 'caisse'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
-              }`}
-            >
-              <CreditCard className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Journal Caisse &amp; Recettes</span>
-            </button>
+            {isRestSubTabAllowed('caisse') && (
+              <button
+                type="button"
+                onClick={() => handleSubTabChange('caisse')}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeSubTab === 'caisse'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-stone-800/70 text-stone-300 hover:bg-stone-800 hover:text-white'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Journal Caisse &amp; Recettes</span>
+              </button>
+            )}
+          </div>
 
-            {onGoToFactureGlobale && (
+          <div className="flex items-center gap-2">
+            {onGoToFactureGlobale && (isDG || hasPermission('facture_globale', 'activate')) && (
               <button
                 type="button"
                 onClick={onGoToFactureGlobale}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-stone-950 ml-auto shadow-sm"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500 hover:text-stone-950 shadow-sm"
                 title="Accéder directement à la Facture Globale Consolidée et à la Certification FNE DGI"
               >
                 <Receipt className="w-3.5 h-3.5 text-amber-400" />
@@ -889,7 +956,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
               </button>
             )}
 
-            {onGoToStockAlerts && (
+            {onGoToStockAlerts && (isDG || hasPermission('stock_alerts', 'activate') || hasPermission('stock', 'activate')) && (
               <button
                 type="button"
                 onClick={onGoToStockAlerts}
@@ -1403,7 +1470,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                 </button>
               </div>
 
-              {isAdminRestaurant && (
+              {canAddTable && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1862,14 +1929,16 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsNewReservationModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nouvelle Réservation Table</span>
-            </button>
+            {canAddReservation && (
+              <button
+                type="button"
+                onClick={() => setIsNewReservationModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nouvelle Réservation Table</span>
+              </button>
+            )}
           </div>
 
           {/* Tableau des Réservations */}
@@ -1988,7 +2057,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                         </td>
 
                         <td className="p-3.5 text-right space-x-1">
-                          {res.statut === 'en_attente' && (
+                          {canEditReservation && res.statut === 'en_attente' && (
                             <button
                               type="button"
                               onClick={() => updateRestaurantReservationStatus(res.id, 'confirmee')}
@@ -1997,7 +2066,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                               Confirmer
                             </button>
                           )}
-                          {res.statut === 'confirmee' && (
+                          {canEditReservation && res.statut === 'confirmee' && (
                             <button
                               type="button"
                               onClick={() => {
@@ -2009,7 +2078,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                               Installer Table
                             </button>
                           )}
-                          {res.statut === 'installee' && (
+                          {canEditReservation && res.statut === 'installee' && (
                             <button
                               type="button"
                               onClick={() => updateRestaurantReservationStatus(res.id, 'terminee')}
@@ -2018,14 +2087,16 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                               Terminer
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => deleteRestaurantReservation(res.id)}
-                            className="p-1 rounded text-rose-500 hover:bg-rose-50 cursor-pointer"
-                            title="Supprimer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {canDeleteReservation && (
+                            <button
+                              type="button"
+                              onClick={() => deleteRestaurantReservation(res.id)}
+                              className="p-1 rounded text-rose-500 hover:bg-rose-50 cursor-pointer"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -2054,7 +2125,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
             </div>
 
             <div className="flex items-center gap-2">
-              {isAdminRestaurant && (
+              {canAddDish && (
                 <button
                   type="button"
                   onClick={handleOpenCreateMenuModal}
@@ -2298,41 +2369,57 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                             {item.tempsPreparationMin ? `~${item.tempsPreparationMin} min` : '-'}
                           </td>
                           <td className="p-3.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateRestaurantMenuItem(item.id, { disponible: !item.disponible })
-                              }
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${
-                                item.disponible
-                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                  : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
-                              }`}
-                            >
-                              {item.disponible ? 'Disponible' : 'Épuisé'}
-                            </button>
+                            {canEditDish ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateRestaurantMenuItem(item.id, { disponible: !item.disponible })
+                                }
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors ${
+                                  item.disponible
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                    : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                                }`}
+                              >
+                                {item.disponible ? 'Disponible' : 'Épuisé'}
+                              </button>
+                            ) : (
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  item.disponible
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {item.disponible ? 'Disponible' : 'Épuisé'}
+                              </span>
+                            )}
                           </td>
                           <td className="p-3.5 text-right space-x-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditMenuModal(item)}
-                              className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer"
-                              title="Modifier"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (window.confirm(`Supprimer définitivement "${item.nom}" ?`)) {
-                                  deleteRestaurantMenuItem(item.id);
-                                }
-                              }}
-                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
-                              title="Supprimer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {canEditDish && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditMenuModal(item)}
+                                className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 cursor-pointer"
+                                title="Modifier"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {canDeleteDish && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`Supprimer définitivement "${item.nom}" ?`)) {
+                                    deleteRestaurantMenuItem(item.id);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -2476,46 +2563,54 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                         ) : null}
                       </div>
 
-                      {/* Boutons d'actions Admin */}
-                      {isAdminRestaurant && (
+                      {/* Boutons d'actions */}
+                      {(canEditDish || canDeleteDish) && (
                         <div className="flex items-center justify-between pt-2 border-t border-stone-200 text-xs gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateRestaurantMenuItem(item.id, { disponible: !item.disponible })
-                            }
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
-                              item.disponible
-                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                                : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
-                            }`}
-                          >
-                            {item.disponible ? 'Passer en Rupture' : 'Rétablir Dispo'}
-                          </button>
+                          {canEditDish ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateRestaurantMenuItem(item.id, { disponible: !item.disponible })
+                              }
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
+                                item.disponible
+                                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                              }`}
+                            >
+                              {item.disponible ? 'Passer en Rupture' : 'Rétablir Dispo'}
+                            </button>
+                          ) : (
+                            <span />
+                          )}
 
                           <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditMenuModal(item)}
-                              className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
-                              title="Modifier la recette, prix ou photo"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-stone-500" />
-                              <span>Modifier</span>
-                            </button>
+                            {canEditDish && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditMenuModal(item)}
+                                className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Modifier la recette, prix ou photo"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-stone-500" />
+                                <span>Modifier</span>
+                              </button>
+                            )}
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (window.confirm(`Supprimer définitivement "${item.nom}" de la carte ?`)) {
-                                  deleteRestaurantMenuItem(item.id);
-                                }
-                              }}
-                              className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                              title="Supprimer la recette"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {canDeleteDish && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`Supprimer définitivement "${item.nom}" de la carte ?`)) {
+                                    deleteRestaurantMenuItem(item.id);
+                                  }
+                                }}
+                                className="p-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                                title="Supprimer la recette"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}

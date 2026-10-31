@@ -55,7 +55,8 @@ import {
   TransfertStockRecord,
   MaintenanceTicket,
   VersementCaisse,
-  ShiftType
+  ShiftType,
+  AclDiagnosticItem
 } from '../types.ts';
 import {
   generateConfirmationEmail,
@@ -186,6 +187,15 @@ interface HotelDataContextType {
   canUserPerform: (userId: string, featureId: AppFeatureId, action?: 'activate' | 'add' | 'edit' | 'delete', subFeatureId?: string) => boolean;
   addCustomRole: (newRole: AppRoleDefinition) => void;
   deleteCustomRole: (roleId: string) => void;
+
+  // 3b-bis. Diagnostic & Resynchronisation Forcée des Permissions ACL Hébergement (Gantt, Calendrier)
+  resyncHebergementPermissions: (targetRoles?: UserRole[]) => {
+    success: boolean;
+    message: string;
+    affectedUsers: string[];
+    details: string[];
+  };
+  getAclDiagnosticReport: () => AclDiagnosticItem[];
 
   // 3c. Suivi Simplifié des Employés Connectés & Réinitialisation des Accès en 1 Clic
   activeSessions: ActiveUserSession[];
@@ -539,17 +549,29 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const saved = safeGetItem('hotelia_user_profiles');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure default caisse and restaurant users exist if missing in saved cache
-        if (!parsed.caisse) {
-          parsed.caisse = INITIAL_USER_PROFILES.caisse;
+        if (Array.isArray(parsed)) {
+          // Normalisation si stocké sous forme de tableau
+          const map: Record<string, UserProfile> = { ...INITIAL_USER_PROFILES };
+          parsed.forEach((u: UserProfile) => {
+            if (u.id === 'usr-1' || (u.role && u.role.includes('Directeur Général'))) map['directeur'] = u;
+            else if (u.id === 'usr-2' || (u.role && u.role.includes('Chef de Réception'))) map['reception'] = u;
+            else if (u.id === 'usr-3' || (u.role && u.role === 'Caisse')) map['caisse'] = u;
+            else if (u.id === 'usr-restaurant-admin' || (u.role && u.role.includes('Directeur Restaurant'))) map['admin_restaurant'] = u;
+            else if (u.id === 'usr-restaurant-caisse' || (u.role && u.role.includes('Caisse Restaurant'))) map['caisse_restaurant'] = u;
+            else {
+              const k = u.username ? u.username.toLowerCase().replace(/[^a-z0-9]/g, '_') : u.id;
+              map[k] = u;
+            }
+          });
+          return map;
+        } else if (typeof parsed === 'object' && parsed !== null) {
+          if (!parsed.directeur) parsed.directeur = INITIAL_USER_PROFILES.directeur;
+          if (!parsed.reception) parsed.reception = INITIAL_USER_PROFILES.reception;
+          if (!parsed.caisse) parsed.caisse = INITIAL_USER_PROFILES.caisse;
+          if (!parsed.admin_restaurant) parsed.admin_restaurant = INITIAL_USER_PROFILES.admin_restaurant;
+          if (!parsed.caisse_restaurant) parsed.caisse_restaurant = INITIAL_USER_PROFILES.caisse_restaurant;
+          return parsed;
         }
-        if (!parsed.admin_restaurant) {
-          parsed.admin_restaurant = INITIAL_USER_PROFILES.admin_restaurant;
-        }
-        if (!parsed.caisse_restaurant) {
-          parsed.caisse_restaurant = INITIAL_USER_PROFILES.caisse_restaurant;
-        }
-        return parsed;
       }
       return INITIAL_USER_PROFILES;
     } catch {
@@ -560,7 +582,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [activeProfileKey, setActiveProfileKey] = useState<string>(() => {
     try {
       const savedKey = safeGetItem('hotelia_active_user_key');
-      return savedKey || 'directeur';
+      if (savedKey) return savedKey;
+      return 'directeur';
     } catch {
       return 'directeur';
     }
@@ -574,7 +597,20 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     safeSetItem('hotelia_active_user_key', activeProfileKey);
   }, [activeProfileKey]);
 
-  const currentUserProfile = userProfiles[activeProfileKey] || userProfiles.directeur;
+  const currentUserProfile = useMemo(() => {
+    if (userProfiles[activeProfileKey]) {
+      return userProfiles[activeProfileKey];
+    }
+    const profiles = Object.values(userProfiles);
+    const byId = profiles.find((u) => u.id === activeProfileKey);
+    if (byId) return byId;
+    const byUsername = profiles.find((u) => u.username === activeProfileKey);
+    if (byUsername) return byUsername;
+    const byRole = profiles.find((u) => (u.role || '').toLowerCase() === activeProfileKey.toLowerCase());
+    if (byRole) return byRole;
+    return userProfiles.directeur || profiles[0] || INITIAL_USER_PROFILES.directeur;
+  }, [userProfiles, activeProfileKey]);
+
   const usersList = Object.values(userProfiles);
 
   const updateCurrentUserProfile = (updated: Partial<UserProfile>) => {
@@ -678,33 +714,50 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const switchUserRole = (keyOrRole: string) => {
-    // Check if it matches a direct profile key
+    // 1. Clé de profil directe
     if (userProfiles[keyOrRole]) {
       setActiveProfileKey(keyOrRole);
+      const u = userProfiles[keyOrRole];
+      safeSetItem('hotelia_backend_current_user', JSON.stringify({ nom: u.nom, role: u.role, email: u.email }));
+      safeSetItem('hotelia_active_user_key', keyOrRole);
       return;
     }
     const profilesList = Object.entries(userProfiles) as [string, UserProfile][];
-    // Check if it matches an id
+    // 2. Par ID
     const foundById = profilesList.find(([, u]) => u.id === keyOrRole);
     if (foundById) {
       setActiveProfileKey(foundById[0]);
+      safeSetItem('hotelia_backend_current_user', JSON.stringify({ nom: foundById[1].nom, role: foundById[1].role, email: foundById[1].email }));
+      safeSetItem('hotelia_active_user_key', foundById[0]);
       return;
     }
-    // Check by role name
-    if (keyOrRole === 'Directeur Général') {
+    // 3. Par nom d'utilisateur (username)
+    const foundByUsername = profilesList.find(([, u]) => u.username === keyOrRole);
+    if (foundByUsername) {
+      setActiveProfileKey(foundByUsername[0]);
+      safeSetItem('hotelia_backend_current_user', JSON.stringify({ nom: foundByUsername[1].nom, role: foundByUsername[1].role, email: foundByUsername[1].email }));
+      safeSetItem('hotelia_active_user_key', foundByUsername[0]);
+      return;
+    }
+    // 4. Par rôle
+    const normalized = keyOrRole.toLowerCase();
+    const foundByRole = profilesList.find(([, u]) => (u.role || '').toLowerCase() === normalized);
+    if (foundByRole) {
+      setActiveProfileKey(foundByRole[0]);
+      safeSetItem('hotelia_backend_current_user', JSON.stringify({ nom: foundByRole[1].nom, role: foundByRole[1].role, email: foundByRole[1].email }));
+      safeSetItem('hotelia_active_user_key', foundByRole[0]);
+      return;
+    }
+    if (normalized.includes('caisse restaurant')) {
+      setActiveProfileKey('caisse_restaurant');
+    } else if (normalized.includes('directeur restaurant') || normalized.includes('admin restaurant')) {
+      setActiveProfileKey('admin_restaurant');
+    } else if (normalized.includes('caisse')) {
+      setActiveProfileKey('caisse');
+    } else if (normalized.includes('réception') || normalized.includes('reception')) {
+      setActiveProfileKey('reception');
+    } else {
       setActiveProfileKey('directeur');
-    } else if (keyOrRole === 'Chef de Réception') {
-      const rec = profilesList.find(([, u]) => u.role === 'Chef de Réception');
-      setActiveProfileKey(rec ? rec[0] : 'reception');
-    } else if (keyOrRole === 'Caisse' || keyOrRole === 'Caissier') {
-      const caisseUser = profilesList.find(([, u]) => u.role === 'Caisse');
-      setActiveProfileKey(caisseUser ? caisseUser[0] : 'caisse');
-    } else if (keyOrRole === 'Directeur Restaurant' || keyOrRole === 'Admin Restaurant') {
-      const restAdmin = profilesList.find(([, u]) => u.role === 'Directeur Restaurant');
-      setActiveProfileKey(restAdmin ? restAdmin[0] : 'admin_restaurant');
-    } else if (keyOrRole === 'Caisse Restaurant') {
-      const restCaisse = profilesList.find(([, u]) => u.role === 'Caisse Restaurant');
-      setActiveProfileKey(restCaisse ? restCaisse[0] : 'caisse_restaurant');
     }
   };
 
@@ -907,21 +960,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (action === 'delete') return !!cfg.canDelete && !!cfg.canActivate;
     }
 
-    // 2. Directeur Général et Admin ont accès souverain par défaut
+    // 2. Matrice de permissions selon le rôle configuré (recherche tolérante dans rolesList dynamique)
     const userRoleStr = (user.role || '').toLowerCase();
-    const isDGUser =
-      userRoleStr.includes('directeur général') ||
-      userRoleStr.includes('directeur general') ||
-      userRoleStr.includes('super admin') ||
-      userRoleStr.includes('administrateur') ||
-      userRoleStr === 'admin' ||
-      userRoleStr === 'dg';
-
-    if (isDGUser) {
-      return true;
-    }
-
-    // 3. Matrice de permissions selon le rôle configuré (recherche tolérante)
     const roleDef = rolesList.find(
       (r) =>
         r.roleName.toLowerCase() === userRoleStr ||
@@ -930,7 +970,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         (userRoleStr.includes('directeur restaurant') && r.roleName === 'Directeur Restaurant') ||
         (userRoleStr.includes('caisse') && r.roleName === 'Caisse') ||
         (userRoleStr.includes('réception') && r.roleName === 'Chef de Réception') ||
-        (userRoleStr.includes('reception') && r.roleName === 'Chef de Réception')
+        (userRoleStr.includes('reception') && r.roleName === 'Chef de Réception') ||
+        (userRoleStr.includes('directeur général') && r.roleName === 'Directeur Général')
     );
 
     if (roleDef && roleDef.permissions && roleDef.permissions[featureId]) {
@@ -948,7 +989,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (action === 'delete') return !!perm.canDelete && !!perm.canActivate;
     }
 
-    // 4. Fallback si rôle présent dans DEFAULT_ROLE_PERMISSIONS
+    // 3. Fallback si rôle présent dans DEFAULT_ROLE_PERMISSIONS
     const defaultPerms = DEFAULT_ROLE_PERMISSIONS[user.role as UserRole];
     if (defaultPerms && defaultPerms[featureId]) {
       const defPerm = defaultPerms[featureId];
@@ -965,13 +1006,20 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (action === 'delete') return !!defPerm.canDelete && !!defPerm.canActivate;
     }
 
-    // 5. Fallback de compatibilité sur le tableau permissions[]
-    if (user.permissions && Array.isArray(user.permissions)) {
-      if (user.permissions.includes('all')) return true;
-      if (action === 'activate' && user.permissions.includes(featureId as string)) return true;
+    // 4. Protection Super Admin : Le Directeur Général a toujours accès à la gestion des profils & permissions
+    const isDGUser =
+      userRoleStr.includes('directeur général') ||
+      userRoleStr.includes('directeur general') ||
+      userRoleStr.includes('super admin') ||
+      userRoleStr.includes('administrateur') ||
+      userRoleStr === 'admin' ||
+      userRoleStr === 'dg';
+
+    if (isDGUser && (featureId === 'profile' || featureId === 'settings')) {
+      return true;
     }
 
-    // 6. Fallback par défaut
+    // 5. Fallback par défaut
     return false;
   };
 
@@ -981,6 +1029,180 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     subFeatureId?: string
   ): boolean => {
     return canUserPerform(currentUserProfile.id, featureId, action, subFeatureId);
+  };
+
+  // --- C2-bis. Module de Diagnostic ACL & Resynchronisation Immédiate du Pôle Hébergement ---
+  const getAclDiagnosticReport = (): AclDiagnosticItem[] => {
+    return usersList.map((u) => {
+      const isCurrentSession = currentUserProfile.id === u.id;
+      const isGanttModuleAllowed = canUserPerform(u.id, 'gantt', 'activate');
+      const isGantt24hAllowed = canUserPerform(u.id, 'gantt', 'activate', 'gantt_24h');
+      const isGanttCalendarAllowed = canUserPerform(u.id, 'gantt', 'activate', 'gantt_calendar');
+      const isReservationsAllowed = canUserPerform(u.id, 'reservations', 'activate');
+      const isChambresAllowed = canUserPerform(u.id, 'chambres', 'activate');
+      const isServicesAllowed = canUserPerform(u.id, 'services', 'activate');
+      const isMaintenanceAllowed = canUserPerform(u.id, 'chambres', 'activate', 'chambres_blocages') || isChambresAllowed;
+
+      const isPole1Allowed =
+        (isGanttModuleAllowed && (isGantt24hAllowed || isGanttCalendarAllowed)) ||
+        isReservationsAllowed ||
+        isChambresAllowed ||
+        isServicesAllowed ||
+        isMaintenanceAllowed ||
+        canUserPerform(u.id, 'audit', 'activate');
+
+      const isPole2Allowed =
+        canUserPerform(u.id, 'pos', 'activate') ||
+        canUserPerform(u.id, 'restaurant', 'activate') ||
+        canUserPerform(u.id, 'cuisine', 'activate') ||
+        canUserPerform(u.id, 'stock', 'activate') ||
+        canUserPerform(u.id, 'stock_alerts', 'activate');
+
+      const isPole3Allowed =
+        canUserPerform(u.id, 'dashboard', 'activate') ||
+        canUserPerform(u.id, 'facture_globale', 'activate') ||
+        canUserPerform(u.id, 'finance', 'activate') ||
+        canUserPerform(u.id, 'expenses', 'activate') ||
+        canUserPerform(u.id, 'loyalty', 'activate') ||
+        canUserPerform(u.id, 'profile', 'activate') ||
+        canUserPerform(u.id, 'settings', 'activate');
+
+      const hasCustomOverride = !!(u.customFeaturePermissions && Object.keys(u.customFeaturePermissions).length > 0);
+      const customGantt = u.customFeaturePermissions?.gantt;
+
+      let ganttDiagnosticState: AclDiagnosticItem['ganttDiagnosticState'] = 'ok';
+      if (customGantt && customGantt.canActivate === false) {
+        ganttDiagnosticState = 'custom_override_blocked';
+      } else if (!isGanttModuleAllowed) {
+        ganttDiagnosticState = 'gantt_disabled';
+      } else if (!isGantt24hAllowed || !isGanttCalendarAllowed) {
+        ganttDiagnosticState = 'subfeature_disabled';
+      }
+
+      return {
+        userId: u.id,
+        userName: u.nom,
+        userRole: u.role,
+        userStatus: u.status || 'actif',
+        isCurrentSession,
+        isPole1Allowed,
+        isGanttModuleAllowed,
+        isGantt24hAllowed,
+        isGanttCalendarAllowed,
+        isReservationsAllowed,
+        isChambresAllowed,
+        isServicesAllowed,
+        isMaintenanceAllowed,
+        isPole2Allowed,
+        isPole3Allowed,
+        ganttDiagnosticState,
+        customOverridesCount: u.customFeaturePermissions ? Object.keys(u.customFeaturePermissions).length : 0,
+        sourceOrigin: hasCustomOverride ? 'surcharge_utilisateur' : 'matrice_role'
+      };
+    });
+  };
+
+  const resyncHebergementPermissions = (
+    targetRoles: UserRole[] = ['Chef de Réception', 'Caisse', 'Directeur Général']
+  ): { success: boolean; message: string; affectedUsers: string[]; details: string[] } => {
+    const details: string[] = [];
+    const affectedUsers: string[] = [];
+
+    // 1. Resynchroniser rolesList
+    setRolesList((prevRoles) => {
+      return prevRoles.map((role) => {
+        if (!targetRoles.includes(role.roleName)) return role;
+
+        const currentFeats = { ...role.permissions };
+
+        // Forcer l'activation de gantt avec ses sous-fonctionnalités
+        currentFeats.gantt = {
+          canActivate: true,
+          canAdd: true,
+          canEdit: true,
+          canDelete: role.roleName === 'Directeur Général',
+          subFeatures: {
+            gantt_24h: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+            gantt_calendar: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+            gantt_anti_overbooking: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+            gantt_housekeeping: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+          }
+        };
+
+        // Forcer l'activation de reservations
+        currentFeats.reservations = {
+          canActivate: true,
+          canAdd: true,
+          canEdit: true,
+          canDelete: role.roleName === 'Directeur Général',
+          subFeatures: {
+            res_nuitees: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+            res_dayuse: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+            res_acomptes: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+            res_statuts: { canActivate: true, canAdd: role.roleName !== 'Caisse', canEdit: true, canDelete: false }
+          }
+        };
+
+        details.push(`Rôle "${role.label || role.roleName}" : Planning Gantt 24h & Calendrier réactivés.`);
+        return {
+          ...role,
+          permissions: currentFeats
+        };
+      });
+    });
+
+    // 2. Nettoyer les surcharges individuelles bloquantes sur gantt / reservations
+    setUserProfiles((prevUsers) => {
+      const nextUsers = { ...prevUsers };
+      for (const key of Object.keys(nextUsers)) {
+        const u = nextUsers[key];
+        if (u && targetRoles.includes(u.role as UserRole)) {
+          affectedUsers.push(u.nom);
+          if (u.customFeaturePermissions) {
+            const nextCustom = { ...u.customFeaturePermissions };
+            if (nextCustom.gantt) {
+              nextCustom.gantt = {
+                canActivate: true,
+                canAdd: true,
+                canEdit: true,
+                canDelete: false,
+                subFeatures: {
+                  gantt_24h: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+                  gantt_calendar: { canActivate: true, canAdd: true, canEdit: true, canDelete: false },
+                  gantt_anti_overbooking: { canActivate: true, canAdd: false, canEdit: false, canDelete: false },
+                  gantt_housekeeping: { canActivate: true, canAdd: true, canEdit: true, canDelete: false }
+                }
+              };
+            }
+            if (nextCustom.reservations) {
+              nextCustom.reservations = {
+                ...nextCustom.reservations,
+                canActivate: true
+              };
+            }
+            nextUsers[key] = {
+              ...u,
+              customFeaturePermissions: nextCustom
+            };
+          }
+        }
+      }
+      return nextUsers;
+    });
+
+    // 3. Forcer enregistrement immédiat en localStorage & notification
+    setTimeout(() => {
+      try {
+        window.dispatchEvent(new Event('storage'));
+      } catch {}
+    }, 50);
+
+    return {
+      success: true,
+      message: `Resynchronisation immédiate effectuée ! Le Pôle Hébergement, le Gantt et le Calendrier ont été rétablis et propagés pour ${affectedUsers.length} collaborateur(s).`,
+      affectedUsers,
+      details
+    };
   };
 
   // --- C3. Suivi Simplifié des Employés Connectés & Réinitialisation des Accès en 1 Clic ---
@@ -5104,6 +5326,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         canUserPerform,
         addCustomRole,
         deleteCustomRole,
+        getAclDiagnosticReport,
+        resyncHebergementPermissions,
         // 3c. Suivi Simplifié des Employés Connectés & Réinitialisation des Accès en 1 Clic
         activeSessions,
         connectedEmployeesCount,

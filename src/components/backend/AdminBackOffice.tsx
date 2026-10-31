@@ -46,9 +46,11 @@ import {
   CalendarDays,
   Bed,
   ShieldCheck,
+  ShieldAlert,
   Calculator,
   LogOut,
   Sparkles,
+  Crown,
   User,
   Clock,
   ExternalLink,
@@ -447,10 +449,17 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     }
   }, [activeTab, restaurantSubTab]);
 
-  // Synchroniser le profil de contexte avec l'utilisateur authentifié au montage
+  // Synchroniser le profil de contexte avec l'utilisateur authentifié au montage et aux changements de session
   useEffect(() => {
     logChromeDiagnostic('AdminBackOffice RoleSync', `Profil actif vérifié: "${currentUserProfile?.role || user?.role}"`);
-  }, [currentUserProfile?.role]);
+    if (currentUserProfile && onUserChange && (user?.role !== currentUserProfile.role || user?.nom !== currentUserProfile.nom)) {
+      onUserChange({
+        nom: currentUserProfile.nom,
+        role: currentUserProfile.role,
+        email: currentUserProfile.email
+      });
+    }
+  }, [currentUserProfile?.id, currentUserProfile?.role, currentUserProfile?.nom]);
 
   // Détermination ultra-robuste et infaillible du rôle utilisateur actif
   const userRoleStr = (currentUserProfile?.role || user?.role || '').trim();
@@ -526,23 +535,106 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
   // Fonction centrale de vérification des permissions pour un onglet
   const isTabAllowed = (tab: BackOfficeTab): boolean => {
-    // 1. Le Directeur Général / Super Admin a un droit souverain sur tous les modules
-    if (isDG) return true;
+    // 1. Le profil & les paramètres généraux restent toujours accessibles au Directeur Général
+    if (isDG && (tab === 'profile' || tab === 'settings')) return true;
 
-    // 2. Le profil personnel et le journal d'audit restent consultables
-    if (tab === 'profile' || tab === 'audit') return true;
-
-    // 3. Versements de caisse : autorisé si permission 'finance' ou profil de caisse/réception
-    if (tab === 'versements') {
-      return hasPermission('finance', 'activate') || isCaisse || isCaisseRestaurant || isChefReception;
+    // 2. Planning Gantt : vérification du module gantt ET de la sous-fonctionnalité gantt_24h
+    if (tab === 'gantt') {
+      return hasPermission('gantt', 'activate') && hasPermission('gantt', 'activate', 'gantt_24h');
     }
 
-    // 4. Vérification dynamique via hasPermission
+    // 3. Calendrier Mensuel d'Occupation : vérification du module gantt ET de la sous-fonctionnalité gantt_calendar
+    if (tab === 'calendar') {
+      return hasPermission('gantt', 'activate') && hasPermission('gantt', 'activate', 'gantt_calendar');
+    }
+
+    // 4. Anti-surbooking
+    if (tab === 'antioverbooking') {
+      return hasPermission('gantt', 'activate') && hasPermission('gantt', 'activate', 'gantt_anti_overbooking');
+    }
+
+    // 5. Versements de caisse : vérification stricte via permission 'finance' (module ou sous-fonctionnalité)
+    if (tab === 'versements') {
+      return hasPermission('finance', 'activate', 'fin_versements_shifts') || hasPermission('finance', 'activate');
+    }
+
+    // 6. Maintenance & blocage de chambres : vérification de la sous-fonctionnalité ou du module
+    if (tab === 'maintenance') {
+      return hasPermission('chambres', 'activate', 'chambres_blocages') || hasPermission('chambres', 'activate');
+    }
+
+    // 7. Vérification dynamique via hasPermission
     const featId = tabFeatureMap[tab];
-    if (!featId) return true;
+    if (!featId) return false;
 
     return hasPermission(featId, 'activate');
   };
+
+  const hebergementAllowedCount = useMemo(() => {
+    const p1Tabs: BackOfficeTab[] = ['gantt', 'calendar', 'reservations', 'chambres', 'services', 'maintenance', 'audit'];
+    return p1Tabs.filter((t) => isTabAllowed(t)).length;
+  }, [isTabAllowed]);
+
+  const restaurationAllowedCount = useMemo(() => {
+    const p2Tabs: BackOfficeTab[] = ['pos', 'restaurant', 'cuisine', 'stock', 'stock_alerts'];
+    return p2Tabs.filter((t) => isTabAllowed(t)).length;
+  }, [isTabAllowed]);
+
+  const administrationAllowedCount = useMemo(() => {
+    const p3Tabs: BackOfficeTab[] = ['dashboard', 'facture_globale', 'finance', 'versements', 'expenses', 'loyalty', 'profile', 'settings'];
+    return p3Tabs.filter((t) => isTabAllowed(t)).length;
+  }, [isTabAllowed]);
+
+  // Calcul dynamique des pôles autorisés pour l'utilisateur connecté (masquage strict si 0 module autorisé)
+  const isPole1Allowed = useMemo(() => {
+    return hebergementAllowedCount > 0;
+  }, [hebergementAllowedCount]);
+
+  const isPole2Allowed = useMemo(() => {
+    return restaurationAllowedCount > 0;
+  }, [restaurationAllowedCount]);
+
+  const isPole3Allowed = useMemo(() => {
+    return administrationAllowedCount > 0;
+  }, [administrationAllowedCount]);
+
+  // Nombre de fonctionnalités autorisées pour la session active
+  const authorizedModulesCount = useMemo(() => {
+    const list: BackOfficeTab[] = [
+      'dashboard', 'gantt', 'calendar', 'reservations', 'chambres',
+      'services', 'facture_globale', 'pos', 'restaurant', 'cuisine',
+      'stock', 'stock_alerts', 'finance', 'versements', 'expenses', 'loyalty',
+      'profile', 'settings', 'audit', 'maintenance'
+    ];
+    return list.filter((t) => isTabAllowed(t)).length;
+  }, [isTabAllowed]);
+
+  // Tous les onglets candidats autorisés pour l'utilisateur connecté
+  const allowedCandidateTabs = useMemo<BackOfficeTab[]>(() => {
+    const candidateTabs: BackOfficeTab[] = [
+      'gantt',
+      'calendar',
+      'reservations',
+      'chambres',
+      'maintenance',
+      'services',
+      'audit',
+      'restaurant',
+      'pos',
+      'cuisine',
+      'stock',
+      'stock_alerts',
+      'dashboard',
+      'facture_globale',
+      'finance',
+      'versements',
+      'expenses',
+      'loyalty',
+      'profile',
+      'settings'
+    ];
+    return candidateTabs.filter((t) => isTabAllowed(t));
+  }, [isDG, isTabAllowed]);
 
   // Guard de routage dynamique : redirige UNIQUEMENT si l'onglet en cours n'est PAS autorisé par la matrice des permissions
   useEffect(() => {
@@ -552,25 +644,9 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
     logChromeDiagnostic('AdminBackOffice RoleGuard', `Onglet "${activeTab}" non autorisé pour ${currentUserProfile.nom} (${currentUserProfile.role}). Redirection vers un onglet autorisé.`);
 
-    // Ordre de priorité des onglets de repli autorisés
-    const candidateTabs: BackOfficeTab[] = [
-      'dashboard',
-      'reservations',
-      'gantt',
-      'calendar',
-      'restaurant',
-      'pos',
-      'cuisine',
-      'versements',
-      'facture_globale',
-      'stock',
-      'chambres',
-      'profile'
-    ];
-
-    const fallback = candidateTabs.find((t) => isTabAllowed(t)) || 'profile';
+    const fallback = allowedCandidateTabs[0] || 'reservations';
     setActiveTab(fallback);
-  }, [activeTab, currentUserProfile.id, currentUserProfile.role, rolesList]);
+  }, [activeTab, allowedCandidateTabs, isTabAllowed, currentUserProfile.nom, currentUserProfile.role]);
 
   const handleTabClick = (tab: BackOfficeTab) => {
     logChromeDiagnostic('AdminBackOffice Navigation', `Changement d'onglet demandé: "${tab}"`, {
@@ -819,19 +895,39 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                             {soundConfig?.enabled ? `${Math.round((soundConfig.volume ?? 0.85) * 100)}%` : 'OFF'}
                           </span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveTab('profile');
-                            setIsUserMenuOpen(false);
-                          }}
-                          className="w-full flex items-center justify-between p-2 rounded-xl text-left transition-all hover:bg-stone-800 text-[#C5A880] text-xs font-semibold cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <UserCheck className="w-3.5 h-3.5" />
-                            <span>Gérer profil &amp; comptes</span>
-                          </div>
-                        </button>
+                        {isTabAllowed('profile') && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTab('profile');
+                                setIsUserMenuOpen(false);
+                              }}
+                              className="w-full flex items-center justify-between p-2 rounded-xl text-left transition-all hover:bg-stone-800 text-[#C5A880] text-xs font-semibold cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2">
+                                <UserCheck className="w-3.5 h-3.5" />
+                                <span>Gérer profil &amp; comptes</span>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTab('profile');
+                                setIsUserMenuOpen(false);
+                              }}
+                              className="w-full flex items-center justify-between p-2 rounded-xl text-left transition-all hover:bg-stone-800 text-emerald-400 text-xs font-semibold cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2">
+                                <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Diagnostic ACL &amp; Resync</span>
+                              </div>
+                              <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-700/50 px-1.5 py-0.2 rounded font-mono">
+                                Audit
+                              </span>
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
@@ -863,45 +959,114 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             </div>
           </div>
 
-          {/* Sub-Navigation Tabs : Menu Principal Regroupé avec Accès Direct Planning Gantt & Calendrier Interactif */}
-          <div className="flex items-center space-x-2 sm:space-x-3 py-2 border-t border-stone-800 text-xs overflow-x-auto no-scrollbar">
-            {/* 🌟 VUE CAISSE HÔTEL : Accès Prioritaire Direct au Planning Gantt et au Calendrier Interactif des Chambres */}
-            {isCaisse && (
-              <>
+          {/* Sub-Navigation Tabs : Menu Principal Épuré (affichage strict des pôles et onglets autorisés) */}
+          <div className="flex items-center justify-between py-2 border-t border-stone-800 text-xs overflow-x-auto no-scrollbar gap-2 sm:gap-3">
+            <div className="flex items-center space-x-2 sm:space-x-2.5 overflow-x-auto no-scrollbar">
+              {/* Onglet Modal 1 : Pôle Hébergement & Chambres (affiché uniquement si au moins 1 sous-module autorisé) */}
+              {isPole1Allowed && (
+                <button
+                  type="button"
+                  onClick={() => setIsHebergementModalOpen(true)}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    currentPole === 'hebergement'
+                      ? 'bg-[#0B132B] text-white border-2 border-blue-400 shadow-lg ring-2 ring-blue-500/30'
+                      : 'bg-[#0B132B]/60 text-blue-200 border border-blue-900/80 hover:bg-[#0B132B] hover:text-white'
+                  }`}
+                >
+                  <Bed className="w-4 h-4 text-blue-300" />
+                  <span>1. Pôle Hébergement &amp; Chambres</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    {pendingReservationsCount > 0 ? `${pendingReservationsCount} attente` : 'Hôtel'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-blue-300 opacity-80" />
+                </button>
+              )}
+
+              {/* Onglet Modal 2 : Pôle Restauration & Stocks (affiché uniquement si au moins 1 sous-module autorisé) */}
+              {isPole2Allowed && (
+                <button
+                  type="button"
+                  onClick={() => setIsRestaurationModalOpen(true)}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    currentPole === 'restauration'
+                      ? 'bg-emerald-700 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
+                      : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/80 hover:bg-emerald-900 hover:text-white'
+                  }`}
+                >
+                  <Utensils className="w-4 h-4 text-emerald-300" />
+                  <span>2. Pôle Restauration &amp; Stocks</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {unreadStockAlertsCount > 0 ? `${unreadStockAlertsCount} alertes` : 'Resto & Bar'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-emerald-300 opacity-80" />
+                </button>
+              )}
+
+              {/* Onglet Modal 3 : Pôle Administration & Finances (affiché uniquement si au moins 1 sous-module autorisé) */}
+              {isPole3Allowed && (
+                <button
+                  type="button"
+                  onClick={() => setIsAdministrationModalOpen(true)}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    currentPole === 'administration' && activeTab !== 'dashboard'
+                      ? 'bg-[#92400E] text-amber-100 border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/30'
+                      : 'bg-[#92400E]/60 text-amber-200 border border-amber-900/80 hover:bg-[#92400E] hover:text-white'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4 text-amber-300" />
+                  <span>3. Pôle Administration &amp; Finances</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Direction &amp; FNE
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-amber-300 opacity-80" />
+                </button>
+              )}
+
+              {/* Séparateur discret si pôles et raccourcis coexistent */}
+              <div className="h-6 w-px bg-stone-800 shrink-0 mx-1 hidden sm:block" />
+
+              {/* Raccourci Direct : Planning Gantt (uniquement si permission accordée) */}
+              {isTabAllowed('gantt') && (
                 <button
                   type="button"
                   onClick={() => handleTabClick('gantt')}
                   className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
                     activeTab === 'gantt'
                       ? 'bg-blue-600 text-white border-2 border-blue-400 shadow-lg ring-2 ring-blue-500/35'
-                      : 'bg-blue-950/70 text-blue-200 border-2 border-blue-500/60 hover:bg-blue-900 hover:text-white'
+                      : 'bg-stone-900/60 text-blue-200 border border-blue-900/60 hover:bg-stone-850 hover:text-white'
                   }`}
                   title="Planning Gantt d'occupation des chambres (vue chronologique 24h/24)"
                 >
                   <Calendar className="w-4 h-4 text-blue-400" />
-                  <span>Planning Gantt Chambres</span>
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/25 text-blue-300 border border-blue-500/40">
-                    Occupation 24h
+                  <span>Planning Gantt</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    24h
                   </span>
                 </button>
+              )}
 
+              {/* Raccourci Direct : Calendrier Interactif des Chambres (uniquement si permission accordée) */}
+              {isTabAllowed('calendar') && (
                 <button
                   type="button"
                   onClick={() => handleTabClick('calendar')}
                   className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
                     activeTab === 'calendar'
                       ? 'bg-[#C5A880] text-slate-950 border-2 border-amber-300 shadow-lg ring-2 ring-[#C5A880]/35'
-                      : 'bg-stone-900/80 text-[#C5A880] border-2 border-[#C5A880]/50 hover:bg-stone-850 hover:text-white'
+                      : 'bg-stone-900/60 text-[#C5A880] border border-[#C5A880]/40 hover:bg-stone-850 hover:text-white'
                   }`}
                   title="Calendrier Interactif d'occupation des 6 chambres (vue mensuelle)"
                 >
                   <CalendarDays className="w-4 h-4 text-[#C5A880]" />
-                  <span>Calendrier Interactif des Chambres</span>
+                  <span>Calendrier Interactif</span>
                   <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/30">
                     Mois
                   </span>
                 </button>
+              )}
 
+              {/* Raccourci Direct : Réservations (uniquement si permission accordée) */}
+              {isTabAllowed('reservations') && (
                 <button
                   type="button"
                   onClick={() => handleTabClick('reservations')}
@@ -918,185 +1083,131 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                     {pendingReservationsCount > 0 ? `${pendingReservationsCount} attente` : 'Hôtel'}
                   </span>
                 </button>
-              </>
-            )}
+              )}
 
-            {/* Onglet Modal 1 : Pôle Hébergement & Chambres */}
-            <button
-              type="button"
-              onClick={() => setIsHebergementModalOpen(true)}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                currentPole === 'hebergement'
-                  ? 'bg-[#0B132B] text-white border-2 border-blue-400 shadow-lg ring-2 ring-blue-500/30'
-                  : 'bg-[#0B132B]/60 text-blue-200 border border-blue-900/80 hover:bg-[#0B132B] hover:text-white'
-              }`}
-            >
-              <Bed className="w-4 h-4 text-blue-300" />
-              <span>1. Pôle Hébergement &amp; Chambres</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                {pendingReservationsCount > 0 ? `${pendingReservationsCount} attente` : 'Hôtel'}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-blue-300 opacity-80" />
-            </button>
-
-            {/* Accès Direct Planning Gantt & Calendrier pour les autres rôles */}
-            {!isCaisse && (
-              <>
+              {/* Raccourci Direct : Point de Vente POS (uniquement si permission accordée) */}
+              {isTabAllowed('pos') && (
                 <button
                   type="button"
-                  onClick={() => handleTabClick('gantt')}
+                  onClick={() => handleTabClick('pos')}
                   className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                    activeTab === 'gantt'
-                      ? 'bg-blue-600 text-white border-2 border-blue-400 shadow-lg ring-2 ring-blue-500/35'
-                      : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
+                    activeTab === 'pos'
+                      ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
+                      : 'bg-stone-900/60 text-amber-300 border border-amber-700/60 hover:bg-stone-850 hover:text-white'
                   }`}
-                  title="Planning Gantt d'occupation des chambres (vue chronologique 24h/24)"
+                  title="Point de Vente Restaurant / Caisse directe"
                 >
-                  <Calendar className="w-4 h-4 text-blue-400" />
-                  <span>Planning Gantt</span>
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                    24h
-                  </span>
+                  <ShoppingBag className="w-4 h-4 text-amber-400" />
+                  <span>POS Caisse</span>
                 </button>
+              )}
 
+              {/* Raccourci Direct : Tableau de Bord des Revenus (uniquement si permission accordée) */}
+              {isTabAllowed('dashboard') && (
                 <button
                   type="button"
-                  onClick={() => handleTabClick('calendar')}
+                  onClick={() => handleTabClick('dashboard')}
                   className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                    activeTab === 'calendar'
-                      ? 'bg-[#C5A880] text-slate-950 border-2 border-amber-300 shadow-lg ring-2 ring-[#C5A880]/35'
-                      : 'bg-stone-900/40 text-[#C5A880] border border-stone-800 hover:bg-stone-800 hover:text-white'
+                    activeTab === 'dashboard'
+                      ? 'bg-emerald-700 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
+                      : 'bg-stone-900/60 text-emerald-300 border border-emerald-800/60 hover:bg-stone-850 hover:text-white'
                   }`}
-                  title="Calendrier Interactif d'occupation des chambres"
+                  title="Tableau de bord visuel des revenus quotidiens et mensuels"
                 >
-                  <CalendarDays className="w-4 h-4 text-[#C5A880]" />
-                  <span>Calendrier Interactif</span>
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#C5A880]/20 text-[#C5A880] border border-[#C5A880]/30">
-                    Mois
+                  <BarChart3 className="w-4 h-4 text-emerald-400" />
+                  <span>Dashboard Revenus</span>
+                </button>
+              )}
+
+              {/* Raccourci Direct : KDS Cuisine (uniquement si permission accordée) */}
+              {isTabAllowed('cuisine') && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('cuisine')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'cuisine'
+                      ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
+                      : 'bg-stone-900/60 text-amber-200 border border-amber-800/60 hover:bg-stone-850 hover:text-white'
+                  }`}
+                  title="Ouvrir l'écran de production cuisine KDS en temps réel"
+                >
+                  <ChefHat className="w-4 h-4 text-amber-400" />
+                  <span>KDS Cuisine</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {activeKdsOrdersCount > 0 ? `${activeKdsOrdersCount} actif${activeKdsOrdersCount > 1 ? 's' : ''}` : 'Chef'}
                   </span>
                 </button>
-              </>
-            )}
+              )}
 
-            {/* Onglet Modal 2 : Pôle Restauration & Stocks */}
-            <button
-              type="button"
-              onClick={() => setIsRestaurationModalOpen(true)}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                currentPole === 'restauration'
-                  ? 'bg-emerald-700 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
-                  : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/80 hover:bg-emerald-900 hover:text-white'
-              }`}
-            >
-              <Utensils className="w-4 h-4 text-emerald-300" />
-              <span>2. Pôle Restauration &amp; Stocks</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {unreadStockAlertsCount > 0 ? `${unreadStockAlertsCount} alertes` : 'Resto & Bar'}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-emerald-300 opacity-80" />
-            </button>
+              {/* Raccourci Direct : Maintenance & Réparations (uniquement si permission accordée) */}
+              {isTabAllowed('maintenance') && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('maintenance')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'maintenance'
+                      ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
+                      : blockedRoomsCount > 0
+                      ? 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-stone-850 hover:text-white'
+                      : 'bg-stone-900/60 text-stone-300 border border-stone-800 hover:bg-stone-850 hover:text-white'
+                  }`}
+                  title="Tableau de bord de maintenance, chambres en réparation et blocage des réservations"
+                >
+                  <Wrench className={`w-4 h-4 ${blockedRoomsCount > 0 ? 'text-amber-400 animate-pulse' : 'text-stone-400'}`} />
+                  <span>Maintenance</span>
+                  {blockedRoomsCount > 0 ? (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500 text-stone-950 font-black animate-pulse">
+                      {blockedRoomsCount} bloquée{blockedRoomsCount > 1 ? 's' : ''}
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      0 bloquée
+                    </span>
+                  )}
+                </button>
+              )}
 
-            {/* Onglet Modal 3 : Pôle Administration & Finances */}
-            <button
-              type="button"
-              onClick={() => setIsAdministrationModalOpen(true)}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                currentPole === 'administration' && activeTab !== 'dashboard'
-                  ? 'bg-[#92400E] text-amber-100 border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/30'
-                  : 'bg-[#92400E]/60 text-amber-200 border border-amber-900/80 hover:bg-[#92400E] hover:text-white'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4 text-amber-300" />
-              <span>3. Pôle Administration &amp; Finances</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                Direction &amp; FNE
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-amber-300 opacity-80" />
-            </button>
+              {/* Raccourci Direct : Versements de Caisse (uniquement si permission accordée) */}
+              {isTabAllowed('versements') && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('versements')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'versements'
+                      ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
+                      : 'bg-stone-900/60 text-stone-300 border border-stone-800 hover:bg-stone-850 hover:text-white'
+                  }`}
+                  title="Gestion des versements de caisse par shift"
+                >
+                  <Coins className="w-4 h-4 text-amber-400" />
+                  <span>Versements Caisses</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Matin &amp; Soir
+                  </span>
+                </button>
+              )}
+            </div>
 
-            {/* Onglet Direct : Tableau de Bord des Revenus & Ventes (Quotidien & Mensuel) */}
-            <button
-              type="button"
-              onClick={() => handleTabClick('dashboard')}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                activeTab === 'dashboard'
-                  ? 'bg-emerald-700 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
-                  : 'bg-emerald-950/40 text-emerald-200 border border-emerald-800/80 hover:bg-emerald-900/60 hover:text-white'
-              }`}
-              title="Tableau de bord visuel des revenus quotidiens et mensuels (Ventes & Réservations)"
-            >
-              <BarChart3 className="w-4 h-4 text-emerald-400" />
-              <span>Dashboard Revenus</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Graphiques Barres
-              </span>
-            </button>
-
-            {/* Onglet Direct : KDS Cuisine (Kitchen Display System en temps réel) */}
-            <button
-              type="button"
-              onClick={() => handleTabClick('cuisine')}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                activeTab === 'cuisine'
-                  ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
-                  : 'bg-amber-950/40 text-amber-200 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
-              }`}
-              title="Ouvrir l'écran de production cuisine KDS en temps réel (En cours, Prêt, Servi)"
-            >
-              <ChefHat className="w-4 h-4 text-amber-400" />
-              <span>KDS Cuisine</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                {activeKdsOrdersCount > 0 ? `${activeKdsOrdersCount} actif${activeKdsOrdersCount > 1 ? 's' : ''}` : 'Direct Chef'}
-              </span>
-            </button>
-
-            {/* Onglet Direct : Maintenance & Réparations (Chambres Bloquées) */}
-            <button
-              type="button"
-              onClick={() => handleTabClick('maintenance')}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                activeTab === 'maintenance'
-                  ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
-                  : blockedRoomsCount > 0
-                  ? 'bg-amber-950/40 text-amber-300 border border-amber-800/80 hover:bg-amber-900/60 hover:text-white'
-                  : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
-              }`}
-              title="Tableau de bord de maintenance, chambres en réparation et blocage des réservations"
-            >
-              <Wrench className={`w-4 h-4 ${blockedRoomsCount > 0 ? 'text-amber-400 animate-pulse' : 'text-stone-400'}`} />
-              <span>Maintenance</span>
-              {blockedRoomsCount > 0 ? (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500 text-stone-950 font-black animate-pulse flex items-center gap-1">
-                  <span>{blockedRoomsCount} bloquée{blockedRoomsCount > 1 ? 's' : ''}</span>
-                </span>
-              ) : activeMaintenanceTicketsCount > 0 ? (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  {activeMaintenanceTicketsCount} actif{activeMaintenanceTicketsCount > 1 ? 's' : ''}
+            {/* Indicateur d'Épure & Clarté du Back-End */}
+            <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-stone-800 shrink-0">
+              {isDG ? (
+                <span
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[11px] font-bold"
+                  title="Direction Générale : Accès souverain complet à tous les pôles et modules"
+                >
+                  <Crown className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Accès Intégral ({authorizedModulesCount} modules)</span>
                 </span>
               ) : (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  0 bloquée
+                <span
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 text-[11px] font-semibold"
+                  title="Espace épuré : seuls les modules accordés dans la matrice RBAC sont affichés pour fluidifier votre travail"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Espace Épuré ({authorizedModulesCount} modules autorisés)</span>
                 </span>
               )}
-            </button>
-
-            {/* Onglet Direct : Versements de Caisse (Matin & Soir) */}
-            <button
-              type="button"
-              onClick={() => handleTabClick('versements')}
-              className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
-                activeTab === 'versements'
-                  ? 'bg-amber-600 text-white border-2 border-amber-400 shadow-lg ring-2 ring-amber-500/35'
-                  : 'bg-stone-900/40 text-stone-300 border border-stone-800 hover:bg-stone-800 hover:text-white'
-              }`}
-              title="Gestion des versements de caisse par shift (Matinée 07h-17h & Soirée 17h-06h)"
-            >
-              <Coins className="w-4 h-4 text-amber-400" />
-              <span>Versements Caisses</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                Matin &amp; Soir
-              </span>
-            </button>
+            </div>
           </div>
         </div>
       </header>
@@ -1136,34 +1247,38 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {(currentPole === 'hebergement' || isCaisse) && (
+            {(isTabAllowed('gantt') || isTabAllowed('calendar')) && (
               <div className="flex items-center bg-stone-900 border border-stone-700/80 rounded-xl p-0.5 shadow-inner">
-                <button
-                  type="button"
-                  onClick={() => handleTabClick('gantt')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                    activeTab === 'gantt'
-                      ? 'bg-blue-600 text-white font-bold shadow-xs'
-                      : 'text-stone-300 hover:text-white'
-                  }`}
-                  title="Basculer vers le Planning Gantt Journalier 24h d'occupation des chambres"
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Gantt 24h</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTabClick('calendar')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                    activeTab === 'calendar'
-                      ? 'bg-[#C5A880] text-slate-950 font-bold shadow-xs'
-                      : 'text-stone-300 hover:text-white'
-                  }`}
-                  title="Basculer vers le Calendrier Interactif des Chambres"
-                >
-                  <CalendarDays className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Calendrier Mois</span>
-                </button>
+                {isTabAllowed('gantt') && (
+                  <button
+                    type="button"
+                    onClick={() => handleTabClick('gantt')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                      activeTab === 'gantt'
+                        ? 'bg-blue-600 text-white font-bold shadow-xs'
+                        : 'text-stone-300 hover:text-white'
+                    }`}
+                    title="Basculer vers le Planning Gantt Journalier 24h d'occupation des chambres"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Gantt 24h</span>
+                  </button>
+                )}
+                {isTabAllowed('calendar') && (
+                  <button
+                    type="button"
+                    onClick={() => handleTabClick('calendar')}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                      activeTab === 'calendar'
+                        ? 'bg-[#C5A880] text-slate-950 font-bold shadow-xs'
+                        : 'text-stone-300 hover:text-white'
+                    }`}
+                    title="Basculer vers le Calendrier Interactif des Chambres"
+                  >
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Calendrier Mois</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -1180,15 +1295,17 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
 
-            <button
-              type="button"
-              onClick={() => setIsDevToolsModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all"
-              title="Ouvrir la boîte à outils technique"
-            >
-              <Code2 className="w-3.5 h-3.5 text-[#C5A880]" />
-              <span className="hidden sm:inline">Boîte à Outils</span>
-            </button>
+            {isDG && (
+              <button
+                type="button"
+                onClick={() => setIsDevToolsModalOpen(true)}
+                className="px-3 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Ouvrir la boîte à outils technique"
+              >
+                <Code2 className="w-3.5 h-3.5 text-[#C5A880]" />
+                <span className="hidden sm:inline">Boîte à Outils</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1204,64 +1321,74 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   SESSION CAISSE HÔTEL ACTIVE • RÉSERVATIONS, PLANNING GANTT &amp; CALENDRIER MENSUEL
                 </span>
                 <p className="text-xs text-stone-700">
-                  Votre profil de <strong>Caisse Hôtel</strong> est habilité pour les réservations, le <strong>Planning Gantt 24h</strong>, le <strong>Calendrier mensuel d'occupation</strong>, les encaissements, factures et versements.
+                  Votre profil de <strong>Caisse Hôtel</strong> est configuré pour vos modules autorisés : réservations, planning, encaissements et versements.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              <button
-                type="button"
-                onClick={() => handleTabClick('gantt')}
-                className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
-                  activeTab === 'gantt'
-                    ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : 'bg-stone-900 hover:bg-stone-850 text-blue-300 border border-blue-500/40'
-                }`}
-                title="Accéder au Planning Gantt 24h"
-              >
-                <Calendar className="w-4 h-4 text-blue-400" />
-                <span>Planning Gantt</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTabClick('calendar')}
-                className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
-                  activeTab === 'calendar'
-                    ? 'bg-[#C5A880] text-slate-950 font-black ring-2 ring-[#C5A880]'
-                    : 'bg-stone-900 hover:bg-stone-850 text-[#C5A880] border border-[#C5A880]/40'
-                }`}
-                title="Accéder au Calendrier Mensuel d'Occupation"
-              >
-                <CalendarDays className="w-4 h-4 text-[#C5A880]" />
-                <span>Calendrier Mois</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('reservations');
-                  setReservationSubTab('ajouter');
-                }}
-                className="px-3.5 py-2 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
-              >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>Créer Réservation</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('facture_globale')}
-                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
-              >
-                <Receipt className="w-4 h-4 stroke-[2.5]" />
-                <span>Facture Globale</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('versements')}
-                className="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-850 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all border border-amber-500/40"
-              >
-                <Coins className="w-4 h-4 stroke-[2.5] text-amber-400" />
-                <span>Versements</span>
-              </button>
+              {isTabAllowed('gantt') && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('gantt')}
+                  className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
+                    activeTab === 'gantt'
+                      ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                      : 'bg-stone-900 hover:bg-stone-850 text-blue-300 border border-blue-500/40'
+                  }`}
+                  title="Accéder au Planning Gantt 24h"
+                >
+                  <Calendar className="w-4 h-4 text-blue-400" />
+                  <span>Planning Gantt</span>
+                </button>
+              )}
+              {isTabAllowed('calendar') && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('calendar')}
+                  className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all ${
+                    activeTab === 'calendar'
+                      ? 'bg-[#C5A880] text-slate-950 font-black ring-2 ring-[#C5A880]'
+                      : 'bg-stone-900 hover:bg-stone-850 text-[#C5A880] border border-[#C5A880]/40'
+                  }`}
+                  title="Accéder au Calendrier Mensuel d'Occupation"
+                >
+                  <CalendarDays className="w-4 h-4 text-[#C5A880]" />
+                  <span>Calendrier Mois</span>
+                </button>
+              )}
+              {isTabAllowed('reservations') && hasPermission('reservations', 'add') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('reservations');
+                    setReservationSubTab('ajouter');
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm transition-all"
+                >
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                  <span>Créer Réservation</span>
+                </button>
+              )}
+              {isTabAllowed('facture_globale') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('facture_globale')}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                >
+                  <Receipt className="w-4 h-4 stroke-[2.5]" />
+                  <span>Facture Globale</span>
+                </button>
+              )}
+              {isTabAllowed('versements') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('versements')}
+                  className="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-850 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all border border-amber-500/40"
+                >
+                  <Coins className="w-4 h-4 stroke-[2.5] text-amber-400" />
+                  <span>Versements</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1278,27 +1405,31 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   SESSION CAISSE RESTAURANT ACTIVE • POINT DE VENTE, ADDITIONS &amp; FACTURATION
                 </span>
                 <p className="text-xs text-stone-700">
-                  Votre profil de <strong>Caisse Restaurant</strong> est configuré pour gérer le Point de Vente, les commandes des tables, les encaissements et la <strong>Facture Globale &amp; FNE DGI</strong>.
+                  Votre profil de <strong>Caisse Restaurant</strong> est configuré pour gérer le Point de Vente, les commandes des tables et les encaissements autorisés.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('restaurant')}
-                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
-              >
-                <Utensils className="w-4 h-4 stroke-[2.5]" />
-                <span>Ouvrir le POS</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('facture_globale')}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
-              >
-                <Receipt className="w-4 h-4 stroke-[2.5]" />
-                <span>Facture Globale &amp; FNE</span>
-              </button>
+              {isTabAllowed('restaurant') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('restaurant')}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                >
+                  <Utensils className="w-4 h-4 stroke-[2.5]" />
+                  <span>Ouvrir le POS</span>
+                </button>
+              )}
+              {isTabAllowed('facture_globale') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('facture_globale')}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                >
+                  <Receipt className="w-4 h-4 stroke-[2.5]" />
+                  <span>Facture Globale &amp; FNE</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1312,30 +1443,34 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               </div>
               <div>
                 <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider block">
-                  DIRECTION RESTAURANT &amp; LOUNGE • GESTION COMPLÈTE DU SERVICE
+                  DIRECTION RESTAURANT &amp; LOUNGE • GESTION DU SERVICE
                 </span>
                 <p className="text-xs text-stone-700">
-                  Votre profil de <strong>Directeur Restaurant</strong> supervise le plan de salle, le menu gastronomique, les réservations de tables et la facturation globale FNE.
+                  Votre profil de <strong>Directeur Restaurant</strong> supervise les modules de restauration, le plan de salle et les commandes.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('restaurant')}
-                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
-              >
-                <Utensils className="w-4 h-4 stroke-[2.5]" />
-                <span>Restaurant</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('facture_globale')}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
-              >
-                <Receipt className="w-4 h-4 stroke-[2.5]" />
-                <span>Facture Globale &amp; FNE</span>
-              </button>
+              {isTabAllowed('restaurant') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('restaurant')}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                >
+                  <Utensils className="w-4 h-4 stroke-[2.5]" />
+                  <span>Restaurant</span>
+                </button>
+              )}
+              {isTabAllowed('facture_globale') && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('facture_globale')}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                >
+                  <Receipt className="w-4 h-4 stroke-[2.5]" />
+                  <span>Facture Globale &amp; FNE</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1571,7 +1706,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       Pôle 1 : Hébergement &amp; Chambres
                     </h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                      6 Modules
+                      {hebergementAllowedCount} Module{hebergementAllowedCount > 1 ? 's' : ''} autorisé{hebergementAllowedCount > 1 ? 's' : ''}
                     </span>
                   </div>
                   <p className="text-xs text-stone-400">
@@ -1592,299 +1727,315 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             {/* Grille des modules du Pôle Hébergement */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[75vh] overflow-y-auto">
               {/* Module 1 : Planning Gantt (24h) */}
-              <div
-                onClick={() => {
-                  handleTabClick('gantt');
-                  setIsHebergementModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'gantt'
-                    ? 'bg-blue-950/40 border-blue-500 shadow-md ring-2 ring-blue-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-blue-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-blue-500/20 text-blue-300">
-                      <Calendar className="w-5 h-5" />
+              {isTabAllowed('gantt') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('gantt');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'gantt'
+                      ? 'bg-blue-950/40 border-blue-500 shadow-md ring-2 ring-blue-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-blue-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-blue-500/20 text-blue-300">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-500/30">
+                        Vue 24h
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-500/30">
-                      Vue 24h
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Tableau de Bord &amp; Planning Gantt
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Vue chronologique journalière 24h/24 des 6 chambres, créneaux horaires, nuitées et tampons ménage.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Tableau de Bord &amp; Planning Gantt
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Vue chronologique journalière 24h/24 des 6 chambres, créneaux horaires, nuitées et tampons ménage.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-blue-300 font-semibold">
+                    <span>Ouvrir le planning Gantt</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-blue-300 font-semibold">
-                  <span>Ouvrir le planning Gantt</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 1b : Calendrier Mensuel d'Occupation */}
-              <div
-                onClick={() => {
-                  handleTabClick('calendar');
-                  setIsHebergementModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'calendar'
-                    ? 'bg-[#C5A880]/20 border-[#C5A880] shadow-md ring-2 ring-[#C5A880]/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-[#C5A880]/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880]">
-                      <CalendarDays className="w-5 h-5" />
+              {isTabAllowed('calendar') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('calendar');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'calendar'
+                      ? 'bg-[#C5A880]/20 border-[#C5A880] shadow-md ring-2 ring-[#C5A880]/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-[#C5A880]/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880]">
+                        <CalendarDays className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
+                        Mois en Cours
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
-                      Mois en Cours
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Calendrier Mensuel d'Occupation
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Vue d'ensemble sur le mois : grille calendrier 30 jours, matrice PMS par chambre, taux d'occupation et réservation rapide.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Calendrier Mensuel d'Occupation
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Vue d'ensemble sur le mois : grille calendrier 30 jours, matrice PMS par chambre, taux d'occupation et réservation rapide.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
+                    <span>Ouvrir le calendrier mensuel</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
-                  <span>Ouvrir le calendrier mensuel</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 2 : Gestion des Réservations */}
-              <div className="p-4 rounded-2xl bg-stone-900/80 border border-stone-800 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-[#FF9900]/20 text-[#FF9900]">
-                      <CalendarCheck className="w-5 h-5" />
+              {isTabAllowed('reservations') && (
+                <div className="p-4 rounded-2xl bg-stone-900/80 border border-stone-800 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-[#FF9900]/20 text-[#FF9900]">
+                        <CalendarCheck className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        {pendingReservationsCount} en attente
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      {pendingReservationsCount} en attente
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Gestion des Réservations
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed mb-3">
-                    Prise en charge des dossiers clients, acomptes Mobile Money, arrivées et départs.
-                  </p>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Gestion des Réservations
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed mb-3">
+                      Prise en charge des dossiers clients, acomptes Mobile Money, arrivées et départs.
+                    </p>
 
-                  {/* Sous-actions directes */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('reservations');
-                        setReservationSubTab('ajouter');
-                        setIsHebergementModalOpen(false);
-                      }}
-                      className="px-2 py-1.5 rounded-lg bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-[11px] transition-colors cursor-pointer flex items-center justify-center gap-1"
-                    >
-                      <Plus className="w-3 h-3 stroke-[2.5]" />
-                      <span>Ajouter</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('reservations');
-                        setReservationSubTab('en_attente');
-                        setIsHebergementModalOpen(false);
-                      }}
-                      className="px-2 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition-colors cursor-pointer"
-                    >
-                      En attente ({pendingReservationsCount})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('reservations');
-                        setReservationSubTab('confirmees');
-                        setIsHebergementModalOpen(false);
-                      }}
-                      className="px-2 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[11px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Confirmées
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('reservations');
-                        setReservationSubTab('terminees');
-                        setIsHebergementModalOpen(false);
-                      }}
-                      className="px-2 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Terminées ({completedReservationsCount})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('reservations');
-                        setReservationSubTab('annulees');
-                        setIsHebergementModalOpen(false);
-                      }}
-                      className="px-2 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Annulées
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab('reservations');
-                        setReservationSubTab('toutes');
-                        setIsHebergementModalOpen(false);
-                      }}
-                      className="px-2 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-[11px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Toutes ({Array.isArray(reservations) ? reservations.length : 0})
-                    </button>
+                    {/* Sous-actions directes */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
+                      {hasPermission('reservations', 'add') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveTab('reservations');
+                            setReservationSubTab('ajouter');
+                            setIsHebergementModalOpen(false);
+                          }}
+                          className="px-2 py-1.5 rounded-lg bg-[#FF9900] hover:bg-[#e08600] text-slate-950 font-bold text-[11px] transition-colors cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <Plus className="w-3 h-3 stroke-[2.5]" />
+                          <span>Ajouter</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('reservations');
+                          setReservationSubTab('en_attente');
+                          setIsHebergementModalOpen(false);
+                        }}
+                        className="px-2 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-semibold transition-colors cursor-pointer"
+                      >
+                        En attente ({pendingReservationsCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('reservations');
+                          setReservationSubTab('confirmees');
+                          setIsHebergementModalOpen(false);
+                        }}
+                        className="px-2 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[11px] font-semibold transition-colors cursor-pointer"
+                      >
+                        Confirmées
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('reservations');
+                          setReservationSubTab('terminees');
+                          setIsHebergementModalOpen(false);
+                        }}
+                        className="px-2 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-semibold transition-colors cursor-pointer"
+                      >
+                        Terminées ({completedReservationsCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('reservations');
+                          setReservationSubTab('annulees');
+                          setIsHebergementModalOpen(false);
+                        }}
+                        className="px-2 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[11px] font-semibold transition-colors cursor-pointer"
+                      >
+                        Annulées
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('reservations');
+                          setReservationSubTab('toutes');
+                          setIsHebergementModalOpen(false);
+                        }}
+                        className="px-2 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-[11px] font-semibold transition-colors cursor-pointer"
+                      >
+                        Toutes ({Array.isArray(reservations) ? reservations.length : 0})
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Module 3 : Chambres & Types */}
-              <div
-                onClick={() => {
-                  handleTabClick('chambres');
-                  setIsHebergementModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'chambres'
-                    ? 'bg-emerald-950/40 border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                      <Bed className="w-5 h-5" />
+              {isTabAllowed('chambres') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('chambres');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'chambres'
+                      ? 'bg-emerald-950/40 border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                        <Bed className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        Tarifs Nuit / Heure
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      Tarifs Nuit / Heure
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Chambres &amp; Types d'Hébergement
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Configuration des tarifs en FCFA, capacités, étages, équipements et blocage/disponibilité des chambres.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Chambres &amp; Types d'Hébergement
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Configuration des tarifs en FCFA, capacités, étages, équipements et blocage/disponibilité des chambres.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                    <span>Configurer le parc des chambres</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
-                  <span>Configurer le parc des chambres</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 4 : Services Payants de l'Hôtel */}
-              <div
-                onClick={() => {
-                  handleTabClick('services');
-                  setIsHebergementModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'services'
-                    ? 'bg-[#C5A880]/20 border-[#C5A880] shadow-md ring-2 ring-[#C5A880]/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-[#C5A880]/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880]">
-                      <ShoppingBag className="w-5 h-5" />
+              {isTabAllowed('services') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('services');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'services'
+                      ? 'bg-[#C5A880]/20 border-[#C5A880] shadow-md ring-2 ring-[#C5A880]/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-[#C5A880]/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880]">
+                        <ShoppingBag className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
+                        Prestations
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
-                      Prestations
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Services Payants de l'Hôtel
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Catalogue des prestations annexes : blanchisserie, petit-déjeuner en chambre, navette aéroport, spa &amp; bien-être.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Services Payants de l'Hôtel
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Catalogue des prestations annexes : blanchisserie, petit-déjeuner en chambre, navette aéroport, spa &amp; bien-être.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
+                    <span>Gérer les services payants</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
-                  <span>Gérer les services payants</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 5 : Maintenance, Réparations & Blocage des Chambres */}
-              <div
-                onClick={() => {
-                  handleTabClick('maintenance');
-                  setIsHebergementModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'maintenance'
-                    ? 'bg-amber-950/40 border-amber-500 shadow-md ring-2 ring-amber-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                      <Wrench className="w-5 h-5" />
+              {isTabAllowed('maintenance') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('maintenance');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'maintenance'
+                      ? 'bg-amber-950/40 border-amber-500 shadow-md ring-2 ring-amber-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <Wrench className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        {blockedRoomsCount > 0 ? `${blockedRoomsCount} chambres bloquées` : `${activeMaintenanceTicketsCount} tickets actifs`}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      {blockedRoomsCount > 0 ? `${blockedRoomsCount} chambres bloquées` : `${activeMaintenanceTicketsCount} tickets actifs`}
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Maintenance &amp; Blocage des Chambres
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Suivi des travaux de réparation, assignation des techniciens, coûts et blocage strict des chambres pour empêcher toute réservation en ligne ou en caisse.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Maintenance &amp; Blocage des Chambres
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Suivi des travaux de réparation, assignation des techniciens, coûts et blocage strict des chambres pour empêcher toute réservation en ligne ou en caisse.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Gérer la maintenance &amp; blocages</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
-                  <span>Gérer la maintenance &amp; blocages</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 6 : Journal d'Audit & Traçabilité */}
-              <div
-                onClick={() => {
-                  handleTabClick('audit');
-                  setIsHebergementModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'audit'
-                    ? 'bg-amber-950/40 border-amber-500 shadow-md ring-2 ring-amber-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                      <History className="w-5 h-5" />
+              {isTabAllowed('audit') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('audit');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'audit'
+                      ? 'bg-amber-950/40 border-amber-500 shadow-md ring-2 ring-amber-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <History className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        {auditLogs.length} événements enregistrés
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      {auditLogs.length} événements enregistrés
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Journal d'Audit des Réservations
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Historique infalsifiable de chaque création, modification, règlement et annulation avec auteur, date et motif.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Journal d'Audit des Réservations
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Historique infalsifiable de chaque création, modification, règlement et annulation avec auteur, date et motif.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Consulter le journal d'audit complet</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
-                  <span>Consulter le journal d'audit complet</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -1929,7 +2080,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       Pôle 2 : Restauration, Bar &amp; Stocks
                     </h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      7 Modules
+                      {restaurationAllowedCount} Module{restaurationAllowedCount > 1 ? 's' : ''} autorisé{restaurationAllowedCount > 1 ? 's' : ''}
                     </span>
                   </div>
                   <p className="text-xs text-stone-400">
@@ -1950,229 +2101,241 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             {/* Grille des modules du Pôle Restauration */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[75vh] overflow-y-auto">
               {/* Module 1 : Point de Vente (POS / Caisse Restaurant) */}
-              <div
-                onClick={() => {
-                  handleTabClick('pos');
-                  setIsRestaurationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'pos'
-                    ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                      <ShoppingBag className="w-5 h-5" />
+              {isTabAllowed('pos') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('pos');
+                    setIsRestaurationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'pos'
+                      ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <ShoppingBag className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        Caisse Active
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      Caisse Active
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Point de Vente (POS / Caisse)
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Prise de commandes rapides au comptoir et en salle, encaissement direct, émission d'additions et tickets.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Point de Vente (POS / Caisse)
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Prise de commandes rapides au comptoir et en salle, encaissement direct, émission d'additions et tickets.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Accéder au POS</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
-                  <span>Accéder au POS</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 2 : Plan de Salle 2D */}
-              <div
-                onClick={() => {
-                  setActiveTab('restaurant');
-                  setRestaurantSubTab('tables');
-                  setIsRestaurationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'restaurant' && restaurantSubTab === 'tables'
-                    ? 'bg-emerald-950/40 border-emerald-400 shadow-md ring-2 ring-emerald-500/35'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                      <Building className="w-5 h-5" />
+              {isTabAllowed('restaurant') && (
+                <div
+                  onClick={() => {
+                    setActiveTab('restaurant');
+                    setRestaurantSubTab('tables');
+                    setIsRestaurationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'restaurant' && restaurantSubTab === 'tables'
+                      ? 'bg-emerald-950/40 border-emerald-400 shadow-md ring-2 ring-emerald-500/35'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                        <Building className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        Disposition 2D
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      Disposition 2D
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Plan de Salle 2D &amp; Tables
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Disposition visuelle des tables, zones VIP/terrasse, attribution des serveurs et statut libre/occupé.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Plan de Salle 2D &amp; Tables
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Disposition visuelle des tables, zones VIP/terrasse, attribution des serveurs et statut libre/occupé.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                    <span>Afficher le plan de salle</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
-                  <span>Afficher le plan de salle</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 3 : Cuisine & Écran Suivi KDS */}
-              <div
-                onClick={() => {
-                  setActiveTab('cuisine');
-                  setRestaurantSubTab('commandes');
-                  setIsRestaurationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'cuisine'
-                    ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/35'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                      <ChefHat className="w-5 h-5" />
+              {(isTabAllowed('cuisine') || isTabAllowed('restaurant')) && (
+                <div
+                  onClick={() => {
+                    setActiveTab('cuisine');
+                    setRestaurantSubTab('commandes');
+                    setIsRestaurationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'cuisine'
+                      ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/35'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <ChefHat className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        Direct Chef
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      Direct Chef
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Cuisine &amp; Écran Suivi KDS
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Bons de préparation en cuisine en direct, temps de cuisson, coordination salle/cuisine et alertes sonores.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Cuisine &amp; Écran Suivi KDS
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Bons de préparation en cuisine en direct, temps de cuisson, coordination salle/cuisine et alertes sonores.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Ouvrir l'écran cuisine KDS</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
-                  <span>Ouvrir l'écran cuisine KDS</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 4 : Réservations de Tables Restaurant */}
-              <div
-                onClick={() => {
-                  setActiveTab('restaurant');
-                  setRestaurantSubTab('reservations');
-                  setIsRestaurationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'restaurant' && restaurantSubTab === 'reservations'
-                    ? 'bg-blue-950/40 border-blue-400 shadow-md ring-2 ring-blue-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-blue-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
-                      <Calendar className="w-5 h-5" />
+              {isTabAllowed('restaurant') && (
+                <div
+                  onClick={() => {
+                    setActiveTab('restaurant');
+                    setRestaurantSubTab('reservations');
+                    setIsRestaurationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'restaurant' && restaurantSubTab === 'reservations'
+                      ? 'bg-blue-950/40 border-blue-400 shadow-md ring-2 ring-blue-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-blue-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-500/30">
+                        Planning Couverts
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-500/30">
-                      Planning Couverts
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Réservations de Tables
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Planning des couverts, gestion des acomptes, dates et accueil personnalisé des clients du restaurant.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Réservations de Tables
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Planning des couverts, gestion des acomptes, dates et accueil personnalisé des clients du restaurant.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-blue-300 font-semibold">
+                    <span>Gérer les réservations de tables</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-blue-300 font-semibold">
-                  <span>Gérer les réservations de tables</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 5 : Carte & Menus Gastronomiques */}
-              <div
-                onClick={() => {
-                  setActiveTab('restaurant');
-                  setRestaurantSubTab('menu');
-                  setIsRestaurationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'restaurant' && restaurantSubTab === 'menu'
-                    ? 'bg-purple-950/40 border-purple-400 shadow-md ring-2 ring-purple-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-purple-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
-                      <Utensils className="w-5 h-5" />
+              {isTabAllowed('restaurant') && (
+                <div
+                  onClick={() => {
+                    setActiveTab('restaurant');
+                    setRestaurantSubTab('menu');
+                    setIsRestaurationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'restaurant' && restaurantSubTab === 'menu'
+                      ? 'bg-purple-950/40 border-purple-400 shadow-md ring-2 ring-purple-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-purple-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
+                        <Utensils className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded-full border border-purple-500/30">
+                        Carte &amp; Recettes
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded-full border border-purple-500/30">
-                      Carte &amp; Recettes
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Carte &amp; Menus Gastronomiques
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Gestion des recettes, prix en FCFA, ingrédients, téléversement de photos et plats du jour.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Carte &amp; Menus Gastronomiques
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Gestion des recettes, prix en FCFA, ingrédients, téléversement de photos et plats du jour.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-purple-300 font-semibold">
+                    <span>Modifier la carte des menus</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-purple-300 font-semibold">
-                  <span>Modifier la carte des menus</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 6 : Gestion des Stocks & Alertes Restaurant (Regroupé en 1 seul onglet) */}
-              <div
-                onClick={() => {
-                  handleTabClick('stock');
-                  setIsRestaurationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between md:col-span-2 ${
-                  activeTab === 'stock' || activeTab === 'stock_alerts'
-                    ? 'bg-cyan-950/40 border-cyan-400 shadow-md ring-2 ring-cyan-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-cyan-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
-                        <Boxes className="w-5 h-5" />
+              {(isTabAllowed('stock') || isTabAllowed('stock_alerts')) && (
+                <div
+                  onClick={() => {
+                    handleTabClick('stock');
+                    setIsRestaurationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between md:col-span-2 ${
+                    activeTab === 'stock' || activeTab === 'stock_alerts'
+                      ? 'bg-cyan-950/40 border-cyan-400 shadow-md ring-2 ring-cyan-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-cyan-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
+                          <Boxes className="w-5 h-5" />
+                        </div>
+                        <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400">
+                          <AlertTriangle className="w-5 h-5" />
+                        </div>
                       </div>
-                      <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400">
-                        <AlertTriangle className="w-5 h-5" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-500/15 px-2 py-0.5 rounded-full border border-cyan-500/30">
+                          Entrepôts &amp; Articles
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">
+                          {unreadStockAlertsCount > 0 ? `${unreadStockAlertsCount} alertes réassort` : 'Stocks Sains'}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-500/15 px-2 py-0.5 rounded-full border border-cyan-500/30">
-                        Entrepôts &amp; Articles
-                      </span>
-                      <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">
-                        {unreadStockAlertsCount > 0 ? `${unreadStockAlertsCount} alertes réassort` : 'Stocks Sains'}
-                      </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Gestion des Stocks &amp; Alertes Restaurant
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Suivi unifié des stocks (boissons, bar, ingrédients de cuisine), fiches articles, réceptions fournisseurs, seuils critiques et réapprovisionnement automatique.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-cyan-300 font-semibold">
+                    <div className="flex items-center gap-3">
+                      <span>Accéder aux stocks et alertes</span>
+                      {unreadStockAlertsCount > 0 && (
+                        <span className="text-rose-400 text-[11px] font-mono font-bold">
+                          ({unreadStockAlertsCount} seuil(s) dépassé(s))
+                        </span>
+                      )}
                     </div>
+                    <ChevronRight className="w-4 h-4" />
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Gestion des Stocks &amp; Alertes Restaurant
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Suivi unifié des stocks (boissons, bar, ingrédients de cuisine), fiches articles, réceptions fournisseurs, seuils critiques et réapprovisionnement automatique.
-                  </p>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-cyan-300 font-semibold">
-                  <div className="flex items-center gap-3">
-                    <span>Accéder aux stocks et alertes</span>
-                    {unreadStockAlertsCount > 0 && (
-                      <span className="text-rose-400 text-[11px] font-mono font-bold">
-                        ({unreadStockAlertsCount} seuil(s) dépassé(s))
-                      </span>
-                    )}
-                  </div>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -2217,7 +2380,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       Pôle 3 : Administration, Finances &amp; Direction
                     </h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      8 Modules
+                      {administrationAllowedCount} Module{administrationAllowedCount > 1 ? 's' : ''} autorisé{administrationAllowedCount > 1 ? 's' : ''}
                     </span>
                   </div>
                   <p className="text-xs text-stone-400">
@@ -2238,371 +2401,393 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
             {/* Grille des modules du Pôle Administration */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[75vh] overflow-y-auto">
               {/* Module 0 : Tableau de Bord des Revenus (Quotidien & Mensuel) */}
-              <div
-                onClick={() => {
-                  handleTabClick('dashboard');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between md:col-span-2 ${
-                  activeTab === 'dashboard'
-                    ? 'bg-emerald-950/40 border-emerald-400 shadow-md ring-2 ring-emerald-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                      <BarChart3 className="w-5 h-5" />
+              {isTabAllowed('dashboard') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('dashboard');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between md:col-span-2 ${
+                    activeTab === 'dashboard'
+                      ? 'bg-emerald-950/40 border-emerald-400 shadow-md ring-2 ring-emerald-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                        <BarChart3 className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        Recharts 30J • Quotidien &amp; Mensuel
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      Recharts 30J • Quotidien &amp; Mensuel
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Tableau de Bord des Revenus &amp; KPIs Hôteliers
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Pilotage visuel complet : <strong>visualisation Recharts des KPIs hôteliers (taux d'occupation %, CA journalier, RevPAR, ADR)</strong>, projection graphique du <strong>CA prévisionnel 30J</strong>, graphiques journaliers et mensuels consolidés.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Tableau de Bord des Revenus &amp; KPIs Hôteliers
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Pilotage visuel complet : <strong>visualisation Recharts des KPIs hôteliers (taux d'occupation %, CA journalier, RevPAR, ADR)</strong>, projection graphique du <strong>CA prévisionnel 30J</strong>, graphiques journaliers et mensuels consolidés.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                    <span>Ouvrir les KPIs hôteliers &amp; tableau de bord des revenus</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
-                  <span>Ouvrir les KPIs hôteliers &amp; tableau de bord des revenus</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 1 : Facture Globale Consolidée & FNE DGI */}
-              <div
-                onClick={() => {
-                  handleTabClick('facture_globale');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'facture_globale'
-                    ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                      <Receipt className="w-5 h-5" />
+              {isTabAllowed('facture_globale') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('facture_globale');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'facture_globale'
+                      ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <Receipt className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        FNE DGI Officiel
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      FNE DGI Officiel
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Facture Globale Consolidée &amp; FNE DGI
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Facturation unique combinant séjour chambre et consommations restaurant avec certification normalisée DGI et QR code.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Facture Globale Consolidée &amp; FNE DGI
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Facturation unique combinant séjour chambre et consommations restaurant avec certification normalisée DGI et QR code.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Accéder à la facture globale</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
-                  <span>Accéder à la facture globale</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 2 : Rapports Financiers & Encaissements */}
-              <div
-                onClick={() => {
-                  handleTabClick('finance');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'finance'
-                    ? 'bg-purple-950/40 border-purple-400 shadow-md ring-2 ring-purple-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-purple-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
-                      <PieChart className="w-5 h-5" />
+              {isTabAllowed('finance') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('finance');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'finance'
+                      ? 'bg-purple-950/40 border-purple-400 shadow-md ring-2 ring-purple-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-purple-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400">
+                        <PieChart className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded-full border border-purple-500/30">
+                        Bilan CA
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded-full border border-purple-500/30">
-                      Bilan CA
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Rapports Financiers &amp; Encaissements
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Bilan du chiffre d'affaires, ventilation par moyen de paiement (Orange Money, Moov, MTN, Espèces, Carte).
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Rapports Financiers &amp; Encaissements
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Bilan du chiffre d'affaires, ventilation par moyen de paiement (Orange Money, Moov, MTN, Espèces, Carte).
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-purple-300 font-semibold">
+                    <span>Consulter le rapport financier</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-purple-300 font-semibold">
-                  <span>Consulter le rapport financier</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 2b : Gestion des Caisses & Versements par Shift */}
-              <div
-                onClick={() => {
-                  handleTabClick('versements');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'versements'
-                    ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                      <Coins className="w-5 h-5" />
+              {isTabAllowed('versements') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('versements');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'versements'
+                      ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <Coins className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        Matin &amp; Soir
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      Matin &amp; Soir
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Gestion des Caisses &amp; Versements par Shift
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Saisie, rapprochement et validation des versements journaliers (Espèces, Orange, Moov, MTN, Wave). Génération de reçus thermiques (80mm), bordereaux A4, PDF et CSV.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Gestion des Caisses &amp; Versements par Shift
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Saisie, rapprochement et validation des versements journaliers (Espèces, Orange, Moov, MTN, Wave). Génération de reçus thermiques (80mm), bordereaux A4, PDF et CSV.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Accéder à la gestion des caisses</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
-                  <span>Accéder à la gestion des caisses</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 3 : Dépenses d'Exploitation & Ménage */}
-              <div
-                onClick={() => {
-                  handleTabClick('expenses');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'expenses'
-                    ? 'bg-rose-950/40 border-rose-400 shadow-md ring-2 ring-rose-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-rose-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400">
-                      <TrendingUp className="w-5 h-5" />
+              {isTabAllowed('expenses') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('expenses');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'expenses'
+                      ? 'bg-rose-950/40 border-rose-400 shadow-md ring-2 ring-rose-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-rose-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400">
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">
+                        Charges
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">
-                      Charges
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Dépenses d'Exploitation
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Enregistrement des coûts de ménage, réparations techniques, maintenance, approvisionnements et charges.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Dépenses d'Exploitation
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Enregistrement des coûts de ménage, réparations techniques, maintenance, approvisionnements et charges.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-rose-300 font-semibold">
+                    <span>Gérer les dépenses</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-rose-300 font-semibold">
-                  <span>Gérer les dépenses</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 4 : Programme Fidélité & Marketing */}
-              <div
-                onClick={() => {
-                  handleTabClick('loyalty');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'loyalty'
-                    ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                      <Award className="w-5 h-5" />
+              {isTabAllowed('loyalty') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('loyalty');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'loyalty'
+                      ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <Award className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        Cartes VIP
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      Cartes VIP
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Fidélité &amp; Marketing Clients
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Gestion des comptes fidélité, cumul de points, remises automatiques et campagnes promotionnelles.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Fidélité &amp; Marketing Clients
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Gestion des comptes fidélité, cumul de points, remises automatiques et campagnes promotionnelles.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Accéder au module fidélité</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
-                  <span>Accéder au module fidélité</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 5 : Utilisateurs & Gestion des Accès */}
-              <div
-                onClick={() => {
-                  handleTabClick('profile');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'profile'
-                    ? 'bg-sky-950/40 border-sky-400 shadow-md ring-2 ring-sky-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-sky-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400">
-                      <UserCheck className="w-5 h-5" />
+              {isTabAllowed('profile') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('profile');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'profile'
+                      ? 'bg-sky-950/40 border-sky-400 shadow-md ring-2 ring-sky-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-sky-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400">
+                        <UserCheck className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-sky-300 bg-sky-500/15 px-2 py-0.5 rounded-full border border-sky-500/30">
+                        Rôles RBAC
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-sky-300 bg-sky-500/15 px-2 py-0.5 rounded-full border border-sky-500/30">
-                      Rôles RBAC
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Gestion des Utilisateurs, Rôles &amp; Permissions
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Configuration des comptes, rôles et permissions granulaires (Ajouter, Modifier, Activer) par fonctionnalité.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Gestion des Utilisateurs, Rôles &amp; Permissions
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Configuration des comptes, rôles et permissions granulaires (Ajouter, Modifier, Activer) par fonctionnalité.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-sky-300 font-semibold">
+                    <span>Gérer les comptes et la matrice des permissions</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-sky-300 font-semibold">
-                  <span>Gérer les comptes et la matrice des permissions</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 5b : Employés Connectés & Réinitialisation d'Accès en 1 Clic */}
-              <div
-                onClick={() => {
-                  setIsAdministrationModalOpen(false);
-                  setIsConnectedEmployeesModalOpen(true);
-                }}
-                className="p-4 rounded-2xl border border-emerald-500/50 bg-stone-900/90 hover:bg-stone-850 hover:border-emerald-400 transition-all cursor-pointer text-left flex flex-col justify-between shadow-md group"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 group-hover:scale-105 transition-transform">
-                      <Users className="w-5 h-5" />
+              {isTabAllowed('profile') && (
+                <div
+                  onClick={() => {
+                    setIsAdministrationModalOpen(false);
+                    setIsConnectedEmployeesModalOpen(true);
+                  }}
+                  className="p-4 rounded-2xl border border-emerald-500/50 bg-stone-900/90 hover:bg-stone-850 hover:border-emerald-400 transition-all cursor-pointer text-left flex flex-col justify-between shadow-md group"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 group-hover:scale-105 transition-transform">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        {connectedEmployeesCount} En Ligne
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                      {connectedEmployeesCount} En Ligne
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1 flex items-center gap-1.5">
+                      <span>Employés Connectés &amp; Reset 1-Clic</span>
+                      <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Surveillance instantanée des postes de travail actifs (Caisse, Cuisine, Réception) et réinitialisation immédiate des accès/PIN en 1 clic.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1 flex items-center gap-1.5">
-                    <span>Employés Connectés &amp; Reset 1-Clic</span>
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Surveillance instantanée des postes de travail actifs (Caisse, Cuisine, Réception) et réinitialisation immédiate des accès/PIN en 1 clic.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                    <span>Surveiller les postes et réinitialiser</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
-                  <span>Surveiller les postes et réinitialiser</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
+              )}
 
               {/* Module 6 : Paramètres de l'Hôtel & APIs Mobile Money */}
-              <div
-                onClick={() => {
-                  setSettingsSubSection('general');
-                  handleTabClick('settings');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
-                  activeTab === 'settings'
-                    ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
-                    : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                      <Settings className="w-5 h-5" />
+              {isTabAllowed('settings') && (
+                <div
+                  onClick={() => {
+                    setSettingsSubSection('general');
+                    handleTabClick('settings');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'settings'
+                      ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                        <Settings className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        Configuration
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      Configuration
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Paramètres de l'Hôtel &amp; Mobile Money
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Identité de l'établissement, logo, devise par défaut, politique d'annulation et clés API Orange/MTN/Wave.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Paramètres de l'Hôtel &amp; Mobile Money
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Identité de l'établissement, logo, devise par défaut, politique d'annulation et clés API Orange/MTN/Wave.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Modifier les paramètres de l'hôtel</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
-                  <span>Modifier les paramètres de l'hôtel</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 6b : Sliders & Bannières d'Accueil Front-End */}
-              <div
-                onClick={() => {
-                  setSettingsSubSection('slider');
-                  handleTabClick('settings');
-                  setIsAdministrationModalOpen(false);
-                }}
-                className="p-4 rounded-2xl border border-stone-800 bg-stone-900/80 hover:bg-stone-850 hover:border-[#C5A880]/70 transition-all cursor-pointer text-left flex flex-col justify-between group shadow-sm"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880] group-hover:scale-105 transition-transform">
-                      <ImageIcon className="w-5 h-5" />
+              {isTabAllowed('settings') && (
+                <div
+                  onClick={() => {
+                    setSettingsSubSection('slider');
+                    handleTabClick('settings');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className="p-4 rounded-2xl border border-stone-800 bg-stone-900/80 hover:bg-stone-850 hover:border-[#C5A880]/70 transition-all cursor-pointer text-left flex flex-col justify-between group shadow-sm"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880] group-hover:scale-105 transition-transform">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
+                        Vitrine Web
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
-                      Vitrine Web
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1 flex items-center gap-1.5">
+                      <span>Sliders &amp; Diapositives Front-End</span>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Formulaire pour ajouter, modifier, activer/masquer et ordonner les sliders plein écran de la page d'accueil client (titres, images, tarifs nuitée/heure).
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1 flex items-center gap-1.5">
-                    <span>Sliders &amp; Diapositives Front-End</span>
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Formulaire pour ajouter, modifier, activer/masquer et ordonner les sliders plein écran de la page d'accueil client (titres, images, tarifs nuitée/heure).
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
+                    <span>Gérer les sliders du front-end</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
-                  <span>Gérer les sliders du front-end</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
+              )}
 
-              {/* Module 7 : Boîte à Outils & Démonstrations Techniques */}
-              <div
-                onClick={() => {
-                  setIsAdministrationModalOpen(false);
-                  setIsDevToolsModalOpen(true);
-                }}
-                className="p-4 rounded-2xl border border-[#C5A880]/50 bg-stone-900/90 hover:bg-stone-850 hover:border-[#C5A880] transition-all cursor-pointer text-left flex flex-col justify-between shadow-md"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880]">
-                      <Code2 className="w-5 h-5" />
+              {/* Module 7 : Boîte à Outils & Démonstrations Techniques (Directeur Général uniquement) */}
+              {isDG && (
+                <div
+                  onClick={() => {
+                    setIsAdministrationModalOpen(false);
+                    setIsDevToolsModalOpen(true);
+                  }}
+                  className="p-4 rounded-2xl border border-[#C5A880]/50 bg-stone-900/90 hover:bg-stone-850 hover:border-[#C5A880] transition-all cursor-pointer text-left flex flex-col justify-between shadow-md"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-[#C5A880]/20 text-[#C5A880]">
+                        <Code2 className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
+                        SQL, ERD &amp; Simulateur
+                      </span>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-[#C5A880] bg-[#C5A880]/15 px-2 py-0.5 rounded-full border border-[#C5A880]/30">
-                      SQL, ERD &amp; Simulateur
-                    </span>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Boîte à Outils &amp; Démonstrations Techniques
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Accès unifié aux modules techniques : scripts PostgreSQL, contraintes anti-surbooking EXCLUDE, diagramme ERD, simulateur de charge et design tokens.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-sm text-white mb-1">
-                    Boîte à Outils &amp; Démonstrations Techniques
-                  </h4>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    Accès unifié aux modules techniques : scripts PostgreSQL, contraintes anti-surbooking EXCLUDE, diagramme ERD, simulateur de charge et design tokens.
-                  </p>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
+                    <span>Ouvrir la boîte à outils</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
-                  <span>Ouvrir la boîte à outils</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
+              )}
 
               {/* Module 8 : Documentation Officielle & Guide Visuel avec Écrans */}
               <a

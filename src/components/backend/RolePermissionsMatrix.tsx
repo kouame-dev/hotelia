@@ -71,6 +71,7 @@ export const RolePermissionsMatrix: React.FC<RolePermissionsMatrixProps> = ({
     updateRolePermissions,
     updateRoleSubFeaturePermission,
     resetRolePermissionsToDefault,
+    userProfiles,
     usersList,
     updateUserFeaturePermissions,
     updateUserSubFeaturePermission,
@@ -474,7 +475,8 @@ export const RolePermissionsMatrix: React.FC<RolePermissionsMatrixProps> = ({
             onClick={() => {
               try {
                 localStorage.setItem('hotelia_roles_permissions', JSON.stringify(rolesList));
-                localStorage.setItem('hotelia_user_profiles', JSON.stringify(usersList));
+                localStorage.setItem('hotelia_user_profiles', JSON.stringify(userProfiles));
+                window.dispatchEvent(new Event('storage'));
                 showToast('✅ Permissions vérifiées et synchronisées en direct avec succès !');
               } catch {
                 showToast('Erreur lors de la sauvegarde locale.');
@@ -720,6 +722,22 @@ export const RolePermissionsMatrix: React.FC<RolePermissionsMatrixProps> = ({
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 shrink-0">
+            {targetType === 'role' && (
+              <button
+                type="button"
+                onClick={() => {
+                  switchUserRole(selectedRoleName);
+                  onSessionSwitched?.();
+                  showToast(`⚡ Session basculée sur le rôle "${selectedRoleName}" ! Vous testez maintenant l'interface avec ses permissions réelles.`);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                title="Tester immédiatement l'affichage et les restrictions de ce rôle en direct"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>Tester avec ce rôle</span>
+              </button>
+            )}
+
             {targetType === 'user' && activeUser && (
               <button
                 type="button"

@@ -1123,3 +1123,30 @@ export const DEFAULT_CASH_REGISTER_CONFIG: CashRegisterConfig = {
   autoriserDerogationDG: true,
   toleranceEcartMax: 1000
 };
+
+// =========================================================================
+// 19. MODULE DE DIAGNOSTIC ACL & PERMISSIONS UTILISATEURS DU BACK-OFFICE
+// =========================================================================
+export interface AclDiagnosticItem {
+  userId: string;
+  userName: string;
+  userRole: string;
+  userStatus: string;
+  isCurrentSession: boolean;
+  // Pôle 1 : Hébergement
+  isPole1Allowed: boolean;
+  isGanttModuleAllowed: boolean;
+  isGantt24hAllowed: boolean;
+  isGanttCalendarAllowed: boolean;
+  isReservationsAllowed: boolean;
+  isChambresAllowed: boolean;
+  isServicesAllowed: boolean;
+  isMaintenanceAllowed: boolean;
+  // Pôle 2 & 3
+  isPole2Allowed: boolean;
+  isPole3Allowed: boolean;
+  // Diagnostic details
+  ganttDiagnosticState: 'ok' | 'gantt_disabled' | 'subfeature_disabled' | 'custom_override_blocked';
+  customOverridesCount: number;
+  sourceOrigin: 'surcharge_utilisateur' | 'matrice_role' | 'defaut_systeme';
+}

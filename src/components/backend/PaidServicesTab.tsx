@@ -40,9 +40,16 @@ export const PaidServicesTab: React.FC = () => {
     togglePaidServiceStatus,
     serviceOrders,
     updateServiceOrderStatus,
-    deleteServiceOrder
+    deleteServiceOrder,
+    currentUserProfile,
+    hasPermission
   } = useHotelData();
   const { formatPrice, settings } = useHotelSettings();
+
+  const isDG = currentUserProfile.role === 'Directeur Général';
+  const canAddService = isDG || hasPermission('services', 'add');
+  const canEditService = isDG || hasPermission('services', 'edit');
+  const canDeleteService = isDG || hasPermission('services', 'delete');
 
   // Active view: 'catalogue' | 'commandes'
   const [activeSubView, setActiveSubView] = useState<'catalogue' | 'commandes'>('catalogue');
@@ -205,23 +212,27 @@ export const PaidServicesTab: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => handleOpenOrderModal()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-900/30 transition-all cursor-pointer"
-              title="Ouvrir le Point de Vente (POS) tactile avec effets sonores"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>Commander un Service (POS &amp; Son)</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenAddService}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b0936b] text-stone-950 font-bold text-xs shadow-lg shadow-[#C5A880]/20 transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nouveau Service Payant</span>
-            </button>
+            {canAddService && (
+              <button
+                type="button"
+                onClick={() => handleOpenOrderModal()}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold text-xs shadow-lg shadow-amber-900/30 transition-all cursor-pointer"
+                title="Ouvrir le Point de Vente (POS) tactile avec effets sonores"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Commander un Service (POS &amp; Son)</span>
+              </button>
+            )}
+            {canAddService && (
+              <button
+                type="button"
+                onClick={handleOpenAddService}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b0936b] text-stone-950 font-bold text-xs shadow-lg shadow-[#C5A880]/20 transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nouveau Service Payant</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -269,15 +280,17 @@ export const PaidServicesTab: React.FC = () => {
       {/* Sub-view Navigation Switcher */}
       <div className="flex flex-wrap items-center justify-between border-b border-stone-800 pb-3 gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => handleOpenOrderModal()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-md ring-2 ring-amber-400/40"
-            title="Ouvrir le terminal tactile Point de Vente avec bips sonores"
-          >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Point de Vente (POS Caisse &amp; Son)</span>
-          </button>
+          {canAddService && (
+            <button
+              type="button"
+              onClick={() => handleOpenOrderModal()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white shadow-md ring-2 ring-amber-400/40"
+              title="Ouvrir le terminal tactile Point de Vente avec bips sonores"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Point de Vente (POS Caisse &amp; Son)</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setActiveSubView('catalogue')}
@@ -396,18 +409,30 @@ export const PaidServicesTab: React.FC = () => {
                       </div>
                       
                       <div className="absolute top-3 right-3">
-                        <button
-                          type="button"
-                          onClick={() => togglePaidServiceStatus(srv.id)}
-                          className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider cursor-pointer backdrop-blur-md transition-all shadow-md ${
-                            srv.actif
-                              ? 'bg-emerald-500/90 text-stone-950 hover:bg-emerald-400'
-                              : 'bg-rose-500/90 text-white hover:bg-rose-400'
-                          }`}
-                          title={srv.actif ? 'Désactiver ce service' : 'Activer ce service'}
-                        >
-                          {srv.actif ? 'Actif' : 'Inactif'}
-                        </button>
+                        {canEditService ? (
+                          <button
+                            type="button"
+                            onClick={() => togglePaidServiceStatus(srv.id)}
+                            className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider cursor-pointer backdrop-blur-md transition-all shadow-md ${
+                              srv.actif
+                                ? 'bg-emerald-500/90 text-stone-950 hover:bg-emerald-400'
+                                : 'bg-rose-500/90 text-white hover:bg-rose-400'
+                            }`}
+                            title={srv.actif ? 'Désactiver ce service' : 'Activer ce service'}
+                          >
+                            {srv.actif ? 'Actif' : 'Inactif'}
+                          </button>
+                        ) : (
+                          <span
+                            className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider backdrop-blur-md shadow-md ${
+                              srv.actif
+                                ? 'bg-emerald-500/90 text-stone-950'
+                                : 'bg-rose-500/90 text-white'
+                            }`}
+                          >
+                            {srv.actif ? 'Actif' : 'Inactif'}
+                          </span>
+                        )}
                       </div>
 
                       {/* Price Tag Badge on Image */}
@@ -436,40 +461,48 @@ export const PaidServicesTab: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="px-5 pb-5">
-                    <div className="pt-3.5 border-t border-stone-800/80">
-                      <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenOrderModal(srv)}
-                        disabled={!srv.actif}
-                        className="col-span-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-stone-950 font-bold text-[11px] transition-all cursor-pointer"
-                        title="Commander ce service dans le Point de Vente avec bips sonores"
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>Commander (POS)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditService(srv)}
-                        className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white font-medium text-[11px] transition-all cursor-pointer"
-                        title="Modifier les informations"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Modifier</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteService(srv.id, srv.nom)}
-                        className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-rose-950/30 hover:bg-rose-900/50 text-rose-400 font-medium text-[11px] transition-all cursor-pointer"
-                        title="Supprimer ce service"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Suppr.</span>
-                      </button>
+                  {(canAddService || canEditService || canDeleteService) && (
+                    <div className="px-5 pb-5">
+                      <div className="pt-3.5 border-t border-stone-800/80">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {canAddService && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenOrderModal(srv)}
+                              disabled={!srv.actif}
+                              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-stone-950 font-bold text-[11px] transition-all cursor-pointer min-w-[120px]"
+                              title="Commander ce service dans le Point de Vente avec bips sonores"
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              <span>Commander (POS)</span>
+                            </button>
+                          )}
+                          {canEditService && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditService(srv)}
+                              className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white font-medium text-[11px] transition-all cursor-pointer"
+                              title="Modifier les informations"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>Modifier</span>
+                            </button>
+                          )}
+                          {canDeleteService && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteService(srv.id, srv.nom)}
+                              className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded-xl bg-rose-950/30 hover:bg-rose-900/50 text-rose-400 font-medium text-[11px] transition-all cursor-pointer"
+                              title="Supprimer ce service"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Suppr.</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  )}
               </div>
             );
           })}
@@ -482,14 +515,16 @@ export const PaidServicesTab: React.FC = () => {
               <p className="text-stone-600 text-xs mt-1">
                 Modifiez vos critères de recherche ou ajoutez un nouveau service.
               </p>
-              <button
-                type="button"
-                onClick={handleOpenAddService}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C5A880] text-stone-950 font-bold text-xs cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Créer un premier service</span>
-              </button>
+              {canAddService && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddService}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C5A880] text-stone-950 font-bold text-xs cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Créer un premier service</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -502,14 +537,16 @@ export const PaidServicesTab: React.FC = () => {
             <div className="text-xs text-stone-400">
               Liste détaillée des commandes de services avec suivi du paiement partiel et du mode de règlement.
             </div>
-            <button
-              type="button"
-              onClick={() => handleOpenOrderModal()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Créer une Commande</span>
-            </button>
+            {canAddService && (
+              <button
+                type="button"
+                onClick={() => handleOpenOrderModal()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Créer une Commande</span>
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-stone-800 bg-stone-900/40">
@@ -525,7 +562,7 @@ export const PaidServicesTab: React.FC = () => {
                   <th className="p-3 text-right">Reste Dû</th>
                   <th className="p-3 text-center">Paiement</th>
                   <th className="p-3 text-center">Statut</th>
-                  <th className="p-3 text-center">Action</th>
+                  {(canEditService || canDeleteService) && <th className="p-3 text-center">Action</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-800">
@@ -591,39 +628,57 @@ export const PaidServicesTab: React.FC = () => {
                       </div>
                     </td>
                     <td className="p-3 text-center">
-                      <select
-                        value={ord.statutCommande}
-                        onChange={(e) =>
-                          updateServiceOrderStatus(ord.id, e.target.value as ServiceOrder['statutCommande'])
-                        }
-                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
-                          ord.statutCommande === 'livre'
-                            ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800'
-                            : ord.statutCommande === 'en_cours'
-                            ? 'bg-amber-950/60 text-amber-300 border-amber-800'
-                            : 'bg-stone-800 text-stone-300 border-stone-700'
-                        }`}
-                      >
-                        <option value="en_attente">En attente</option>
-                        <option value="en_cours">En cours</option>
-                        <option value="livre">Livré</option>
-                        <option value="annule">Annulé</option>
-                      </select>
-                    </td>
-                    <td className="p-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm(`Supprimer la commande ${ord.numeroCommande} ?`)) {
-                            deleteServiceOrder(ord.id);
+                      {canEditService ? (
+                        <select
+                          value={ord.statutCommande}
+                          onChange={(e) =>
+                            updateServiceOrderStatus(ord.id, e.target.value as ServiceOrder['statutCommande'])
                           }
-                        }}
-                        className="p-1.5 rounded-lg hover:bg-rose-950/50 text-stone-500 hover:text-rose-400 transition-colors cursor-pointer"
-                        title="Supprimer la commande"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                          className={`text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
+                            ord.statutCommande === 'livre'
+                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800'
+                              : ord.statutCommande === 'en_cours'
+                              ? 'bg-amber-950/60 text-amber-300 border-amber-800'
+                              : 'bg-stone-800 text-stone-300 border-stone-700'
+                          }`}
+                        >
+                          <option value="en_attente">En attente</option>
+                          <option value="en_cours">En cours</option>
+                          <option value="livre">Livré</option>
+                          <option value="annule">Annulé</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`text-[10px] font-bold px-2 py-1 rounded-lg border inline-block ${
+                            ord.statutCommande === 'livre'
+                              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800'
+                              : ord.statutCommande === 'en_cours'
+                              ? 'bg-amber-950/60 text-amber-300 border-amber-800'
+                              : 'bg-stone-800 text-stone-300 border-stone-700'
+                          }`}
+                        >
+                          {ord.statutCommande === 'livre' ? 'Livré' : ord.statutCommande === 'en_cours' ? 'En cours' : ord.statutCommande === 'annule' ? 'Annulé' : 'En attente'}
+                        </span>
+                      )}
                     </td>
+                    {(canEditService || canDeleteService) && (
+                      <td className="p-3 text-center">
+                        {canDeleteService && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`Supprimer la commande ${ord.numeroCommande} ?`)) {
+                                deleteServiceOrder(ord.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-rose-950/50 text-stone-500 hover:text-rose-400 transition-colors cursor-pointer"
+                            title="Supprimer la commande"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
