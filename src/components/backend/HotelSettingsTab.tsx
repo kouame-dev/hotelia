@@ -3,6 +3,7 @@ import { useHotelSettings, CURRENCIES, CurrencyCode } from '../../context/Settin
 import { MobileMoneySettingsForm } from './MobileMoneySettingsForm.tsx';
 import { FneSettingsForm } from './FneSettingsForm.tsx';
 import { HeroSliderManager } from './HeroSliderManager.tsx';
+import { FooterSettingsForm } from './FooterSettingsForm.tsx';
 import {
   Settings,
   Image,
@@ -27,7 +28,8 @@ import {
   Smartphone,
   CreditCard,
   Zap,
-  Sliders
+  Sliders,
+  PanelBottom
 } from 'lucide-react';
 
 interface HotelSettingsTabProps {
@@ -40,7 +42,8 @@ interface HotelSettingsTabProps {
     | 'banner'
     | 'seo'
     | 'legal'
-    | 'slider';
+    | 'slider'
+    | 'footer';
 }
 
 export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
@@ -52,7 +55,7 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
   const [formData, setFormData] = useState(settings);
   const [saveNotification, setSaveNotification] = useState(false);
   const [activeSubSection, setActiveSubSection] = useState<
-    'general' | 'currency' | 'mobile_money' | 'fne_ivoirienne' | 'cancellation' | 'legal' | 'seo' | 'banner' | 'slider'
+    'general' | 'currency' | 'mobile_money' | 'fne_ivoirienne' | 'cancellation' | 'legal' | 'seo' | 'banner' | 'slider' | 'footer'
   >(initialSubSection);
 
   // Synchroniser l'état local si les réglages globaux changent
@@ -224,6 +227,22 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
         >
           <Sliders className="w-4 h-4 text-[#C5A880]" />
           <span>Sliders Accueil (Front-End)</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-[#C5A880]/20 text-[#927244] text-[10px] font-mono font-bold">
+            Vitrine
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubSection('footer')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+            activeSubSection === 'footer'
+              ? 'bg-[#1C1B18] text-white shadow-sm ring-2 ring-[#C5A880]/60'
+              : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'
+          }`}
+        >
+          <PanelBottom className="w-4 h-4 text-[#C5A880]" />
+          <span>Footer Front-End (Pied de Page)</span>
           <span className="px-1.5 py-0.2 rounded-full bg-[#C5A880]/20 text-[#927244] text-[10px] font-mono font-bold">
             Vitrine
           </span>
@@ -971,8 +990,15 @@ export const HotelSettingsTab: React.FC<HotelSettingsTabProps> = ({
           <HeroSliderManager />
         )}
 
+        {/* ========================================================================= */}
+        {/* 2.quinquies SECTION FORMULAIRE DU FOOTER FRONT-END                        */}
+        {/* ========================================================================= */}
+        {activeSubSection === 'footer' && (
+          <FooterSettingsForm />
+        )}
+
         {/* Bouton de sauvegarde inférieur */}
-        {activeSubSection !== 'slider' && (
+        {activeSubSection !== 'slider' && activeSubSection !== 'footer' && (
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200">
             <button
               type="button"

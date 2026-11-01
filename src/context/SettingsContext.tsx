@@ -362,7 +362,103 @@ export interface HotelSettings {
 
   // 9. Slides du Hero Slider Front-End
   heroSlides: SlideData[];
+
+  // 10. Configuration du Footer (Pied de page Front-End)
+  footerConfig: FooterConfig;
 }
+
+export interface FooterQuickLink {
+  id: string;
+  label: string;
+  url: string;
+  isExternal?: boolean;
+}
+
+export interface FooterSocialLinks {
+  facebook?: string;
+  instagram?: string;
+  whatsapp?: string;
+  linkedin?: string;
+  twitter?: string;
+}
+
+export interface FooterConfig {
+  // Colonne 1 : Identité & Marque
+  brandName: string;
+  brandDescription: string;
+  websiteUrl: string;
+  showSocialLinks: boolean;
+  socialLinks: FooterSocialLinks;
+
+  // Colonne 2 : Réservations & Contact
+  contactTitle: string;
+  phonePrimary: string;
+  phoneSecondary?: string;
+  email: string;
+  address: string;
+  openingHours: string;
+
+  // Colonne 3 : Navigation Rapide
+  quickLinksTitle: string;
+  quickLinks: FooterQuickLink[];
+
+  // Colonne 4 : Accès Réservé & Espace Client
+  reservedTitle: string;
+  reservedDescription: string;
+  showBackendButton: boolean;
+  backendButtonLabel: string;
+  showClientSpaceButton: boolean;
+  clientSpaceButtonLabel: string;
+
+  // Ligne de Copyright & Liens Légaux
+  copyrightText: string;
+  customBottomNotice?: string;
+  showTermsLink: boolean;
+  showPrivacyLink: boolean;
+  showCancellationLink: boolean;
+}
+
+export const DEFAULT_FOOTER_CONFIG: FooterConfig = {
+  brandName: 'HÔTEL REFUGE BANANERAIE',
+  brandDescription: 'Résidence hôtelière haut de gamme développée et exploitée par Dekouassi Holding à Bongouanou.',
+  websiteUrl: 'https://hotelia.dekouassiholding.com',
+  showSocialLinks: true,
+  socialLinks: {
+    facebook: 'https://facebook.com',
+    instagram: 'https://instagram.com',
+    whatsapp: '+2250700000000',
+    linkedin: '',
+    twitter: ''
+  },
+  contactTitle: 'Réservations & Accueil',
+  phonePrimary: '+225 07 00 00 00 00',
+  phoneSecondary: '+225 05 55 98 76 54',
+  email: 'contact@hotelia.dekouassiholding.com',
+  address: "Quartier Résidentiel Bananeraie, Bongouanou, Côte d'Ivoire",
+  openingHours: 'Réception & Caisse 24h/24 - 7j/7 (Check-in 14h / Check-out 12h)',
+
+  quickLinksTitle: 'Accès Rapide',
+  quickLinks: [
+    { id: 'ql-1', label: 'Chambres & Suites', url: '#chambres' },
+    { id: 'ql-2', label: 'Formule Day-Use (Heures)', url: '#tarifs' },
+    { id: 'ql-3', label: 'Restaurant & Bar Le Bananier', url: '#restaurant' },
+    { id: 'ql-4', label: 'Spa & Piscine', url: '#services' },
+    { id: 'ql-5', label: 'Club Privilège & Fidélité', url: '#fidelite' }
+  ],
+
+  reservedTitle: 'Accès Réservé',
+  reservedDescription: 'Portail sécurisé réservé au personnel de réception, caissiers et à la direction générale.',
+  showBackendButton: true,
+  backendButtonLabel: 'Connexion Back-End',
+  showClientSpaceButton: true,
+  clientSpaceButtonLabel: 'Espace Client & Fidélité',
+
+  copyrightText: '© 2026 HÔTEL REFUGE BANANERAIE. Une marque exclusive de Dekouassi Holding. Tous droits réservés.',
+  customBottomNotice: 'Établissement hôtelier classé • Agrément Touristique de Côte d’Ivoire',
+  showTermsLink: true,
+  showPrivacyLink: true,
+  showCancellationLink: true
+};
 
 export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
   appName: 'HÔTEL REFUGE BANANERAIE',
@@ -407,7 +503,8 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
 
   mobileMoney: DEFAULT_MOBILE_MONEY_SETTINGS,
   fneIvoirienne: DEFAULT_FNE_IVOIRIENNE_CONFIG,
-  heroSlides: DEFAULT_HERO_SLIDES
+  heroSlides: DEFAULT_HERO_SLIDES,
+  footerConfig: DEFAULT_FOOTER_CONFIG
 };
 
 interface SettingsContextType {
@@ -427,6 +524,11 @@ interface SettingsContextType {
   deleteHeroSlide: (id: number) => void;
   reorderHeroSlides: (newSlides: SlideData[]) => void;
   resetHeroSlidesToDefault: () => void;
+
+  // 10. Gestion du Footer Front-End
+  footerConfig: FooterConfig;
+  updateFooterSettings: (footer: Partial<FooterConfig>) => void;
+  resetFooterToDefault: () => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -504,7 +606,19 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           heroSlides:
             parsed.heroSlides && Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0
               ? parsed.heroSlides
-              : DEFAULT_HERO_SLIDES
+              : DEFAULT_HERO_SLIDES,
+          footerConfig: {
+            ...DEFAULT_FOOTER_CONFIG,
+            ...(parsed.footerConfig || {}),
+            socialLinks: {
+              ...DEFAULT_FOOTER_CONFIG.socialLinks,
+              ...(parsed.footerConfig?.socialLinks || {})
+            },
+            quickLinks:
+              parsed.footerConfig?.quickLinks && Array.isArray(parsed.footerConfig.quickLinks)
+                ? parsed.footerConfig.quickLinks
+                : DEFAULT_FOOTER_CONFIG.quickLinks
+          }
         };
       }
     } catch (e) {
@@ -661,6 +775,20 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updateSettings({ heroSlides: DEFAULT_HERO_SLIDES });
   };
 
+  const updateFooterSettings = (footer: Partial<FooterConfig>) => {
+    setSettings((prev) => ({
+      ...prev,
+      footerConfig: {
+        ...(prev.footerConfig || DEFAULT_FOOTER_CONFIG),
+        ...footer
+      }
+    }));
+  };
+
+  const resetFooterToDefault = () => {
+    updateSettings({ footerConfig: DEFAULT_FOOTER_CONFIG });
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -677,7 +805,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateHeroSlide,
         deleteHeroSlide,
         reorderHeroSlides,
-        resetHeroSlidesToDefault
+        resetHeroSlidesToDefault,
+        footerConfig: settings.footerConfig || DEFAULT_FOOTER_CONFIG,
+        updateFooterSettings,
+        resetFooterToDefault
       }}
     >
       {children}

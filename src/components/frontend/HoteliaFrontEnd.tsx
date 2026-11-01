@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { HoteliaHeroSlider } from './HoteliaHeroSlider.tsx';
 import { ReservationForm, ReservationMode } from '../ReservationForm.tsx';
 import { ClientSpaceModal } from './ClientSpaceModal.tsx';
-import { useHotelSettings, CURRENCIES } from '../../context/SettingsContext.tsx';
+import { useHotelSettings, CURRENCIES, DEFAULT_FOOTER_CONFIG } from '../../context/SettingsContext.tsx';
 import { useHotelData } from '../../context/HotelDataContext.tsx';
 import {
   Sparkles,
@@ -34,7 +34,10 @@ import {
   Eye,
   Images,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  User,
+  ExternalLink,
+  MessageCircle
 } from 'lucide-react';
 
 export interface RoomItem {
@@ -1087,95 +1090,210 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
         </div>
       )}
 
-      {/* 6. Footer Hôtel & Dekouassi Holding */}
-      <footer id="contact" className="bg-[#141311] text-stone-400 py-12 px-4 sm:px-6 lg:px-8 border-t border-stone-900 text-xs">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-10 border-b border-stone-800">
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2 text-white">
-              <Sparkles className="w-4 h-4 text-[#C5A880]" />
-              <span className="font-serif font-bold text-base">HOTELIA</span>
-            </div>
-            <p className="text-xs text-stone-400 leading-relaxed">
-              Résidence hôtelière haut de gamme développée et exploitée par Dekouassi Holding.
-            </p>
-            <p className="font-mono text-[11px] text-[#C5A880]">
-              https://hotelia.dekouassiholding.com
-            </p>
-          </div>
+      {/* 6. Footer Hôtel & Dekouassi Holding (Piloté dynamiquement depuis les Paramètres) */}
+      {(() => {
+        const footer = settings.footerConfig || DEFAULT_FOOTER_CONFIG;
+        return (
+          <footer id="contact" className="bg-[#141311] text-stone-400 py-12 px-4 sm:px-6 lg:px-8 border-t border-stone-900 text-xs">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-10 border-b border-stone-800">
+              {/* Colonne 1 : Marque & Présentation */}
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 text-white">
+                  <Sparkles className="w-4 h-4 text-[#C5A880]" />
+                  <span className="font-serif font-bold text-base tracking-wide">
+                    {footer.brandName || settings.appName || 'HOTELIA'}
+                  </span>
+                </div>
+                <p className="text-xs text-stone-400 leading-relaxed">
+                  {footer.brandDescription || 'Résidence hôtelière haut de gamme développée et exploitée par Dekouassi Holding.'}
+                </p>
+                {footer.websiteUrl && (
+                  <p className="font-mono text-[11px] text-[#C5A880]">
+                    {footer.websiteUrl}
+                  </p>
+                )}
 
-          <div className="space-y-2">
-            <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">Réservations &amp; Accueil</h4>
-            <div className="flex items-center gap-2 text-stone-300">
-              <Phone className="w-3.5 h-3.5 text-[#C5A880]" />
-              <span>+33 1 42 68 00 00 / +225 07 00 00 00</span>
-            </div>
-            <div className="flex items-center gap-2 text-stone-300">
-              <Mail className="w-3.5 h-3.5 text-[#C5A880]" />
-              <span>contact@hotelia.dekouassiholding.com</span>
-            </div>
-            <div className="flex items-center gap-2 text-stone-300">
-              <MapPin className="w-3.5 h-3.5 text-[#C5A880]" />
-              <span>Boulevard de l’Élégance, Quartier Résidentiel</span>
-            </div>
-          </div>
+                {footer.showSocialLinks && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1 text-stone-400">
+                    {footer.socialLinks?.whatsapp && (
+                      <a
+                        href={`https://wa.me/${footer.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-950/70 hover:bg-emerald-900 text-emerald-400 border border-emerald-800/80 text-[10px] font-mono transition-colors"
+                        title="Nous contacter sur WhatsApp"
+                      >
+                        <MessageCircle className="w-3 h-3 text-emerald-400" />
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
+                    {footer.socialLinks?.facebook && (
+                      <a
+                        href={footer.socialLinks.facebook}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-stone-400 hover:text-white transition-colors"
+                      >
+                        Facebook
+                      </a>
+                    )}
+                    {footer.socialLinks?.instagram && (
+                      <a
+                        href={footer.socialLinks.instagram}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-stone-400 hover:text-white transition-colors"
+                      >
+                        Instagram
+                      </a>
+                    )}
+                    {footer.socialLinks?.linkedin && (
+                      <a
+                        href={footer.socialLinks.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-stone-400 hover:text-white transition-colors"
+                      >
+                        LinkedIn
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">Accès Rapide</h4>
-            <ul className="space-y-1.5 text-stone-400">
-              <li><a href="#chambres" className="hover:text-white transition-colors">Chambres Deluxe</a></li>
-              <li><a href="#chambres" className="hover:text-white transition-colors">Suites Exécutives</a></li>
-              <li><a href="#services" className="hover:text-white transition-colors">Formule Day-Use (Heures)</a></li>
-              <li><a href="#services" className="hover:text-white transition-colors">Spa &amp; Piscine</a></li>
-            </ul>
-          </div>
+              {/* Colonne 2 : Réservations & Accueil */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">
+                  {footer.contactTitle || 'Réservations & Accueil'}
+                </h4>
+                <div className="flex items-center gap-2 text-stone-300">
+                  <Phone className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>
+                    {footer.phonePrimary || '+225 07 00 00 00 00'}
+                    {footer.phoneSecondary ? ` / ${footer.phoneSecondary}` : ''}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-stone-300">
+                  <Mail className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>{footer.email || 'contact@hotelia.dekouassiholding.com'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-stone-300">
+                  <MapPin className="w-3.5 h-3.5 text-[#C5A880]" />
+                  <span>{footer.address || "Quartier Résidentiel Bananeraie, Bongouanou, Côte d'Ivoire"}</span>
+                </div>
+                {footer.openingHours && (
+                  <div className="flex items-center gap-2 text-stone-400 text-[11px] pt-1">
+                    <Clock className="w-3.5 h-3.5 text-[#C5A880]" />
+                    <span>{footer.openingHours}</span>
+                  </div>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">Accès Réservé</h4>
-            <p className="text-[11px] text-stone-400">
-              Réservé au personnel de réception et à la direction générale.
-            </p>
-            <button
-              type="button"
-              onClick={onGoToBackend}
-              className="mt-2 w-full py-2.5 px-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 font-semibold text-xs flex items-center justify-center gap-2 transition-all"
-            >
-              <Lock className="w-3.5 h-3.5 text-[#C5A880]" />
-              <span>Connexion Back-End</span>
-            </button>
-          </div>
-        </div>
+              {/* Colonne 3 : Accès Rapide */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">
+                  {footer.quickLinksTitle || 'Accès Rapide'}
+                </h4>
+                <ul className="space-y-1.5 text-stone-400">
+                  {(footer.quickLinks || []).map((link) => (
+                    <li key={link.id}>
+                      <a
+                        href={link.url}
+                        className="hover:text-white transition-colors flex items-center gap-1"
+                        {...(link.isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      >
+                        <span>{link.label}</span>
+                        {link.isExternal && <ExternalLink className="w-2.5 h-2.5 opacity-60" />}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-        <div className="max-w-7xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
-          <div>
-            © {new Date().getFullYear()} {settings.appName || 'Hôtel Refuge de bongouanou'}. Une marque exclusive de <strong>{settings.holdingName || 'Dekouassi Holding'}</strong>. Tous droits réservés.
-          </div>
-          <div className="flex items-center space-x-4 text-stone-500">
-            <button
-              type="button"
-              onClick={() => setActiveLegalModal('tos')}
-              className="hover:text-stone-300 transition-colors underline cursor-pointer"
-            >
-              Conditions générales (CGV)
-            </button>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => setActiveLegalModal('privacy')}
-              className="hover:text-stone-300 transition-colors underline cursor-pointer"
-            >
-              Politique de confidentialité
-            </button>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => setActiveLegalModal('cancellation')}
-              className="hover:text-stone-300 transition-colors underline cursor-pointer"
-            >
-              Conditions d'annulation
-            </button>
-          </div>
-        </div>
-      </footer>
+              {/* Colonne 4 : Accès Réservé & Espace Client */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-white uppercase text-[11px] tracking-wider">
+                  {footer.reservedTitle || 'Accès Réservé'}
+                </h4>
+                <p className="text-[11px] text-stone-400 leading-relaxed">
+                  {footer.reservedDescription || 'Portail sécurisé réservé au personnel de réception et à la direction générale.'}
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  {footer.showBackendButton && (
+                    <button
+                      type="button"
+                      onClick={onGoToBackend}
+                      className="mt-1 w-full py-2.5 px-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-[#C5A880]" />
+                      <span>{footer.backendButtonLabel || 'Connexion Back-End'}</span>
+                    </button>
+                  )}
+
+                  {footer.showClientSpaceButton && (
+                    <button
+                      type="button"
+                      onClick={() => setIsClientSpaceOpen(true)}
+                      className="w-full py-2 px-3 rounded-xl bg-[#C5A880]/15 hover:bg-[#C5A880]/25 text-[#E8D4B8] border border-[#C5A880]/40 font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                    >
+                      <User className="w-3.5 h-3.5 text-[#C5A880]" />
+                      <span>{footer.clientSpaceButtonLabel || 'Espace Client & Fidélité'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Ligne inférieure : Copyright & Modales Légales */}
+            <div className="max-w-7xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
+              <div className="text-stone-400">
+                {footer.copyrightText || (
+                  <>
+                    © {new Date().getFullYear()} {settings.appName || 'HÔTEL REFUGE BANANERAIE'}. Une marque exclusive de <strong>{settings.holdingName || 'Dekouassi Holding'}</strong>. Tous droits réservés.
+                  </>
+                )}
+                {footer.customBottomNotice && (
+                  <span className="block sm:inline sm:ml-2 text-stone-500 text-[10px]">
+                    • {footer.customBottomNotice}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-4 text-stone-500">
+                {footer.showTermsLink && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveLegalModal('tos')}
+                    className="hover:text-stone-300 transition-colors underline cursor-pointer"
+                  >
+                    Conditions générales (CGV)
+                  </button>
+                )}
+                {footer.showTermsLink && footer.showPrivacyLink && <span>•</span>}
+                {footer.showPrivacyLink && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveLegalModal('privacy')}
+                    className="hover:text-stone-300 transition-colors underline cursor-pointer"
+                  >
+                    Politique de confidentialité
+                  </button>
+                )}
+                {footer.showPrivacyLink && footer.showCancellationLink && <span>•</span>}
+                {footer.showCancellationLink && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveLegalModal('cancellation')}
+                    className="hover:text-stone-300 transition-colors underline cursor-pointer"
+                  >
+                    Conditions d'annulation
+                  </button>
+                )}
+              </div>
+            </div>
+          </footer>
+        );
+      })()}
 
       {/* Modal d'affichage des Politiques & Conditions (Pilotées par les Paramètres) */}
       {activeLegalModal && (
