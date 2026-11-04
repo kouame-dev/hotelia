@@ -72,16 +72,28 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
     setTimeout(() => {
       setIsLoading(false);
       const lowEmail = cleanEmail.toLowerCase();
-      // Chercher par email, username ou rôle approchant
-      const matched = usersList.find(
+
+      // 1. Recherche stricte par adresse email ou par identifiant (@username)
+      let matched = usersList.find(
         (u) =>
           u.email.toLowerCase() === lowEmail ||
-          u.username?.toLowerCase() === lowEmail ||
-          (lowEmail.includes('koua') || lowEmail.includes('directeur') || lowEmail.includes('manager') || lowEmail.includes('admin@')) && u.role === 'Directeur Général' ||
-          lowEmail.includes('restaurant') && u.role.includes('Restaurant') ||
-          lowEmail.includes('reception') && u.role === 'Chef de Réception' ||
-          lowEmail.includes('caisse') && u.role === 'Caisse'
+          (u.username && u.username.toLowerCase() === lowEmail)
       );
+
+      // 2. Recherche par domaine ou rôle démo si saisie de mot-clé
+      if (!matched) {
+        if (lowEmail.includes('caisse.restaurant') || lowEmail.includes('caisse_restaurant')) {
+          matched = usersList.find((u) => u.role === 'Caisse Restaurant');
+        } else if (lowEmail.includes('restaurant')) {
+          matched = usersList.find((u) => u.role === 'Directeur Restaurant' || u.role.includes('Restaurant'));
+        } else if (lowEmail.includes('caisse')) {
+          matched = usersList.find((u) => u.role === 'Caisse');
+        } else if (lowEmail.includes('reception') || lowEmail.includes('réception')) {
+          matched = usersList.find((u) => u.role === 'Chef de Réception');
+        } else if (lowEmail.includes('koua') || lowEmail.includes('directeur') || lowEmail.includes('dg@')) {
+          matched = usersList.find((u) => u.role === 'Directeur Général');
+        }
+      }
 
       if (matched) {
         switchUserRole(matched.id);
@@ -91,12 +103,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ onLoginSuccess, 
           email: matched.email
         });
       } else {
-        switchUserRole('directeur');
-        onLoginSuccess({
-          nom: cleanEmail.includes('@') ? cleanEmail.split('@')[0] : 'Koua Dibi (Dekouassi Holding)',
-          role: 'Directeur Général & Administrateur',
-          email: cleanEmail
-        });
+        setErrorMessage(`Identifiant « ${cleanEmail} » non reconnu. Veuillez vérifier votre adresse email ou utiliser un compte rapide ci-dessous.`);
       }
     }, 150);
   };

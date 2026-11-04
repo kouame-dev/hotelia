@@ -39,7 +39,9 @@ import {
   MessageSquare,
   History,
   Lock,
-  Wrench
+  Wrench,
+  Pencil,
+  Save
 } from 'lucide-react';
 import { ReservationAuditLogTab } from './ReservationAuditLogTab.tsx';
 
@@ -129,6 +131,9 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
 
   // État du modal de détails / facture
   const [invoiceModalRes, setInvoiceModalRes] = useState<ReservationItem | null>(null);
+
+  // État du modal d'édition de réservation
+  const [editingReservation, setEditingReservation] = useState<ReservationItem | null>(null);
 
   // État du formulaire "Ajouter une réservation"
   const [formMode, setFormMode] = useState<ReservationType>('nuit');
@@ -1794,6 +1799,18 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                             </button>
                           )}
 
+                          {/* Action 2b : Modifier les détails de la réservation */}
+                          {hasPermission('reservations', 'edit') && (
+                            <button
+                              type="button"
+                              onClick={() => setEditingReservation({ ...res })}
+                              className="p-1.5 rounded-lg hover:bg-blue-50 text-stone-600 hover:text-blue-700 transition-all cursor-pointer"
+                              title="Modifier la réservation (client, chambre, montants, dates)"
+                            >
+                              <Pencil className="w-4 h-4 text-blue-600" />
+                            </button>
+                          )}
+
                           {/* Action 3 : Facture / Reçu pour toutes les réservations */}
                           <button
                             type="button"
@@ -1934,7 +1951,315 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
         </div>
       )}
 
-      {/* 6. MODAL FACTURE / REÇU CLIENT AVEC IMPRESSION A4 ET THERMIQUE (80MM / 58MM) */}
+      {/* 6. MODAL ÉDITION COMPLÈTE DE RÉSERVATION */}
+      {editingReservation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-stone-200 space-y-5 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-4">
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#C5A880] font-bold block">
+                  ÉDITION DE DOSSIER • RÉSERVATION #{editingReservation.id}
+                </span>
+                <h3 className="text-xl font-serif font-bold text-stone-900">
+                  Modifier la Réservation de {editingReservation.clientNom}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingReservation(null)}
+                className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const targetChambre = chambres.find((c) => c.numero === editingReservation.chambreNumero);
+                const total = Number(editingReservation.montantTotal) || 0;
+                const acompte = Number(editingReservation.acompteVerse) || 0;
+                const updatedData: Partial<ReservationItem> = {
+                  ...editingReservation,
+                  chambreType: targetChambre?.type || editingReservation.chambreType,
+                  montantTotal: total,
+                  acompteVerse: acompte,
+                  resteAPayer: Math.max(0, total - acompte)
+                };
+                updateReservation(editingReservation.id, updatedData);
+                setEditingReservation(null);
+                setFormSuccessMessage(`Réservation #${editingReservation.id} modifiée avec succès !`);
+                setTimeout(() => setFormSuccessMessage(null), 4000);
+              }}
+              className="space-y-4 text-xs"
+            >
+              {/* Coordonnées Client */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Nom Complet du Client *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingReservation.clientNom}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, clientNom: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-medium focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Téléphone Direct *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={editingReservation.clientTelephone}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, clientTelephone: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-mono focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Email Client
+                  </label>
+                  <input
+                    type="email"
+                    value={editingReservation.clientEmail || ''}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, clientEmail: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-mono focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Chambre & Type Séjour */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Chambre Attribuée
+                  </label>
+                  <select
+                    value={editingReservation.chambreNumero}
+                    onChange={(e) => {
+                      const num = e.target.value;
+                      const ch = chambres.find((c) => c.numero === num);
+                      setEditingReservation({
+                        ...editingReservation,
+                        chambreNumero: num,
+                        chambreType: ch?.type || editingReservation.chambreType
+                      });
+                    }}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-bold bg-white focus:border-[#C5A880] focus:outline-none"
+                  >
+                    {chambres.map((ch) => (
+                      <option key={ch.id} value={ch.numero}>
+                        Chambre {ch.numero} ({ch.type} - {ch.prixNuit.toLocaleString('fr-FR')} FCFA)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Formule de Séjour
+                  </label>
+                  <select
+                    value={editingReservation.typeReservation}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, typeReservation: e.target.value as ReservationType })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-medium bg-white focus:border-[#C5A880] focus:outline-none"
+                  >
+                    <option value="nuit">🌙 Nuitée Hôtelière</option>
+                    <option value="heure">⏱️ Passage (Day-Use)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Nombre d'occupants
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={editingReservation.nbPersonnes || 1}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, nbPersonnes: Number(e.target.value) || 1 })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-bold focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Dates & Horaires */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Date Début / Arrivée
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editingReservation.dateDebut}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, dateDebut: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Heure Arrivée
+                  </label>
+                  <input
+                    type="time"
+                    value={editingReservation.heureDebut || '14:00'}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, heureDebut: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-mono focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Date Fin / Départ
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editingReservation.dateFin}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, dateFin: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Heure Départ
+                  </label>
+                  <input
+                    type="time"
+                    value={editingReservation.heureFin || '11:00'}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, heureFin: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-mono focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Montants & Règlements */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Montant Total (FCFA) *
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    required
+                    value={editingReservation.montantTotal}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, montantTotal: Number(e.target.value) || 0 })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-mono font-bold focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Acompte Versé (FCFA)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editingReservation.acompteVerse || 0}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, acompteVerse: Number(e.target.value) || 0 })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-mono font-bold text-emerald-700 focus:border-[#C5A880] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Mode de Règlement
+                  </label>
+                  <select
+                    value={editingReservation.modePaiement}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, modePaiement: e.target.value as PaymentMethod })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-medium bg-white focus:border-[#C5A880] focus:outline-none"
+                  >
+                    <option value="Espèces">Espèces</option>
+                    <option value="Carte Bancaire">Carte Bancaire</option>
+                    <option value="Orange Money">Orange Money</option>
+                    <option value="MTN Money">MTN Money</option>
+                    <option value="Moov Money">Moov Money</option>
+                    <option value="Wave">Wave</option>
+                    <option value="Virement Bancaire">Virement Bancaire</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Statuts Réservation et Paiement */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Statut de la Réservation
+                  </label>
+                  <select
+                    value={editingReservation.statutReservation}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, statutReservation: e.target.value as ReservationStatus })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-bold bg-white focus:border-[#C5A880] focus:outline-none"
+                  >
+                    <option value="en_attente">En attente de confirmation</option>
+                    <option value="confirmee">Confirmée</option>
+                    <option value="en_cours">En cours (Client sur place)</option>
+                    <option value="terminee">Terminée (Séjour clôturé)</option>
+                    <option value="annulee">Annulée</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                    Statut du Paiement
+                  </label>
+                  <select
+                    value={editingReservation.statutPaiement}
+                    onChange={(e) => setEditingReservation({ ...editingReservation, statutPaiement: e.target.value as PaymentStatus })}
+                    className="w-full p-2.5 rounded-xl border border-stone-300 font-bold bg-white focus:border-[#C5A880] focus:outline-none"
+                  >
+                    <option value="paye">Payé en totalité</option>
+                    <option value="partiel">Acompte partiel</option>
+                    <option value="en_attente">En attente de paiement</option>
+                    <option value="rembourse">Remboursé</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1">
+                <label className="font-semibold text-stone-700 uppercase tracking-wider text-[10px]">
+                  Notes / Demandes Particulières
+                </label>
+                <textarea
+                  rows={2}
+                  value={editingReservation.notes || ''}
+                  onChange={(e) => setEditingReservation({ ...editingReservation, notes: e.target.value })}
+                  placeholder="Ex: Lit bébé supplémentaire, arrivée tardive..."
+                  className="w-full p-2.5 rounded-xl border border-stone-300 focus:border-[#C5A880] focus:outline-none text-xs"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingReservation(null)}
+                  className="px-4 py-2.5 rounded-xl border border-stone-300 text-stone-700 font-semibold hover:bg-stone-100 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#b59870] text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md cursor-pointer"
+                >
+                  <Save className="w-4 h-4 stroke-[2.5]" />
+                  <span>Enregistrer les Modifications</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 7. MODAL FACTURE / REÇU CLIENT AVEC IMPRESSION A4 ET THERMIQUE (80MM / 58MM) */}
       {invoiceModalRes && (
         <InvoicePrintModal
           reservation={invoiceModalRes}

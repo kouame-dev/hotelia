@@ -56,7 +56,13 @@ import {
   getShiftTurnInDeadlineStatus
 } from '../../utils/hotelTimeUtils.ts';
 
-export const CashRegisterManagementTab: React.FC = () => {
+interface CashRegisterManagementTabProps {
+  onNavigateToExpenses?: () => void;
+}
+
+export const CashRegisterManagementTab: React.FC<CashRegisterManagementTabProps> = ({
+  onNavigateToExpenses
+}) => {
   const {
     versementsCaisse,
     addVersementCaisse,
@@ -567,6 +573,18 @@ export const CashRegisterManagementTab: React.FC = () => {
 
         {/* Actions Chef de Réception / DG */}
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {onNavigateToExpenses && (
+            <button
+              type="button"
+              onClick={onNavigateToExpenses}
+              className="px-3.5 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-rose-300 border border-rose-500/40 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
+              title="Consulter et saisir les dépenses et sorties de caisse du jour"
+            >
+              <Receipt className="w-4 h-4 text-rose-400" />
+              <span>Sorties de Caisse &amp; PDF</span>
+            </button>
+          )}
+
           {(isChefReception || isDG) && (
             <button
               type="button"

@@ -290,7 +290,7 @@ export interface ReservationNotification {
   quantiteSuggeree?: number;
 }
 
-// Module de Dépenses (Ménage, Réparation, Achats, etc.)
+// Module de Dépenses & Sorties de Caisse (Justificatifs, Ménage, Réparation, Achats, etc.)
 export type ExpenseCategory =
   | 'Ménage & Produits'
   | 'Réparation & Maintenance'
@@ -298,18 +298,31 @@ export type ExpenseCategory =
   | 'Fournitures'
   | 'Alimentation & Boissons'
   | 'Énergie & Utilités'
+  | 'Carburant & Groupe Électrogène'
+  | 'Approvisionnement & Marché'
+  | 'Salaires & Primes Journalières'
+  | 'Transport & Déplacements'
   | 'Autre';
 
 export interface ExpenseItem {
   id: string;
+  numeroPiece?: string; // Ex: "SC-20261104-001"
   date: string; // YYYY-MM-DD
-  titre: string;
-  categorie: ExpenseCategory;
-  montant: number;
-  chambreConcernee?: string; // ex: "Chambre 102" ou "Général"
-  payePar: string;
-  modePaiement: string;
-  justificatifUrl?: string;
+  heure?: string; // HH:mm
+  titre: string; // Objet / Motif du décaissement
+  categorie: ExpenseCategory | string;
+  montant: number; // en FCFA
+  chambreConcernee?: string; // ex: "Chambre 102" ou "Général / Exploitation"
+  payePar: string; // Caissier ou agent émetteur du décaissement
+  beneficiaire?: string; // Nom de la personne physique ou morale bénéficiaire des fonds
+  autorisePar?: string; // Validé / autorisée par (ex: "Koua Dibi (Directeur Général)")
+  modePaiement: string; // "Caisse Espèces Hôtel", "Orange Money", "MTN Money", "Moov Money", "Wave", "Chèque", "Virement"
+  justificatifUrl?: string; // Image base64 ou URL de prévisualisation du reçu / facture
+  nomFichierJustificatif?: string;
+  typeJustificatif?: 'facture_fournisseur' | 'recu_caisse' | 'bon_achat' | 'decharge_especes' | 'autre';
+  referenceFacture?: string;
+  statutPiece?: 'valide' | 'en_attente_justificatif' | 'annule';
+  shift?: 'Matin' | 'Soir' | 'Journée';
   notes?: string;
 }
 

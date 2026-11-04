@@ -423,3 +423,144 @@ WHERE c.id_hotel = 1
   AND CURRENT_DATE BETWEEN r.date_debut AND r.date_fin
 ORDER BY c.numero, r.heure_debut;
 `;
+
+export const MYSQL_FULL_SCRIPT = `-- ============================================================================
+-- SCRIPT OFFICIEL DDL & DML MYSQL 8.0+ / MARIADB 10.5+
+-- APPLICATION : HOTELIA PMS - HÔTEL REFUGE BANANERAIE (BONGOUANOU)
+-- ============================================================================
+CREATE DATABASE IF NOT EXISTS hotelia_db
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+USE hotelia_db;
+
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS paiements_partiels;
+DROP TABLE IF EXISTS lignes_commande_restaurant;
+DROP TABLE IF EXISTS commandes_restaurant;
+DROP TABLE IF EXISTS mouvements_stock;
+DROP TABLE IF EXISTS articles_stock;
+DROP TABLE IF EXISTS reservations;
+DROP TABLE IF EXISTS chambres;
+DROP TABLE IF EXISTS types_chambre;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS utilisateurs;
+DROP TABLE IF EXISTS hotels;
+SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE hotels (
+    id_hotel INT AUTO_INCREMENT PRIMARY KEY,
+    nom VARCHAR(150) NOT NULL,
+    adresse TEXT NOT NULL,
+    ville VARCHAR(100) NOT NULL DEFAULT 'Bongouanou',
+    pays VARCHAR(100) NOT NULL DEFAULT 'Côte d''Ivoire',
+    telephone VARCHAR(50) NOT NULL,
+    email VARCHAR(150),
+    etoiles TINYINT UNSIGNED DEFAULT 3,
+    devise VARCHAR(10) NOT NULL DEFAULT 'FCFA',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE utilisateurs (
+    id_utilisateur INT AUTO_INCREMENT PRIMARY KEY,
+    id_hotel INT NOT NULL,
+    nom_complet VARCHAR(150) NOT NULL,
+    identifiant VARCHAR(80) NOT NULL UNIQUE,
+    mot_de_passe_hash VARCHAR(255) NOT NULL,
+    role ENUM('ADMINISTRATEUR', 'DIRECTEUR', 'RECEPTIONNISTE', 'CAISSIER_RESTO', 'SERVEUR', 'GOUVERNANTE') NOT NULL DEFAULT 'RECEPTIONNISTE',
+    permissions JSON NOT NULL,
+    statut ENUM('actif', 'inactif', 'suspendu') NOT NULL DEFAULT 'actif',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_utilisateurs_hotel FOREIGN KEY (id_hotel) REFERENCES hotels(id_hotel) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE chambres (
+    id_chambre INT AUTO_INCREMENT PRIMARY KEY,
+    id_hotel INT NOT NULL,
+    numero VARCHAR(20) NOT NULL,
+    nom_coutumier VARCHAR(100) NOT NULL,
+    etage TINYINT NOT NULL DEFAULT 1,
+    statut ENUM('disponible', 'occupee', 'maintenance', 'nettoyage') NOT NULL DEFAULT 'disponible',
+    prix_nuit DECIMAL(12, 2) NOT NULL,
+    prix_heure DECIMAL(12, 2) NOT NULL,
+    capacite SMALLINT NOT NULL DEFAULT 2,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_chambres_hotel FOREIGN KEY (id_hotel) REFERENCES hotels(id_hotel) ON DELETE CASCADE,
+    CONSTRAINT uq_chambre_hotel_numero UNIQUE (id_hotel, numero)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE clients (
+    id_client INT AUTO_INCREMENT PRIMARY KEY,
+    nom_complet VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NULL,
+    telephone VARCHAR(50) NOT NULL,
+    numero_piece VARCHAR(100) NULL,
+    nationalite VARCHAR(80) NOT NULL DEFAULT 'Ivoirienne',
+    est_vip BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE reservations (
+    id_reservation INT AUTO_INCREMENT PRIMARY KEY,
+    id_hotel INT NOT NULL,
+    id_client INT NOT NULL,
+    id_chambre INT NOT NULL,
+    code_reservation VARCHAR(30) NOT NULL UNIQUE,
+    type_reservation ENUM('nuit', 'heure') NOT NULL DEFAULT 'nuit',
+    date_debut DATE NOT NULL,
+    date_fin DATE NOT NULL,
+    heure_debut TIME NULL,
+    heure_fin TIME NULL,
+    statut_reservation ENUM('confirmee', 'en_cours', 'terminee', 'annulee') NOT NULL DEFAULT 'confirmee',
+    statut_paiement ENUM('en_attente', 'acompte', 'paye', 'rembourse', 'annule') NOT NULL DEFAULT 'en_attente',
+    montant_total DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+    montant_paye DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+    reste_a_payer DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+    mode_reglement VARCHAR(50) NOT NULL DEFAULT 'Especes',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_res_hotel FOREIGN KEY (id_hotel) REFERENCES hotels(id_hotel) ON DELETE RESTRICT,
+    CONSTRAINT fk_res_client FOREIGN KEY (id_client) REFERENCES clients(id_client) ON DELETE RESTRICT,
+    CONSTRAINT fk_res_chambre FOREIGN KEY (id_chambre) REFERENCES chambres(id_chambre) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DELIMITER //
+CREATE TRIGGER trg_anti_surbooking_insert
+BEFORE INSERT ON reservations
+FOR EACH ROW
+BEGIN
+    DECLARE v_conflits INT DEFAULT 0;
+    DECLARE v_new_start DATETIME;
+    DECLARE v_new_end DATETIME;
+
+    IF NEW.statut_reservation != 'annulee' THEN
+        IF NEW.type_reservation = 'nuit' THEN
+            SET v_new_start = TIMESTAMP(NEW.date_debut, COALESCE(NEW.heure_debut, '15:00:00'));
+            SET v_new_end   = TIMESTAMP(NEW.date_fin,   COALESCE(NEW.heure_fin,   '11:00:00'));
+        ELSE
+            SET v_new_start = TIMESTAMP(NEW.date_debut, COALESCE(NEW.heure_debut, '00:00:00'));
+            SET v_new_end   = TIMESTAMP(NEW.date_fin,   COALESCE(NEW.heure_fin,   '23:59:59'));
+        END IF;
+
+        SELECT COUNT(*) INTO v_conflits
+        FROM reservations r
+        WHERE r.id_chambre = NEW.id_chambre
+          AND r.statut_reservation != 'annulee'
+          AND (
+              v_new_start < (CASE WHEN r.type_reservation = 'nuit' THEN TIMESTAMP(r.date_fin, COALESCE(r.heure_fin, '11:00:00')) ELSE TIMESTAMP(r.date_fin, COALESCE(r.heure_fin, '23:59:59')) END)
+              AND
+              v_new_end > (CASE WHEN r.type_reservation = 'nuit' THEN TIMESTAMP(r.date_debut, COALESCE(r.heure_debut, '15:00:00')) ELSE TIMESTAMP(r.date_debut, COALESCE(r.heure_debut, '00:00:00')) END)
+          );
+
+        IF v_conflits > 0 THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'CONFLIT ANTI-SURBOOKING : La chambre est déjà occupée sur ce créneau.';
+        END IF;
+    END IF;
+END;
+//
+DELIMITER ;
+`;
+
+

@@ -225,9 +225,10 @@ interface HotelDataContextType {
   activeSoundToast: SoundToastAlert | null;
   dismissSoundToast: () => void;
 
-  // 5. Dépenses (Ménage, Réparations, etc.)
+  // 5. Dépenses (Ménage, Réparations, Sorties de Caisse, etc.)
   expenses: ExpenseItem[];
-  addExpense: (newExpense: Omit<ExpenseItem, 'id'>) => void;
+  addExpense: (newExpense: Omit<ExpenseItem, 'id'>) => ExpenseItem;
+  updateExpense: (id: string, updated: Partial<ExpenseItem>) => void;
   deleteExpense: (id: string) => void;
 
   // 6. Entrées Financières & Rapports
@@ -614,18 +615,40 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const usersList = Object.values(userProfiles);
 
   const updateCurrentUserProfile = (updated: Partial<UserProfile>) => {
-    setUserProfiles((prev) => ({
-      ...prev,
-      [activeProfileKey]: {
-        ...prev[activeProfileKey],
+    setUserProfiles((prev) => {
+      // Résolution infaillible de la clé de profil (clé directe, par ID ou par username)
+      const targetKey = prev[activeProfileKey]
+        ? activeProfileKey
+        : Object.keys(prev).find((k) => prev[k]?.id === currentUserProfile.id) ||
+          Object.keys(prev).find((k) => prev[k]?.username === currentUserProfile.username) ||
+          activeProfileKey;
+
+      const updatedUser = {
+        ...(prev[targetKey] || currentUserProfile),
         ...updated
-      }
-    }));
+      };
+
+      const next = {
+        ...prev,
+        [targetKey]: updatedUser
+      };
+
+      // Synchronisation immédiate de la session active en localStorage
+      try {
+        safeSetItem('hotelia_backend_current_user', JSON.stringify({
+          nom: updatedUser.nom,
+          role: updatedUser.role,
+          email: updatedUser.email
+        }));
+        safeSetItem('hotelia_active_user_key', targetKey);
+      } catch {}
+
+      return next;
+    });
   };
 
   const addUserProfile = (newUser: Omit<UserProfile, 'id'>): UserProfile => {
     const newId = `usr-${Date.now()}`;
-    // Key based on username or sanitized name
     const profileKey = newUser.username
       ? newUser.username.toLowerCase().replace(/[^a-z0-9]/g, '_')
       : `user_${Date.now()}`;
@@ -658,10 +681,22 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       for (const key of Object.keys(next)) {
         const user = next[key];
         if (user && user.id === id) {
-          next[key] = {
+          const mergedUser = {
             ...user,
             ...updated
           };
+          next[key] = mergedUser;
+
+          // Si l'utilisateur modifié est la session actuellement active, synchroniser le cache de session
+          if (currentUserProfile.id === id) {
+            try {
+              safeSetItem('hotelia_backend_current_user', JSON.stringify({
+                nom: mergedUser.nom,
+                role: mergedUser.role,
+                email: mergedUser.email
+              }));
+            } catch {}
+          }
           break;
         }
       }
@@ -714,51 +749,53 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const switchUserRole = (keyOrRole: string) => {
+    let resolvedKey = 'directeur';
+
     // 1. Clé de profil directe
     if (userProfiles[keyOrRole]) {
-      setActiveProfileKey(keyOrRole);
-      const u = userProfiles[keyOrRole];
-      safeSetItem('hotelia_backend_current_user', JSON.stringify({ nom: u.nom, role: u.role, email: u.email }));
-      safeSetItem('hotelia_active_user_key', keyOrRole);
-      return;
-    }
-    const profilesList = Object.entries(userProfiles) as [string, UserProfile][];
-    // 2. Par ID
-    const foundById = profilesList.find(([, u]) => u.id === keyOrRole);
-    if (foundById) {
-      setActiveProfileKey(foundById[0]);
-      safeSetItem('hotelia_backend_current_user', JSON.stringify({ nom: foundById[1].nom, role: foundById[1].role, email: foundById[1].email }));
-      safeSetItem('hotelia_active_user_key', foundById[0]);
-      return;
-    }
-    // 3. Par nom d'utilisateur (username)
-    const foundByUsername = profilesList.find(([, u]) => u.username === keyOrRole);
-    if (foundByUsername) {
-      setActiveProfileKey(foundByUsername[0]);
-      safeSetItem('hotelia_backend_current_user', JSON.stringify({ nom: foundByUsername[1].nom, role: foundByUsername[1].role, email: foundByUsername[1].email }));
-      safeSetItem('hotelia_active_user_key', foundByUsername[0]);
-      return;
-    }
-    // 4. Par rôle
-    const normalized = keyOrRole.toLowerCase();
-    const foundByRole = profilesList.find(([, u]) => (u.role || '').toLowerCase() === normalized);
-    if (foundByRole) {
-      setActiveProfileKey(foundByRole[0]);
-      safeSetItem('hotelia_backend_current_user', JSON.stringify({ nom: foundByRole[1].nom, role: foundByRole[1].role, email: foundByRole[1].email }));
-      safeSetItem('hotelia_active_user_key', foundByRole[0]);
-      return;
-    }
-    if (normalized.includes('caisse restaurant')) {
-      setActiveProfileKey('caisse_restaurant');
-    } else if (normalized.includes('directeur restaurant') || normalized.includes('admin restaurant')) {
-      setActiveProfileKey('admin_restaurant');
-    } else if (normalized.includes('caisse')) {
-      setActiveProfileKey('caisse');
-    } else if (normalized.includes('réception') || normalized.includes('reception')) {
-      setActiveProfileKey('reception');
+      resolvedKey = keyOrRole;
     } else {
-      setActiveProfileKey('directeur');
+      const profilesList = Object.entries(userProfiles) as [string, UserProfile][];
+      // 2. Par ID
+      const foundById = profilesList.find(([, u]) => u.id === keyOrRole);
+      if (foundById) {
+        resolvedKey = foundById[0];
+      } else {
+        // 3. Par nom d'utilisateur (username)
+        const foundByUsername = profilesList.find(([, u]) => u.username === keyOrRole);
+        if (foundByUsername) {
+          resolvedKey = foundByUsername[0];
+        } else {
+          // 4. Par rôle exact
+          const normalized = keyOrRole.toLowerCase().trim();
+          const foundByRole = profilesList.find(([, u]) => (u.role || '').toLowerCase() === normalized);
+          if (foundByRole) {
+            resolvedKey = foundByRole[0];
+          } else if (normalized.includes('caisse restaurant') || normalized === 'caisserestaurant') {
+            resolvedKey = 'caisse_restaurant';
+          } else if (normalized.includes('directeur restaurant') || normalized.includes('admin restaurant')) {
+            resolvedKey = 'admin_restaurant';
+          } else if (normalized === 'caisse' || normalized.includes('caisse hôtel') || normalized.includes('caisse hotel')) {
+            resolvedKey = 'caisse';
+          } else if (normalized.includes('réception') || normalized.includes('reception')) {
+            resolvedKey = 'reception';
+          } else {
+            resolvedKey = 'directeur';
+          }
+        }
+      }
     }
+
+    setActiveProfileKey(resolvedKey);
+    const targetUser = userProfiles[resolvedKey] || INITIAL_USER_PROFILES[resolvedKey] || INITIAL_USER_PROFILES.directeur;
+    try {
+      safeSetItem('hotelia_backend_current_user', JSON.stringify({
+        nom: targetUser.nom,
+        role: targetUser.role,
+        email: targetUser.email
+      }));
+      safeSetItem('hotelia_active_user_key', resolvedKey);
+    } catch {}
   };
 
   // --- C2. Gestion Dynamique des Rôles & Permissions par Fonctionnalité (Ajouter, Modifier, Supprimer, Activer) ---
@@ -960,19 +997,42 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (action === 'delete') return !!cfg.canDelete && !!cfg.canActivate;
     }
 
-    // 2. Matrice de permissions selon le rôle configuré (recherche tolérante dans rolesList dynamique)
-    const userRoleStr = (user.role || '').toLowerCase();
-    const roleDef = rolesList.find(
-      (r) =>
-        r.roleName.toLowerCase() === userRoleStr ||
-        r.roleName === user.role ||
-        (userRoleStr.includes('caisse restaurant') && r.roleName === 'Caisse Restaurant') ||
-        (userRoleStr.includes('directeur restaurant') && r.roleName === 'Directeur Restaurant') ||
-        (userRoleStr.includes('caisse') && r.roleName === 'Caisse') ||
-        (userRoleStr.includes('réception') && r.roleName === 'Chef de Réception') ||
-        (userRoleStr.includes('reception') && r.roleName === 'Chef de Réception') ||
-        (userRoleStr.includes('directeur général') && r.roleName === 'Directeur Général')
+    // 2. Matrice de permissions selon le rôle configuré (recherche stricte et non-ambiguë dans rolesList dynamique)
+    const userRoleStr = (user.role || '').toLowerCase().trim();
+
+    // A. Correspondance exacte par nom de rôle
+    let roleDef = rolesList.find(
+      (r) => r.roleName === user.role || r.roleName.toLowerCase() === userRoleStr
     );
+
+    // B. Si pas de correspondance exacte, résolution canonique explicite (anti-collision)
+    if (!roleDef) {
+      let canonicalRole: UserRole | null = null;
+      if (userRoleStr.includes('caisse restaurant') || userRoleStr === 'caisserestaurant') {
+        canonicalRole = 'Caisse Restaurant';
+      } else if (userRoleStr.includes('directeur restaurant') || userRoleStr.includes('admin restaurant') || userRoleStr.includes('direction restaurant')) {
+        canonicalRole = 'Directeur Restaurant';
+      } else if (userRoleStr === 'caisse' || userRoleStr.includes('caisse hôtel') || userRoleStr.includes('caisse hotel') || userRoleStr === 'caissier') {
+        canonicalRole = 'Caisse';
+      } else if (userRoleStr.includes('chef de réception') || userRoleStr.includes('chef reception') || userRoleStr.includes('chef de reception')) {
+        canonicalRole = 'Chef de Réception';
+      } else if (userRoleStr.includes('réceptionniste') || userRoleStr.includes('receptionniste') || userRoleStr.includes('reception')) {
+        canonicalRole = 'Réceptionniste';
+      } else if (userRoleStr.includes('gérant') || userRoleStr.includes('gerant')) {
+        canonicalRole = 'Gérant';
+      } else if (
+        userRoleStr.includes('directeur général') ||
+        userRoleStr.includes('directeur general') ||
+        userRoleStr === 'super admin' ||
+        userRoleStr === 'dg'
+      ) {
+        canonicalRole = 'Directeur Général';
+      }
+
+      if (canonicalRole) {
+        roleDef = rolesList.find((r) => r.roleName === canonicalRole);
+      }
+    }
 
     if (roleDef && roleDef.permissions && roleDef.permissions[featureId]) {
       const perm = roleDef.permissions[featureId];
@@ -1006,14 +1066,13 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (action === 'delete') return !!defPerm.canDelete && !!defPerm.canActivate;
     }
 
-    // 4. Protection Super Admin : Le Directeur Général a toujours accès à la gestion des profils & permissions
+    // 4. Protection Super Admin : Le Directeur Général a toujours accès à la gestion des profils & paramètres
     const isDGUser =
+      userRoleStr === 'directeur général' ||
+      userRoleStr === 'directeur general' ||
+      userRoleStr === 'super admin' ||
       userRoleStr.includes('directeur général') ||
-      userRoleStr.includes('directeur general') ||
-      userRoleStr.includes('super admin') ||
-      userRoleStr.includes('administrateur') ||
-      userRoleStr === 'admin' ||
-      userRoleStr === 'dg';
+      userRoleStr.includes('directeur general');
 
     if (isDGUser && (featureId === 'profile' || featureId === 'settings')) {
       return true;
@@ -1632,9 +1691,28 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     safeSetItem('hotelia_expenses', JSON.stringify(expenses));
   }, [expenses]);
 
-  const addExpense = (newExpense: Omit<ExpenseItem, 'id'>) => {
+  const addExpense = (newExpense: Omit<ExpenseItem, 'id'>): ExpenseItem => {
     const id = `dep-${Date.now()}`;
-    setExpenses((prev) => [{ ...newExpense, id }, ...prev]);
+    const dateStr = newExpense.date || new Date().toISOString().split('T')[0];
+    const dateCompact = dateStr.replace(/-/g, '');
+    const numeroPiece = newExpense.numeroPiece || `SC-${dateCompact}-${String(expenses.length + 1).padStart(3, '0')}`;
+    const heure = newExpense.heure || new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const fullExpense: ExpenseItem = {
+      ...newExpense,
+      id,
+      date: dateStr,
+      heure,
+      numeroPiece,
+      statutPiece: newExpense.statutPiece || 'valide'
+    };
+    setExpenses((prev) => [fullExpense, ...prev]);
+    return fullExpense;
+  };
+
+  const updateExpense = (id: string, updated: Partial<ExpenseItem>) => {
+    setExpenses((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...updated } : e))
+    );
   };
 
   const deleteExpense = (id: string) => {
@@ -5353,6 +5431,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         dismissSoundToast,
         expenses,
         addExpense,
+        updateExpense,
         deleteExpense,
         revenues,
         addRevenue,

@@ -25,6 +25,7 @@ import { UnifiedOperationsModal, UnifiedOperationsTab } from './UnifiedOperation
 import { RevenueDashboardTab } from './RevenueDashboardTab.tsx';
 import { KitchenDisplaySystemTab } from './KitchenDisplaySystemTab.tsx';
 import { RoomOccupancyCalendarTab } from './RoomOccupancyCalendarTab.tsx';
+import { RoomOccupancyDashboardTab } from './RoomOccupancyDashboardTab.tsx';
 import { MaintenanceDashboard } from './MaintenanceDashboard.tsx';
 import { CashRegisterManagementTab } from './CashRegisterManagementTab.tsx';
 import { SoundNotificationModal } from './SoundNotificationModal.tsx';
@@ -102,6 +103,7 @@ import {
 
 export type BackOfficeTab =
   | 'dashboard'
+  | 'occupancy_dashboard'
   | 'gantt'
   | 'calendar'
   | 'reservations'
@@ -394,6 +396,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     switch (activeTab) {
       case 'dashboard':
         return { pole: 'Administration', title: 'Tableau de Bord des Revenus & Ventes', icon: <BarChart3 className="w-4 h-4 text-emerald-400" /> };
+      case 'occupancy_dashboard':
+        return { pole: 'Hébergement', title: 'Dashboard des Occupations des Chambres', icon: <TrendingUp className="w-4 h-4 text-emerald-400" /> };
       case 'gantt':
         return { pole: 'Hébergement', title: 'Tableau de Bord & Gantt 24h', icon: <Calendar className="w-4 h-4 text-blue-400" /> };
       case 'calendar':
@@ -461,7 +465,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     }
   }, [currentUserProfile?.id, currentUserProfile?.role, currentUserProfile?.nom]);
 
-  // Détermination ultra-robuste et infaillible du rôle utilisateur actif
+  // Détermination ultra-robuste et infaillible du rôle utilisateur actif (source de vérité : currentUserProfile)
   const userRoleStr = (currentUserProfile?.role || user?.role || '').trim();
   const lowerRole = userRoleStr.toLowerCase();
 
@@ -492,23 +496,23 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       lowerRole.includes('chef de reception') ||
       lowerRole.includes('réceptionniste') ||
       lowerRole.includes('receptionniste') ||
-      lowerRole.includes('reception')
+      lowerRole === 'reception'
     );
 
   const isDG =
-    !isCaisse && !isCaisseRestaurant && !isDirecteurRestaurant && (
+    !isCaisse && !isCaisseRestaurant && !isDirecteurRestaurant && !isChefReception && (
+      lowerRole === 'directeur général' ||
+      lowerRole === 'directeur general' ||
+      lowerRole === 'super admin' ||
       lowerRole.includes('directeur général') ||
       lowerRole.includes('directeur general') ||
-      lowerRole.includes('administrateur') ||
-      lowerRole.includes('super admin') ||
-      lowerRole.includes('dg') ||
-      lowerRole === 'admin' ||
-      lowerRole.includes('admin')
+      (lowerRole.includes('administrateur') && !lowerRole.includes('restaurant'))
     );
 
   // Mapping de chaque onglet vers son identifiant de fonctionnalité dans la matrice RBAC
   const tabFeatureMap: Record<BackOfficeTab, AppFeatureId> = {
     dashboard: 'dashboard',
+    occupancy_dashboard: 'gantt',
     gantt: 'gantt',
     calendar: 'gantt',
     reservations: 'reservations',
@@ -537,6 +541,15 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const isTabAllowed = (tab: BackOfficeTab): boolean => {
     // 1. Le profil & les paramètres généraux restent toujours accessibles au Directeur Général
     if (isDG && (tab === 'profile' || tab === 'settings')) return true;
+
+    // 1b. Dashboard des Occupations : accessible si le pôle hébergement (gantt, reservations ou chambres) est actif
+    if (tab === 'occupancy_dashboard') {
+      return (
+        hasPermission('gantt', 'activate') ||
+        hasPermission('reservations', 'activate') ||
+        hasPermission('chambres', 'activate')
+      );
+    }
 
     // 2. Planning Gantt : vérification du module gantt ET de la sous-fonctionnalité gantt_24h
     if (tab === 'gantt') {
@@ -571,7 +584,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   };
 
   const hebergementAllowedCount = useMemo(() => {
-    const p1Tabs: BackOfficeTab[] = ['gantt', 'calendar', 'reservations', 'chambres', 'services', 'maintenance', 'audit'];
+    const p1Tabs: BackOfficeTab[] = ['occupancy_dashboard', 'gantt', 'calendar', 'reservations', 'chambres', 'services', 'maintenance', 'audit'];
     return p1Tabs.filter((t) => isTabAllowed(t)).length;
   }, [isTabAllowed]);
 
@@ -601,7 +614,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   // Nombre de fonctionnalités autorisées pour la session active
   const authorizedModulesCount = useMemo(() => {
     const list: BackOfficeTab[] = [
-      'dashboard', 'gantt', 'calendar', 'reservations', 'chambres',
+      'dashboard', 'occupancy_dashboard', 'gantt', 'calendar', 'reservations', 'chambres',
       'services', 'facture_globale', 'pos', 'restaurant', 'cuisine',
       'stock', 'stock_alerts', 'finance', 'versements', 'expenses', 'loyalty',
       'profile', 'settings', 'audit', 'maintenance'
@@ -612,6 +625,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   // Tous les onglets candidats autorisés pour l'utilisateur connecté
   const allowedCandidateTabs = useMemo<BackOfficeTab[]>(() => {
     const candidateTabs: BackOfficeTab[] = [
+      'occupancy_dashboard',
       'gantt',
       'calendar',
       'reservations',
@@ -1024,6 +1038,26 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
               {/* Séparateur discret si pôles et raccourcis coexistent */}
               <div className="h-6 w-px bg-stone-800 shrink-0 mx-1 hidden sm:block" />
+
+              {/* Raccourci Direct : Dashboard des Occupations en Temps Réel */}
+              {isTabAllowed('occupancy_dashboard') && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('occupancy_dashboard')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'occupancy_dashboard'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
+                      : 'bg-stone-900/60 text-emerald-300 border border-emerald-900/60 hover:bg-stone-850 hover:text-white'
+                  }`}
+                  title="Dashboard des Occupations des chambres en temps réel (Arrivées, Départs, Taux hebdo)"
+                >
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <span>Dashboard Occupations</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Live
+                  </span>
+                </button>
+              )}
 
               {/* Raccourci Direct : Planning Gantt (uniquement si permission accordée) */}
               {isTabAllowed('gantt') && (
@@ -1482,6 +1516,26 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </ErrorBoundary>
         )}
 
+        {/* Tab 0b : Dashboard des Occupations des Chambres en Temps Réel */}
+        {activeTab === 'occupancy_dashboard' && isTabAllowed('occupancy_dashboard') && (
+          <ErrorBoundary fallbackTitle="Erreur sur le dashboard des occupations">
+            <RoomOccupancyDashboardTab
+              onNavigateToReservation={(resId) => {
+                setActiveTab('reservations');
+              }}
+              onNavigateToGantt={(date) => {
+                setActiveTab('gantt');
+              }}
+              onNavigateToCalendar={() => {
+                setActiveTab('calendar');
+              }}
+              onNavigateToRooms={() => {
+                setActiveTab('chambres');
+              }}
+            />
+          </ErrorBoundary>
+        )}
+
         {/* Tab 1 : Planning Gantt */}
         {activeTab === 'gantt' && isTabAllowed('gantt') && (
           <ErrorBoundary fallbackTitle="Erreur sur le planning Gantt">
@@ -1610,7 +1664,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         {/* Tab 3b : Gestion des Caisses & Clôtures de Shift (Matin & Soir) */}
         {activeTab === 'versements' && isTabAllowed('versements') && (
           <ErrorBoundary fallbackTitle="Erreur sur la gestion des caisses et versements">
-            <CashRegisterManagementTab />
+            <CashRegisterManagementTab onNavigateToExpenses={() => handleTabClick('expenses')} />
           </ErrorBoundary>
         )}
 
@@ -1726,6 +1780,42 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
             {/* Grille des modules du Pôle Hébergement */}
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[75vh] overflow-y-auto">
+              {/* Module 0 : Dashboard des Occupations */}
+              {isTabAllowed('occupancy_dashboard') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('occupancy_dashboard');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'occupancy_dashboard'
+                      ? 'bg-emerald-950/40 border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300">
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        Temps Réel
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Dashboard des Occupations
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Supervision en direct des taux d'occupation, flux des arrivées et départs prévus sur la semaine avec graphiques Recharts.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                    <span>Ouvrir le dashboard des occupations</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              )}
+
               {/* Module 1 : Planning Gantt (24h) */}
               {isTabAllowed('gantt') && (
                 <div
@@ -2563,18 +2653,18 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         <TrendingUp className="w-5 h-5" />
                       </div>
                       <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-500/15 px-2 py-0.5 rounded-full border border-rose-500/30">
-                        Charges
+                        Sorties Caisse &amp; PDF
                       </span>
                     </div>
                     <h4 className="font-bold text-sm text-white mb-1">
-                      Dépenses d'Exploitation
+                      Dépenses Journalières &amp; Sorties de Caisse
                     </h4>
                     <p className="text-xs text-stone-400 leading-relaxed">
-                      Enregistrement des coûts de ménage, réparations techniques, maintenance, approvisionnements et charges.
+                      Saisie des pièces justificatives de décaissement, carburant groupe, approvisionnements marché et génération certifiée du récapitulatif PDF.
                     </p>
                   </div>
                   <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-rose-300 font-semibold">
-                    <span>Gérer les dépenses</span>
+                    <span>Gérer les sorties de caisse &amp; PDF</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>

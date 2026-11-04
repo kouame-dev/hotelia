@@ -435,9 +435,90 @@ export const INITIAL_NOTIFICATIONS: ReservationNotification[] = [
   }
 ];
 
-// 5. Module Dépenses (Ménage, Réparations, etc.)
+// 5. Module Dépenses & Sorties de Caisse (Justificatifs, Ménage, Réparations, etc.)
 export const INITIAL_EXPENSES: ExpenseItem[] = [
-  // --- OCTOBRE 2026 (Mois Courant) ---
+  // --- NOVEMBRE 2026 (Sorties de caisse journalières & justificatifs récents) ---
+  {
+    id: 'dep-nov-04-01',
+    numeroPiece: 'SC-20261104-001',
+    date: '2026-11-04',
+    heure: '08:15',
+    titre: 'Achat fruits frais, pain brioché et vivres petit-déjeuner buffet',
+    categorie: 'Approvisionnement & Marché',
+    montant: 35000,
+    chambreConcernee: 'Restaurant & Petits-déjeuners',
+    payePar: 'Mariam Diallo (Caisse)',
+    beneficiaire: 'Dame Affoué (Marché Central Bongouanou)',
+    autorisePar: 'Koua Dibi (Directeur Général)',
+    modePaiement: 'Caisse Espèces Hôtel',
+    typeJustificatif: 'recu_caisse',
+    referenceFacture: 'MARCHE-BGN-0411',
+    justificatifUrl: 'https://images.unsplash.com/photo-1554415707-9e4c0192a5d1?auto=format&fit=crop&w=600&q=80',
+    nomFichierJustificatif: 'recu_marche_04nov.jpg',
+    statutPiece: 'valide',
+    shift: 'Matin',
+    notes: 'Achats matinaux pour les 18 résidents de l’hôtel'
+  },
+  {
+    id: 'dep-nov-04-02',
+    numeroPiece: 'SC-20261104-002',
+    date: '2026-11-04',
+    heure: '10:45',
+    titre: 'Gazole 120 Litres pour groupe électrogène (Coupure CIE)',
+    categorie: 'Carburant & Groupe Électrogène',
+    montant: 96000,
+    chambreConcernee: 'Infrastructure technique & Énergie',
+    payePar: 'Mariam Diallo (Caisse)',
+    beneficiaire: 'Station TotalEnergies Bongouanou',
+    autorisePar: 'Koua Dibi (Directeur Général)',
+    modePaiement: 'Caisse Espèces Hôtel',
+    typeJustificatif: 'facture_fournisseur',
+    referenceFacture: 'FACT-TOT-88421',
+    justificatifUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80',
+    nomFichierJustificatif: 'facture_total_carburant.pdf',
+    statutPiece: 'valide',
+    shift: 'Matin',
+    notes: '120L à 800 FCFA/Litre avec bon d’approvisionnement N° 441'
+  },
+  {
+    id: 'dep-nov-04-03',
+    numeroPiece: 'SC-20261104-003',
+    date: '2026-11-04',
+    heure: '14:20',
+    titre: 'Dépannage plomberie urgente & remplacement robinet Suite 301',
+    categorie: 'Réparation & Maintenance',
+    montant: 25000,
+    chambreConcernee: 'Suite 301',
+    payePar: 'Mariam Diallo (Caisse)',
+    beneficiaire: 'M. Koffi (Plombier Artisan Agréé)',
+    autorisePar: 'Aminata Koné (Chef de Réception)',
+    modePaiement: 'Wave',
+    typeJustificatif: 'decharge_especes',
+    referenceFacture: 'DECH-PLOMB-301',
+    statutPiece: 'valide',
+    shift: 'Matin',
+    notes: 'Joints haute pression + mitigeur neuf chromé'
+  },
+  {
+    id: 'dep-nov-04-04',
+    numeroPiece: 'SC-20261104-004',
+    date: '2026-11-04',
+    heure: '16:00',
+    titre: 'Primes journalières d’astreinte service d’étage et bagagiste',
+    categorie: 'Salaires & Primes Journalières',
+    montant: 20000,
+    chambreConcernee: 'Pôle Hébergement & Accueil',
+    payePar: 'Mariam Diallo (Caisse)',
+    beneficiaire: 'Équipe d’astreinte week-end (4 agents)',
+    autorisePar: 'Koua Dibi (Directeur Général)',
+    modePaiement: 'Caisse Espèces Hôtel',
+    typeJustificatif: 'decharge_especes',
+    referenceFacture: 'PRIME-AST-0411',
+    statutPiece: 'valide',
+    shift: 'Matin',
+    notes: 'Émargement signé sur registre des astreintes'
+  },
+  // --- OCTOBRE 2026 (Historique) ---
   {
     id: 'dep-oct-12',
     date: '2026-10-12',

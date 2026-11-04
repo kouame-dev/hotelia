@@ -539,52 +539,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const saved = localStorage.getItem('hotelia_settings');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (
-          !parsed.appName ||
-          parsed.appName.includes('PostgreSQL') ||
-          parsed.appName.includes('Architect') ||
-          parsed.appName.includes('Hotelia') ||
-          parsed.appName.includes('Palmeraie') ||
-          parsed.appName.includes('BANNERAIE') ||
-          parsed.appName.includes('Banneraie') ||
-          parsed.appName.includes("Gestion d'Hôtel")
-        ) {
-          parsed.appName = 'HÔTEL REFUGE BANANERAIE';
-        }
-        if (
-          !parsed.brandSubtitle ||
-          parsed.brandSubtitle.includes('Palmeraie') ||
-          parsed.brandSubtitle.includes('Hotelia')
-        ) {
-          parsed.brandSubtitle = 'Hôtel Refuge de bongouanou • Résidences, Chambres & Restaurant à Bongouanou';
-        }
-        if (
-          !parsed.seo?.metaTitle ||
-          parsed.seo.metaTitle.includes('PostgreSQL') ||
-          parsed.seo.metaTitle.includes('Architect') ||
-          parsed.seo.metaTitle.includes('Hotelia') ||
-          parsed.seo.metaTitle.includes('Palmeraie') ||
-          parsed.seo.metaTitle.includes('BANNERAIE') ||
-          parsed.seo.metaTitle.includes('Banneraie') ||
-          parsed.seo.metaTitle.includes("Gestion d'Hôtel")
-        ) {
-          if (!parsed.seo) parsed.seo = {};
-          parsed.seo.metaTitle = 'HÔTEL REFUGE BANANERAIE - Bongouanou';
-        }
-        // Forcer mise à jour fiscale et FNE
-        if (parsed.fneIvoirienne) {
-          parsed.fneIvoirienne.nomEntreprise = 'HÔTEL REFUGE BANANERAIE';
-          parsed.fneIvoirienne.adresseFiscale = "Quartier Résidentiel Bananeraie, Bongouanou, Côte d'Ivoire";
-          parsed.fneIvoirienne.activerTdt = false;
-          parsed.fneIvoirienne.tauxTdtPourcentage = 0;
-          parsed.fneIvoirienne.valeurTdtForfait = 0;
-          parsed.fneIvoirienne.taxeSejourNuit = 0;
-        }
         return {
           ...DEFAULT_HOTEL_SETTINGS,
           ...parsed,
-          appName: 'HÔTEL REFUGE BANANERAIE',
-          brandSubtitle: 'Hôtel Refuge de bongouanou • Résidences, Chambres & Restaurant à Bongouanou',
+          appName: parsed.appName || DEFAULT_HOTEL_SETTINGS.appName,
+          brandSubtitle: parsed.brandSubtitle || DEFAULT_HOTEL_SETTINGS.brandSubtitle,
+          seo: {
+            ...DEFAULT_HOTEL_SETTINGS.seo,
+            ...(parsed.seo || {})
+          },
           mobileMoney: {
             orangeMoney: {
               ...DEFAULT_MOBILE_MONEY_SETTINGS.orangeMoney,

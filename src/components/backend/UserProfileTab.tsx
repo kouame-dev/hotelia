@@ -30,11 +30,13 @@ import {
   Ban,
   LogIn,
   SlidersHorizontal,
-  Zap
+  Zap,
+  Utensils
 } from 'lucide-react';
 import { RolePermissionsMatrix } from './RolePermissionsMatrix.tsx';
 import { ConnectedEmployeesSection } from './ConnectedEmployeesSection.tsx';
 import { AclPermissionsDiagnosticTab } from './AclPermissionsDiagnosticTab.tsx';
+import { APP_FEATURES_METADATA } from '../../data/defaultRolePermissions.ts';
 
 const QUICK_AVATARS = [
   { label: 'Directeur (H)', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' },
@@ -53,7 +55,9 @@ export const UserProfileTab: React.FC = () => {
     addUserProfile,
     updateUserProfile,
     deleteUserProfile,
-    toggleUserStatus
+    toggleUserStatus,
+    rolesList,
+    canUserPerform
   } = useHotelData();
 
   // Active section inside User Tab: 'accounts' | 'connected_employees' | 'permissions_matrix' | 'profile' | 'diagnostic_acl'
@@ -141,6 +145,15 @@ export const UserProfileTab: React.FC = () => {
       return;
     }
 
+    const assignedRole = rolesList.find((r) => r.roleName.toLowerCase() === newUserRole.toLowerCase());
+    const rolePerms = assignedRole && assignedRole.permissions
+      ? Object.keys(assignedRole.permissions).filter((k) => assignedRole.permissions[k]?.canActivate)
+      : newUserRole === 'Caisse'
+      ? ['reservations', 'encaissements', 'facturation']
+      : newUserRole === 'Chef de Réception'
+      ? ['gantt', 'reservations', 'chambres', 'alertes']
+      : ['all'];
+
     const created = addUserProfile({
       nom: newUserName.trim(),
       role: newUserRole,
@@ -151,12 +164,7 @@ export const UserProfileTab: React.FC = () => {
       password: newUserPassword,
       status: 'actif',
       dateCreation: new Date().toISOString().split('T')[0],
-      permissions:
-        newUserRole === 'Caisse'
-          ? ['reservations', 'encaissements', 'facturation']
-          : newUserRole === 'Chef de Réception'
-          ? ['gantt', 'reservations', 'chambres', 'alertes']
-          : ['all']
+      permissions: rolePerms
     });
 
     setIsCreateModalOpen(false);
@@ -173,9 +181,18 @@ export const UserProfileTab: React.FC = () => {
   const handleEditUserSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    updateUserProfile(editingUser.id, editingUser);
+    const assignedRole = rolesList.find((r) => r.roleName.toLowerCase() === editingUser.role.toLowerCase());
+    const rolePerms = assignedRole && assignedRole.permissions
+      ? Object.keys(assignedRole.permissions).filter((k) => assignedRole.permissions[k]?.canActivate)
+      : editingUser.permissions;
+
+    const updatedUser = {
+      ...editingUser,
+      permissions: rolePerms
+    };
+    updateUserProfile(editingUser.id, updatedUser);
     setEditingUser(null);
-    setSuccessMessage(`Compte "${editingUser.nom}" mis à jour avec succès !`);
+    setSuccessMessage(`Compte "${editingUser.nom}" mis à jour (${editingUser.role}) avec succès !`);
     setTimeout(() => setSuccessMessage(null), 4000);
   };
 
@@ -533,26 +550,33 @@ export const UserProfileTab: React.FC = () => {
 
                         {/* Rôle */}
                         <td className="py-3.5 px-4">
-                          {isDG && (
+                          {isDG ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#C5A880]/20 text-stone-900 border border-[#C5A880]/40">
                               <ShieldCheck className="w-3.5 h-3.5 text-[#C5A880]" />
                               Directeur Général (Super Admin)
                             </span>
-                          )}
-                          {isChefReception && (
+                          ) : isChefReception ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#0B132B] text-blue-200 border border-blue-800">
                               <Building className="w-3.5 h-3.5 text-blue-400" />
                               Chef de Réception
                             </span>
-                          )}
-                          {isCaisse && (
+                          ) : isCaisse ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#FF9900] text-slate-950 border border-amber-600">
                               <CreditCard className="w-3.5 h-3.5" />
-                              Caisse (Réservations uniquement)
+                              Caisse (Hôtel)
                             </span>
-                          )}
-                          {!isDG && !isChefReception && !isCaisse && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-stone-100 text-stone-800">
+                          ) : (user.role || '').toLowerCase().includes('caisse restaurant') ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-teal-500/20 text-teal-800 border border-teal-500/40">
+                              <Utensils className="w-3.5 h-3.5 text-teal-600" />
+                              Caisse Restaurant &amp; Bar
+                            </span>
+                          ) : (user.role || '').toLowerCase().includes('directeur restaurant') ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-800 border border-emerald-500/40">
+                              <Utensils className="w-3.5 h-3.5 text-emerald-600" />
+                              Directeur Restaurant
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-stone-100 text-stone-800 border border-stone-200">
                               {user.role}
                             </span>
                           )}
@@ -584,21 +608,47 @@ export const UserProfileTab: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* Permissions */}
+                        {/* Permissions dynamiques réelles */}
                         <td className="py-3.5 px-4">
-                          {isCaisse ? (
-                            <span className="px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 font-semibold text-[11px]">
-                              Gestion exclusive des Réservations &amp; Factures
-                            </span>
-                          ) : isChefReception ? (
-                            <span className="px-2 py-1 rounded bg-blue-50 border border-blue-200 text-blue-900 font-semibold text-[11px]">
-                              Gantt, Chambres, Arrivées, Réservations
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 rounded bg-emerald-50 border border-emerald-200 text-emerald-900 font-semibold text-[11px]">
-                              Accès illimité à tous les modules
-                            </span>
-                          )}
+                          {(() => {
+                            const isSuperDG = user.role === 'Directeur Général';
+                            const allowedCount = APP_FEATURES_METADATA.filter((f) => canUserPerform(user.id, f.id, 'activate')).length;
+                            const hasCustomOverrides = !!(user.customFeaturePermissions && Object.keys(user.customFeaturePermissions).length > 0);
+
+                            if (isSuperDG) {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-50 border border-emerald-200 text-emerald-900 font-bold text-[11px]">
+                                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                  Accès Souverain (17/17 modules)
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`px-2 py-0.5 rounded font-bold text-[11px] border ${
+                                    allowedCount > 8
+                                      ? 'bg-blue-50 border-blue-200 text-blue-900'
+                                      : 'bg-amber-50 border-amber-200 text-amber-900'
+                                  }`}>
+                                    {allowedCount}/17 modules autorisés
+                                  </span>
+                                  {hasCustomOverrides && (
+                                    <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-900 font-mono font-bold text-[9px] border border-purple-200">
+                                      Surchargé
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-stone-500 truncate max-w-[220px]">
+                                  {APP_FEATURES_METADATA.filter((f) => canUserPerform(user.id, f.id, 'activate'))
+                                    .map((f) => f.name.replace('Gestion des ', '').replace('Inventaire des ', ''))
+                                    .slice(0, 3)
+                                    .join(', ')}...
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Actions */}
@@ -929,60 +979,33 @@ export const UserProfileTab: React.FC = () => {
               {/* Choix du rôle */}
               <div className="space-y-2">
                 <label className="font-bold text-stone-800 uppercase tracking-wider text-[11px] block">
-                  Rôle Attribué au Compte
+                  Rôle Attribué au Compte *
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Option 1 : Chef de Réception */}
-                  <label
-                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
-                      newUserRole === 'Chef de Réception'
-                        ? 'border-blue-600 bg-blue-50 text-blue-950 font-bold shadow-xs'
-                        : 'border-stone-200 hover:bg-stone-50 text-stone-700'
-                    }`}
+                <div className="space-y-2">
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value as UserRole)}
+                    className="w-full p-3 rounded-xl border border-stone-300 font-bold text-xs bg-white text-stone-900 focus:border-[#C5A880] focus:outline-none"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Building className="w-4 h-4 text-blue-600" />
-                        <span>Chef de Réception</span>
-                      </div>
-                      <input
-                        type="radio"
-                        name="newUserRole"
-                        checked={newUserRole === 'Chef de Réception'}
-                        onChange={() => setNewUserRole('Chef de Réception')}
-                        className="text-blue-600"
-                      />
-                    </div>
-                    <span className="text-[10px] font-normal text-stone-500 leading-tight">
-                      Planning Gantt, gestion des chambres, arrivées/départs et réservations.
-                    </span>
-                  </label>
+                    {rolesList.map((r) => (
+                      <option key={r.id} value={r.roleName}>
+                        {r.roleName} — {r.description || (r.roleName === 'Directeur Général' ? 'Super Admin' : 'Collaborateur')}
+                      </option>
+                    ))}
+                  </select>
 
-                  {/* Option 2 : Caisse */}
-                  <label
-                    className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
-                      newUserRole === 'Caisse'
-                        ? 'border-orange-500 bg-orange-50 text-orange-950 font-bold shadow-xs'
-                        : 'border-stone-200 hover:bg-stone-50 text-stone-700'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <CreditCard className="w-4 h-4 text-orange-600" />
-                        <span>Caisse</span>
-                      </div>
-                      <input
-                        type="radio"
-                        name="newUserRole"
-                        checked={newUserRole === 'Caisse'}
-                        onChange={() => setNewUserRole('Caisse')}
-                        className="text-orange-600"
-                      />
+                  <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-start gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-[#C5A880] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-stone-900 text-xs block">
+                        Attributions du rôle « {newUserRole} »
+                      </span>
+                      <p className="text-[11px] text-stone-600 mt-0.5">
+                        {rolesList.find((r) => r.roleName === newUserRole)?.description ||
+                          'Les permissions de ce rôle seront automatiquement synchronisées avec la matrice RBAC.'}
+                      </p>
                     </div>
-                    <span className="text-[10px] font-normal text-stone-500 leading-tight">
-                      <strong>Gère seulement que les réservations</strong>, encaissements et factures.
-                    </span>
-                  </label>
+                  </div>
                 </div>
               </div>
 
@@ -1156,11 +1179,13 @@ export const UserProfileTab: React.FC = () => {
                   onChange={(e) =>
                     setEditingUser({ ...editingUser, role: e.target.value as UserRole })
                   }
-                  className="w-full p-2.5 rounded-xl border border-stone-300 font-bold text-xs bg-white focus:outline-none"
+                  className="w-full p-2.5 rounded-xl border border-stone-300 font-bold text-xs bg-white text-stone-900 focus:outline-none focus:border-[#C5A880]"
                 >
-                  <option value="Directeur Général">Directeur Général (Super Admin)</option>
-                  <option value="Chef de Réception">Chef de Réception</option>
-                  <option value="Caisse">Caisse (Réservations uniquement)</option>
+                  {rolesList.map((r) => (
+                    <option key={r.id} value={r.roleName}>
+                      {r.roleName} — {r.description || (r.roleName === 'Directeur Général' ? 'Super Admin' : 'Collaborateur')}
+                    </option>
+                  ))}
                 </select>
               </div>
 
