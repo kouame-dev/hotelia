@@ -583,45 +583,136 @@ export const RestaurantReservationPage: React.FC<RestaurantReservationPageProps>
         </div>
       )}
 
-      {/* 3. Hero Restaurant Le Refuge (Visible à l'Étape 1 ou en mode Table) */}
+      {/* 3. Hero Restaurant Le Refuge (Lumineux, Éditorial & Professionnel) */}
       {(currentStep === 'menu' || activeMode === 'table_seule') && (
-        <section className="relative bg-[#141311] text-white py-14 sm:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-          <div className="absolute inset-0 z-0 opacity-25 mix-blend-overlay">
-            <img
-              src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2000&q=85"
-              alt="Restaurant Le Refuge Bongouanou"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141311] via-[#141311]/80 to-transparent"></div>
+        <section className="relative bg-gradient-to-br from-[#FAF8F5] via-[#F4EFEA] to-[#EFE7DE] text-stone-900 py-10 sm:py-16 px-4 sm:px-6 lg:px-8 border-b border-stone-200/80 overflow-hidden shadow-xs">
+          {/* Éléments de lumière ambiante naturelle et chaleureuse */}
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-amber-400/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-10 left-10 w-80 h-80 bg-orange-300/15 rounded-full blur-2xl pointer-events-none"></div>
 
-          <div className="relative z-10 max-w-4xl mx-auto text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#C5A880]/20 border border-[#C5A880]/40 text-[#C5A880] text-xs font-mono font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Table d’Excellence &amp; Produits Frais du Terroir</span>
-            </div>
+          <div className="relative z-10 max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+              
+              {/* Colonne Gauche (7 cols) : Contenu Éditorial & Proposition de Valeur */}
+              <div className="lg:col-span-7 space-y-5 text-left">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 border border-amber-600/30 text-amber-950 text-xs font-mono font-bold tracking-wide shadow-2xs">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>TABLE GASTRONOMIQUE &bull; SERVICE D'EXCELLENCE</span>
+                </div>
 
-            <h1 className="font-serif font-bold text-3xl sm:text-5xl text-white tracking-tight leading-tight">
-              Restaurant Le Refuge &bull; L'Art Culinaire au Moronou
-            </h1>
+                <h1 className="font-serif font-black text-3xl sm:text-4xl lg:text-5xl text-stone-950 tracking-tight leading-[1.15]">
+                  Restaurant Le Refuge
+                  <span className="block text-xl sm:text-2xl lg:text-3xl font-serif font-semibold text-[#8C6D3B] mt-1.5">
+                    L'Art Culinaire au Moronou &bull; Accueil Chaleureux &amp; Souriant
+                  </span>
+                </h1>
 
-            <p className="text-sm sm:text-base text-stone-300 max-w-2xl mx-auto leading-relaxed">
-              Une cuisine savoureuse alliant spécialités ivoiriennes traditionnelles (kédjénous en canari, poissons braisés, garba royal, alloco) et haute gastronomie internationale. Commandez en ligne pour une livraison rapide à Bongouanou, en room-service ou sur place.
-            </p>
+                <p className="text-sm sm:text-base text-stone-700 leading-relaxed max-w-2xl font-sans">
+                  Une table lumineuse et raffinée alliant spécialités ivoiriennes traditionnelles (kédjénous en canari de terre cuite, poissons braisés nobles, garba royal, alloco doré) et haute gastronomie contemporaine. Commandez en ligne en 3 étapes avec calcul automatique d'acompte ou réservez votre table d’honneur en salle.
+                </p>
 
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-stone-400 font-medium">
-              <span className="flex items-center gap-1.5">
-                <Truck className="w-4 h-4 text-[#C5A880]" />
-                Livraison à Domicile &amp; Room-Service
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Percent className="w-4 h-4 text-emerald-400" />
-                Paiement Intégral ou Acompte avec Solde à la Livraison
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                Orange • MTN • Moov • Wave
-              </span>
+                {/* 3 Piliers de Confiance en cartes claires et nettes */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="p-3.5 rounded-2xl bg-white/90 border border-stone-200/90 shadow-xs space-y-1 backdrop-blur-xs">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-700 font-bold">
+                      <Truck className="w-4 h-4" />
+                    </div>
+                    <div className="font-bold text-xs text-stone-900">Livraison &amp; Room-Service</div>
+                    <div className="text-[11px] text-stone-500 leading-tight">À Bongouanou et en chambre d'hôtel</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white/90 border border-stone-200/90 shadow-xs space-y-1 backdrop-blur-xs">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-700 font-bold">
+                      <Percent className="w-4 h-4" />
+                    </div>
+                    <div className="font-bold text-xs text-stone-900">Acompte Flexible</div>
+                    <div className="text-[11px] text-stone-500 leading-tight">Payez tout ou un acompte au choix</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-white/90 border border-stone-200/90 shadow-xs space-y-1 backdrop-blur-xs">
+                    <div className="w-8 h-8 rounded-xl bg-sky-500/15 flex items-center justify-center text-sky-700 font-bold">
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
+                    </div>
+                    <div className="font-bold text-xs text-stone-900">Service 7j/7 Souriant</div>
+                    <div className="text-[11px] text-stone-500 leading-tight">Orange, MTN, Moov, Wave acceptés</div>
+                  </div>
+                </div>
+
+                {/* Sélecteur de Mode (Commande en ligne vs Réservation de table) */}
+                <div className="pt-2 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMode('commande');
+                      setCurrentStep('menu');
+                    }}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-sm ${
+                      activeMode === 'commande'
+                        ? 'bg-stone-950 text-white ring-2 ring-stone-900'
+                        : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-300'
+                    }`}
+                  >
+                    <ShoppingBag className="w-4 h-4 text-amber-400" />
+                    <span>Commander un Repas (Livraison / Emporter)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMode('table_seule');
+                    }}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-sm ${
+                      activeMode === 'table_seule'
+                        ? 'bg-amber-600 text-white ring-2 ring-amber-500'
+                        : 'bg-white hover:bg-stone-100 text-stone-800 border border-stone-300'
+                    }`}
+                  >
+                    <Utensils className="w-4 h-4 text-amber-700" />
+                    <span>Réserver une Table en Salle 2D</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Colonne Droite (5 cols) : Portrait Éditorial Haute Définition Lumineux (85mm f/4) */}
+              <div className="lg:col-span-5 relative">
+                <div className="relative mx-auto max-w-md lg:max-w-none">
+                  {/* Halo de lumière naturelle douce */}
+                  <div className="absolute -inset-2 bg-gradient-to-r from-amber-200/60 to-orange-200/60 rounded-3xl blur-xl opacity-70"></div>
+                  
+                  {/* Cadre de photo éditorial */}
+                  <div className="relative rounded-3xl overflow-hidden bg-white border-2 border-white shadow-2xl">
+                    <img
+                      src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=90"
+                      alt="Directrice d'accueil et conciergerie - Restaurant Le Refuge"
+                      className="w-full h-80 sm:h-96 object-cover object-top hover:scale-102 transition-transform duration-700"
+                    />
+
+                    {/* Gradient léger en bas pour texte net */}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-950/85 via-stone-950/45 to-transparent p-5 text-white">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-300 font-bold">
+                          SERVICE ACTIF AUJOURD'HUI
+                        </span>
+                      </div>
+                      <div className="font-serif font-bold text-lg leading-tight">
+                        Accueil Exécutif &amp; Conciergerie VIP
+                      </div>
+                      <p className="text-[11px] text-stone-200 mt-0.5 line-clamp-1">
+                        « Nous vous réservons une expérience gastronomique lumineuse, rapide et d'un confort absolu. »
+                      </p>
+                    </div>
+
+                    {/* Badge flottant d'évaluation */}
+                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl border border-stone-200 shadow-md flex items-center gap-1.5 text-stone-900 text-xs font-bold">
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                      <span>4.9 / 5</span>
+                      <span className="text-[10px] text-stone-400 font-normal">(180+ avis)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </section>

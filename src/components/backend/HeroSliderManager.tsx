@@ -41,6 +41,16 @@ export const PRESET_HERO_IMAGES = [
     category: 'Extérieur & Resort'
   },
   {
+    label: 'Portrait Éditorial Exécutif • 85mm f/4 & Lumière Naturelle',
+    url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=2000&q=85',
+    category: 'Corporate & Affaires'
+  },
+  {
+    label: 'Dirigeant d’Affaires Souriant • Cadre Moderne Épuré',
+    url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=2000&q=85',
+    category: 'Corporate & Affaires'
+  },
+  {
     label: 'Suite Royale Signature & Bois Précieux',
     url: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=2000&q=85',
     category: 'Suites'
@@ -56,8 +66,8 @@ export const PRESET_HERO_IMAGES = [
     category: 'Loisirs & Piscine'
   },
   {
-    label: 'Restaurant Le Refuge & Table Gastronomique',
-    url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2000&q=85',
+    label: 'Restaurant Le Refuge & Accueil Exécutif Souriant (85mm f/4)',
+    url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=2000&q=85',
     category: 'Restauration'
   },
   {

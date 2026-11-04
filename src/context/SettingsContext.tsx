@@ -66,7 +66,7 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
     badge: 'Hôtel & Résidence de Prestige',
     title: 'Hôtel Le Refuge de Bongouanou',
     subtitle: 'L’élégance hôtelière et la sérénité au cœur du Moronou',
-    description: 'Une parenthèse d’exception dans un écrin tropical d’exception. Profitez de nos suites haut de gamme réservables à la nuitée (dès 10 000 FCFA) ou pour quelques heures (2 500 FCFA/h).',
+    description: 'Une parenthèse d’exception dans un écrin tropical préservé. Profitez de nos suites haut de gamme réservables à la nuitée (dès 10 000 FCFA) ou pour quelques heures (2 500 FCFA/h).',
     image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=2000&q=85',
     startingPriceNight: 10000,
     startingPriceHour: 2500,
@@ -76,10 +76,23 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
   },
   {
     id: 2,
+    badge: 'Séjours d’Affaires & Clientèle Corporative',
+    title: 'Accueil Exécutif & Conciergerie VIP',
+    subtitle: 'L’excellence au service des décideurs, cadres & délégations',
+    description: 'Un environnement lumineux et feutré conçu pour allier rendez-vous professionnels de haut niveau, quiétude et confort absolu. WiFi fibre optique dédié, insonorisation 50 dB et accueil personnalisé.',
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=2000&q=85',
+    startingPriceNight: 20000,
+    startingPriceHour: 2500,
+    isActive: true,
+    ctaNightText: 'Réserver un Séjour Affaires',
+    ctaHourText: 'Espace Journée (Day-Use)'
+  },
+  {
+    id: 3,
     badge: 'Chambres & Suites Signature',
     title: 'Suites Exécutives & Panoramiques',
     subtitle: 'Confort absolu, literie d’art & technologies modernes',
-    description: 'Des espaces pensés pour les voyageurs exigeants et les séjours d’affaires. Vue imprenable sur la nature, insonorisation de pointe et room service d’exception.',
+    description: 'Des espaces pensés pour les voyageurs exigeants et les séjours d’affaires. Vue imprenable sur la nature environnante, insonorisation de pointe et room service d’exception.',
     image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=2000&q=85',
     startingPriceNight: 20000,
     startingPriceHour: 2500,
@@ -88,7 +101,7 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
     ctaHourText: 'À l’Heure / Day-Use'
   },
   {
-    id: 3,
+    id: 4,
     badge: 'Formule Day-Use & Courte Durée',
     title: 'Réservations à l’Heure',
     subtitle: '1h, 2h, 3h ou 4h de sérénité à tarif unique',
@@ -101,12 +114,12 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
     ctaHourText: 'À l’Heure / Day-Use'
   },
   {
-    id: 4,
+    id: 5,
     badge: 'Gastronomie & Art Culinaire',
     title: 'Restaurant Le Refuge & Bar Lounge',
-    subtitle: 'Haute gastronomie ivoirienne & cocktails signatures',
-    description: 'Dégustez nos kédjénous en canari, poissons braisés nobles et créations gourmandes du Chef, en salle climatisée, sur la terrasse fleurie ou livrés en chambre.',
-    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2000&q=85',
+    subtitle: 'Haute gastronomie ivoirienne & accueil souriant d’excellence',
+    description: 'Dégustez nos kédjénous en canari de terre cuite, poissons braisés nobles et créations gourmandes du Chef. Service exécutif lumineux en salle climatisée, sur la terrasse fleurie ou livré en chambre.',
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=2000&q=85',
     startingPriceNight: 10000,
     startingPriceHour: 2500,
     isActive: true,
@@ -114,7 +127,7 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
     ctaHourText: 'Commander un Repas'
   },
   {
-    id: 5,
+    id: 6,
     badge: 'Bien-Être & Détente',
     title: 'Piscine & Spa Privé Oasis',
     subtitle: 'Une oasis de fraîcheur et de volupté',
@@ -582,7 +595,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           heroSlides:
             parsed.heroSlides &&
             Array.isArray(parsed.heroSlides) &&
-            parsed.heroSlides.length > 0 &&
+            parsed.heroSlides.length >= 6 &&
             !parsed.heroSlides.some((s: any) => s.image && s.image.includes('photo-1566073771259'))
               ? parsed.heroSlides
               : DEFAULT_HERO_SLIDES,

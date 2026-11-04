@@ -29,6 +29,18 @@ export const HOTELIA_SLIDES: SlideData[] = [
   },
   {
     id: 2,
+    badge: 'Séjours d’Affaires & Clientèle Corporative',
+    title: 'Accueil Exécutif & Conciergerie VIP',
+    subtitle: 'L’excellence au service des décideurs, cadres & délégations',
+    description: 'Un environnement lumineux et feutré conçu pour allier rendez-vous professionnels de haut niveau, quiétude et confort absolu. WiFi fibre optique dédié, insonorisation 50 dB et accueil personnalisé.',
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=2000&q=85',
+    startingPriceNight: 20000,
+    startingPriceHour: 2500,
+    ctaNightText: 'Réserver un Séjour Affaires',
+    ctaHourText: 'Espace Journée (Day-Use)'
+  },
+  {
+    id: 3,
     badge: 'Chambres & Suites Signature',
     title: 'Suites Exécutives & Panoramiques',
     subtitle: 'Confort absolu, literie d’art & technologies modernes',
@@ -40,7 +52,7 @@ export const HOTELIA_SLIDES: SlideData[] = [
     ctaHourText: 'À l’Heure / Day-Use'
   },
   {
-    id: 3,
+    id: 4,
     badge: 'Formule Day-Use & Courte Durée',
     title: 'Réservations à l’Heure',
     subtitle: '1h, 2h, 3h ou 4h de sérénité à tarif unique',
@@ -52,19 +64,19 @@ export const HOTELIA_SLIDES: SlideData[] = [
     ctaHourText: 'À l’Heure / Day-Use'
   },
   {
-    id: 4,
+    id: 5,
     badge: 'Gastronomie & Art Culinaire',
     title: 'Restaurant Le Refuge & Bar Lounge',
-    subtitle: 'Haute gastronomie ivoirienne & cocktails signatures',
-    description: 'Dégustez nos kédjénous en canari de terre cuite, poissons braisés nobles et créations gourmandes du Chef, en salle climatisée, en terrasse ou livrés en chambre.',
-    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2000&q=85',
+    subtitle: 'Haute gastronomie ivoirienne & accueil souriant d’excellence',
+    description: 'Dégustez nos kédjénous en canari de terre cuite, poissons braisés nobles et créations gourmandes du Chef. Service exécutif lumineux en salle climatisée, en terrasse ou livré en chambre.',
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=2000&q=85',
     startingPriceNight: 10000,
     startingPriceHour: 2500,
     ctaNightText: 'Découvrir le Menu',
     ctaHourText: 'Commander un Repas'
   },
   {
-    id: 5,
+    id: 6,
     badge: 'Bien-Être & Détente',
     title: 'Piscine & Spa Privé Oasis',
     subtitle: 'Une oasis de fraîcheur et de volupté',
@@ -139,11 +151,12 @@ export const HoteliaHeroSlider: React.FC<HoteliaHeroSliderProps> = ({ onOpenBook
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = HOTELIA_SLIDES[0].image;
             }}
-            className="w-full h-full object-cover object-center brightness-[0.42]"
+            className="w-full h-full object-cover object-[75%_25%] sm:object-[80%_center] brightness-[0.75] sm:brightness-[0.88] lg:brightness-[0.92] transition-transform duration-7000"
           />
-          {/* Subtle gradient overlays for optimal text contrast */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141311] via-[#141311]/40 to-transparent"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-[#141311]/80 via-transparent to-transparent"></div>
+          {/* Subtle gradient overlays for optimal text contrast preserving bright natural portrait lighting */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#141311] via-[#141311]/80 via-40% to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#141311] via-[#141311]/30 via-20% to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-[#141311]/50 via-transparent to-transparent"></div>
         </div>
       ))}
 

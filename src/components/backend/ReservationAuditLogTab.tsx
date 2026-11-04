@@ -5,6 +5,7 @@ import { AuditLogEntry, AuditActionType } from '../../types.ts';
 import {
   History,
   ShieldCheck,
+  ShieldAlert,
   Search,
   Filter,
   User,
@@ -28,7 +29,17 @@ import {
   RefreshCw,
   Building,
   Tag,
-  ArrowRight
+  ArrowRight,
+  Utensils,
+  TrendingDown,
+  Users,
+  Copy,
+  Check,
+  Wrench,
+  Wallet,
+  Shield,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 
 interface ReservationAuditLogTabProps {
@@ -36,22 +47,61 @@ interface ReservationAuditLogTabProps {
   onSelectReservation?: (resId: string) => void;
 }
 
+type AuditModuleFilter =
+  | 'all'
+  | 'reservations'
+  | 'paiements'
+  | 'caisse'
+  | 'restaurant'
+  | 'depenses'
+  | 'utilisateurs'
+  | 'maintenance';
+
+type AuditSeverityFilter = 'all' | 'critique' | 'financiere' | 'normale';
+
 export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
   reservationIdFilter,
   onSelectReservation
 }) => {
-  const { auditLogs, clearAuditLogs, usersList, currentUserProfile } = useHotelData();
+  const { auditLogs, clearAuditLogs, usersList, currentUserProfile, addAuditLog } = useHotelData();
   const { formatPrice, settings } = useHotelSettings();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [moduleFilter, setModuleFilter] = useState<AuditModuleFilter>('all');
+  const [severityFilter, setSeverityFilter] = useState<AuditSeverityFilter>('all');
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [userFilter, setUserFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
   const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(null);
   const [showClearModal, setShowClearModal] = useState(false);
   const [copiedNotification, setCopiedNotification] = useState(false);
+  const [testLogSuccess, setTestLogSuccess] = useState<string | null>(null);
 
-  // Filtrage des logs d'audit
+  // Helper pour déduire le module si non renseigné dans l'entrée d'audit historique
+  const resolveEntryModule = (log: AuditLogEntry): NonNullable<AuditLogEntry['module']> => {
+    if (log.module) return log.module;
+    if (log.action === 'depense') return 'depenses';
+    if (log.action === 'securite_utilisateur') return 'utilisateurs';
+    if (log.action === 'paiement') return 'paiements';
+    if (log.details?.toLowerCase().includes('versement') || log.details?.toLowerCase().includes('caisse')) return 'caisse';
+    if (log.details?.toLowerCase().includes('restaurant') || log.details?.toLowerCase().includes('plat') || log.details?.toLowerCase().includes('menu')) return 'restaurant';
+    if (log.details?.toLowerCase().includes('maintenance') || log.details?.toLowerCase().includes('technicien')) return 'maintenance';
+    return 'reservations';
+  };
+
+  // Helper pour déduire la sévérité si non renseignée
+  const resolveEntrySeverity = (log: AuditLogEntry): NonNullable<AuditLogEntry['severite']> => {
+    if (log.severite) return log.severite;
+    if (log.action === 'suppression' || log.action === 'annulation' || log.action === 'securite_utilisateur') {
+      return 'critique';
+    }
+    if (log.action === 'paiement' || log.action === 'depense' || (log.montantTotal && log.montantTotal > 0)) {
+      return 'financiere';
+    }
+    return 'normale';
+  };
+
+  // Filtrage multi-critères des logs d'audit
   const filteredLogs = useMemo(() => {
     return auditLogs.filter((log) => {
       // 1. Filtre par réservation spécifique si passé en prop
@@ -59,17 +109,29 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
         return false;
       }
 
-      // 2. Filtre par type d'action
+      // 2. Filtre par module
+      if (moduleFilter !== 'all') {
+        const resolvedMod = resolveEntryModule(log);
+        if (resolvedMod !== moduleFilter) return false;
+      }
+
+      // 3. Filtre par niveau de sévérité
+      if (severityFilter !== 'all') {
+        const resolvedSev = resolveEntrySeverity(log);
+        if (resolvedSev !== severityFilter) return false;
+      }
+
+      // 4. Filtre par type d'action
       if (actionFilter !== 'all' && log.action !== actionFilter) {
         return false;
       }
 
-      // 3. Filtre par utilisateur
+      // 5. Filtre par utilisateur
       if (userFilter !== 'all' && log.userName !== userFilter) {
         return false;
       }
 
-      // 4. Filtre par période
+      // 6. Filtre par période
       if (periodFilter !== 'all') {
         const logDate = new Date(log.timestamp);
         const now = new Date();
@@ -88,24 +150,32 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
         }
       }
 
-      // 5. Recherche textuelle
+      // 7. Recherche textuelle globale
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchClient = log.clientNom?.toLowerCase().includes(q);
         const matchRoom = log.chambreNumero?.toLowerCase().includes(q);
         const matchUser = log.userName?.toLowerCase().includes(q);
         const matchRole = log.userRole?.toLowerCase().includes(q);
+        const matchEmail = log.userEmail?.toLowerCase().includes(q);
         const matchDetails = log.details?.toLowerCase().includes(q);
         const matchMotif = log.motifAnnulation?.toLowerCase().includes(q);
         const matchResId = log.reservationId?.toLowerCase().includes(q);
+        const matchActionLabel = log.actionLabel?.toLowerCase().includes(q);
+        const resolvedMod = resolveEntryModule(log);
+        const matchMod = resolvedMod.toLowerCase().includes(q);
+
         if (
           !matchClient &&
           !matchRoom &&
           !matchUser &&
           !matchRole &&
+          !matchEmail &&
           !matchDetails &&
           !matchMotif &&
-          !matchResId
+          !matchResId &&
+          !matchActionLabel &&
+          !matchMod
         ) {
           return false;
         }
@@ -113,7 +183,7 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
 
       return true;
     });
-  }, [auditLogs, reservationIdFilter, actionFilter, userFilter, periodFilter, searchQuery]);
+  }, [auditLogs, reservationIdFilter, moduleFilter, severityFilter, actionFilter, userFilter, periodFilter, searchQuery]);
 
   // Liste unique des utilisateurs ayant effectué des actions
   const uniqueUsers = useMemo(() => {
@@ -124,15 +194,51 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
     return Array.from(map.entries()).map(([name, role]) => ({ name, role }));
   }, [auditLogs]);
 
-  // Statistiques calculées
+  // Statistiques calculées pour les KPIs
   const stats = useMemo(() => {
     const total = auditLogs.length;
-    const creations = auditLogs.filter((l) => l.action === 'creation').length;
-    const modifications = auditLogs.filter((l) => l.action === 'modification').length;
-    const annulations = auditLogs.filter((l) => l.action === 'annulation').length;
-    const paiements = auditLogs.filter((l) => l.action === 'paiement').length;
-    return { total, creations, modifications, annulations, paiements };
-  }, [auditLogs]);
+    let totalFluxFinancier = 0;
+    let criticalCount = 0;
+    let creations = 0;
+    let modifications = 0;
+    let annulations = 0;
+    let paiements = 0;
+    let depensesCount = 0;
+    let depensesMontant = 0;
+
+    auditLogs.forEach((l) => {
+      const sev = resolveEntrySeverity(l);
+      if (sev === 'critique') {
+        criticalCount++;
+      }
+      if (l.montantTotal && l.montantTotal > 0) {
+        totalFluxFinancier += l.montantTotal;
+      }
+      if (l.action === 'creation') creations++;
+      if (l.action === 'modification') modifications++;
+      if (l.action === 'annulation') annulations++;
+      if (l.action === 'paiement') paiements++;
+      if (l.action === 'depense') {
+        depensesCount++;
+        depensesMontant += (l.montantTotal || 0);
+      }
+    });
+
+    const activeUsersCount = uniqueUsers.length;
+
+    return {
+      total,
+      totalFluxFinancier,
+      criticalCount,
+      creations,
+      modifications,
+      annulations,
+      paiements,
+      depensesCount,
+      depensesMontant,
+      activeUsersCount
+    };
+  }, [auditLogs, uniqueUsers]);
 
   // Formatage de la date et de l'heure
   const formatDateTime = (isoString: string) => {
@@ -218,6 +324,18 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
           icon: <DollarSign className="w-3.5 h-3.5 text-emerald-700" />,
           label: 'Règlement'
         };
+      case 'depense':
+        return {
+          bg: 'bg-orange-500/15 text-orange-950 border-orange-400',
+          icon: <TrendingDown className="w-3.5 h-3.5 text-orange-600" />,
+          label: 'Dépense / Décaissement'
+        };
+      case 'securite_utilisateur':
+        return {
+          bg: 'bg-sky-500/15 text-sky-950 border-sky-400',
+          icon: <Shield className="w-3.5 h-3.5 text-sky-600" />,
+          label: 'Sécurité & Droits'
+        };
       case 'suppression':
         return {
           bg: 'bg-red-500/15 text-red-900 border-red-500',
@@ -233,30 +351,137 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
     }
   };
 
-  // Export CSV
+  // Badge du module
+  const getModuleBadge = (mod: NonNullable<AuditLogEntry['module']>) => {
+    switch (mod) {
+      case 'reservations':
+        return {
+          label: 'Hébergement',
+          icon: <Building className="w-3 h-3 text-blue-600" />,
+          color: 'bg-blue-50 text-blue-700 border-blue-200'
+        };
+      case 'paiements':
+        return {
+          label: 'Paiements',
+          icon: <DollarSign className="w-3 h-3 text-emerald-600" />,
+          color: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        };
+      case 'caisse':
+        return {
+          label: 'Caisse & Versements',
+          icon: <Wallet className="w-3 h-3 text-amber-600" />,
+          color: 'bg-amber-50 text-amber-800 border-amber-200'
+        };
+      case 'depenses':
+        return {
+          label: 'Sorties de Caisse',
+          icon: <TrendingDown className="w-3 h-3 text-orange-600" />,
+          color: 'bg-orange-50 text-orange-800 border-orange-200'
+        };
+      case 'restaurant':
+        return {
+          label: 'Restaurant & KDS',
+          icon: <Utensils className="w-3 h-3 text-purple-600" />,
+          color: 'bg-purple-50 text-purple-700 border-purple-200'
+        };
+      case 'utilisateurs':
+        return {
+          label: 'Sécurité & Rôles',
+          icon: <Users className="w-3 h-3 text-sky-600" />,
+          color: 'bg-sky-50 text-sky-800 border-sky-200'
+        };
+      case 'maintenance':
+        return {
+          label: 'Maintenance',
+          icon: <Wrench className="w-3 h-3 text-stone-600" />,
+          color: 'bg-stone-100 text-stone-700 border-stone-300'
+        };
+      default:
+        return {
+          label: 'Système',
+          icon: <Layers className="w-3 h-3 text-stone-500" />,
+          color: 'bg-stone-100 text-stone-700 border-stone-200'
+        };
+    }
+  };
+
+  // Badge de Sévérité
+  const getSeverityBadge = (sev: NonNullable<AuditLogEntry['severite']>) => {
+    switch (sev) {
+      case 'critique':
+        return {
+          label: 'Critique',
+          icon: <AlertTriangle className="w-3 h-3 text-rose-600" />,
+          color: 'bg-rose-50 text-rose-800 border-rose-300 font-bold'
+        };
+      case 'financiere':
+        return {
+          label: 'Financier',
+          icon: <DollarSign className="w-3 h-3 text-amber-700" />,
+          color: 'bg-amber-50 text-amber-900 border-amber-300 font-bold'
+        };
+      case 'normale':
+      default:
+        return {
+          label: 'Standard',
+          icon: <CheckCircle2 className="w-3 h-3 text-emerald-600" />,
+          color: 'bg-stone-50 text-stone-600 border-stone-200 font-medium'
+        };
+    }
+  };
+
+  // Ajout manuel d'un contrôle d'audit de sécurité
+  const handleCreateAuditCheckpoint = () => {
+    const operatorName = currentUserProfile?.nom || 'Directeur Général';
+    const operatorRole = currentUserProfile?.role || 'Directeur Général';
+    const operatorEmail = currentUserProfile?.email || 'koua.dibi@gmail.com';
+
+    const newLog = addAuditLog({
+      action: 'securite_utilisateur',
+      actionLabel: "Contrôle d'intégrité & Audit Sécurité",
+      module: 'utilisateurs',
+      severite: 'normale',
+      reservationId: 'SEC-AUDIT-' + Date.now().toString().slice(-4),
+      clientNom: 'Contrôle Interne Direction',
+      chambreNumero: 'N/A',
+      userName: operatorName,
+      userRole: operatorRole,
+      userEmail: operatorEmail,
+      details: `Point de contrôle d'audit enregistré manuellement par ${operatorName} (${operatorRole}). Vérification de conformité des opérations et traçabilité des flux.`
+    });
+
+    setTestLogSuccess(`Contrôle d'audit #${newLog.id} consigné avec succès.`);
+    setTimeout(() => setTestLogSuccess(null), 4000);
+  };
+
+  // Export CSV enrichi
   const handleExportCsv = () => {
     try {
       const headers = [
         'ID Événement',
         'Horodatage (ISO)',
         'Date & Heure',
+        'Module',
+        'Sévérité',
         'Type Action',
         'Libellé Action',
-        'ID Réservation',
-        'Nom Client',
+        'ID Dossier / Réf',
+        'Nom Client / Cible',
         'Téléphone Client',
         'N° Chambre',
         'Type Chambre',
-        'Montant Total',
+        'Montant Total (FCFA)',
         'Nom Utilisateur',
         'Rôle Utilisateur',
         'Email Utilisateur',
-        'Motif Annulation',
+        'Motif Annulation / Suppression',
         'Détails des Modifications'
       ];
 
       const rows = filteredLogs.map((l) => {
         const { dateStr, timeStr } = formatDateTime(l.timestamp);
+        const resolvedMod = resolveEntryModule(l);
+        const resolvedSev = resolveEntrySeverity(l);
         const diffsStr = l.modifications
           ? l.modifications.map((m) => `${m.label}: ${m.ancienneValeur} -> ${m.nouvelleValeur}`).join(' | ')
           : '';
@@ -264,9 +489,11 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
           `"${l.id}"`,
           `"${l.timestamp}"`,
           `"${dateStr} ${timeStr}"`,
+          `"${resolvedMod}"`,
+          `"${resolvedSev}"`,
           `"${l.action}"`,
-          `"${l.actionLabel.replace(/"/g, '""')}"`,
-          `"${l.reservationId}"`,
+          `"${(l.actionLabel || '').replace(/"/g, '""')}"`,
+          `"${l.reservationId || ''}"`,
           `"${(l.clientNom || '').replace(/"/g, '""')}"`,
           `"${l.clientTelephone || ''}"`,
           `"${l.chambreNumero || ''}"`,
@@ -285,7 +512,7 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `journal_audit_reservations_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `journal_audit_trace_hotelia_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -295,13 +522,18 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
     }
   };
 
-  // Export JSON
+  // Export JSON complet
   const handleExportJson = () => {
     try {
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredLogs, null, 2));
+      const payload = filteredLogs.map((l) => ({
+        ...l,
+        resolvedModule: resolveEntryModule(l),
+        resolvedSeverity: resolveEntrySeverity(l)
+      }));
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', `journal_audit_reservations_${new Date().toISOString().split('T')[0]}.json`);
+      downloadAnchor.setAttribute('download', `journal_audit_trace_hotelia_${new Date().toISOString().split('T')[0]}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -310,51 +542,70 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
     }
   };
 
-  // Impression
+  // Impression du registre
   const handlePrint = () => {
     window.print();
   };
 
+  // Copie de l'événement en cours d'inspection
+  const handleCopyEntryJson = () => {
+    if (!selectedEntry) return;
+    const text = JSON.stringify(selectedEntry, null, 2);
+    navigator.clipboard.writeText(text);
+    setCopiedNotification(true);
+    setTimeout(() => setCopiedNotification(false), 2500);
+  };
+
   return (
     <div className="space-y-6">
-      {/* 1. Header principal du Journal d'Audit */}
+      {/* 1. Header principal du Journal d'Audit & Traçabilité Système */}
       <div className="bg-[#1C1B18] text-white rounded-3xl p-6 sm:p-8 border border-stone-800 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-24 -mt-24"></div>
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-inner">
-                <History className="w-5 h-5" />
+                <ShieldCheck className="w-5 h-5" />
               </div>
               <span className="text-xs font-mono font-bold tracking-widest text-amber-400 uppercase">
-                SÉCURITÉ &amp; TRAÇABILITÉ DES OPÉRATIONS
+                AUDIT TRAIL • SÉCURITÉ &amp; TRAÇABILITÉ ABSOLUE
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white tracking-tight">
-              Journal d'Audit des Réservations
+              Journal d'Audit Système &amp; Traçabilité des Opérations
             </h1>
-            <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
-              Enregistrement automatique et horodaté de toutes les modifications (création, annulation, mise à jour des dates ou chambres, check-in, check-out, règlements) avec identification de l'utilisateur responsable.
+            <p className="text-xs sm:text-sm text-stone-300 max-w-3xl leading-relaxed">
+              Enregistrement immuable et horodaté de chaque modification critique effectuée par les utilisateurs : créations, annulations, suppressions, encaissements, dépenses en caisse, commandes restaurant et modifications de permissions.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
+              onClick={handleCreateAuditCheckpoint}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 font-bold text-xs transition shadow-xs cursor-pointer"
+              title="Consigner manuellement un point de contrôle d'audit"
+            >
+              <Shield className="w-4 h-4 text-amber-400" />
+              <span>Contrôle de Sécurité</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleExportCsv}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 hover:border-amber-400 text-stone-200 hover:text-white font-bold text-xs transition shadow-xs cursor-pointer"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 hover:border-amber-400 text-stone-200 hover:text-white font-bold text-xs transition shadow-xs cursor-pointer"
               title="Exporter le journal complet au format CSV"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>Exporter CSV</span>
+              <span>CSV</span>
             </button>
 
             <button
               type="button"
               onClick={handleExportJson}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 hover:border-amber-400 text-stone-200 hover:text-white font-bold text-xs transition shadow-xs cursor-pointer"
-              title="Exporter le journal en JSON"
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-stone-900 border border-stone-700 hover:border-amber-400 text-stone-200 hover:text-white font-bold text-xs transition shadow-xs cursor-pointer"
+              title="Exporter le journal en JSON pour audit externe"
             >
               <Download className="w-4 h-4 text-blue-400" />
               <span>JSON</span>
@@ -364,7 +615,7 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
               type="button"
               onClick={handlePrint}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shadow-md cursor-pointer"
-              title="Imprimer le registre d'audit"
+              title="Imprimer le registre d'audit certifié"
             >
               <Printer className="w-4 h-4 stroke-[2.5]" />
               <span>Imprimer</span>
@@ -372,8 +623,17 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
           </div>
         </div>
 
-        {/* 2. Cartes de Métriques Rapides */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-stone-800">
+        {/* Message de confirmation de création d'un point d'audit */}
+        {testLogSuccess && (
+          <div className="mt-4 p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs font-mono flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{testLogSuccess}</span>
+          </div>
+        )}
+
+        {/* 2. Cartes de Métriques Rapides & KPIs Financiers */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mt-6 pt-6 border-t border-stone-800">
+          {/* Total Événements */}
           <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-3.5">
             <span className="text-[10px] uppercase font-mono text-stone-400 block font-bold">
               Total Événements
@@ -381,37 +641,62 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
             <span className="text-xl sm:text-2xl font-bold font-mono text-white mt-1 block">
               {stats.total}
             </span>
-            <span className="text-[10px] text-stone-400 mt-0.5 block">Actions tracées</span>
+            <span className="text-[10px] text-emerald-400 mt-0.5 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Traçabilité active
+            </span>
           </div>
 
-          <div className="bg-stone-900/80 border border-emerald-900/40 rounded-2xl p-3.5">
-            <span className="text-[10px] uppercase font-mono text-emerald-400 block font-bold">
-              Créations
-            </span>
-            <span className="text-xl sm:text-2xl font-bold font-mono text-emerald-300 mt-1 block">
-              {stats.creations}
-            </span>
-            <span className="text-[10px] text-stone-400 mt-0.5 block">Nouvelles réservations</span>
-          </div>
-
+          {/* Volume Financier Tracé */}
           <div className="bg-stone-900/80 border border-amber-900/40 rounded-2xl p-3.5">
             <span className="text-[10px] uppercase font-mono text-amber-400 block font-bold">
-              Modifications
+              Flux Financiers Tracés
             </span>
-            <span className="text-xl sm:text-2xl font-bold font-mono text-amber-300 mt-1 block">
-              {stats.modifications}
+            <span className="text-xl sm:text-2xl font-bold font-mono text-amber-300 mt-1 block tabular-nums">
+              {formatPrice(stats.totalFluxFinancier)}
             </span>
-            <span className="text-[10px] text-stone-400 mt-0.5 block">Dates, chambres, montants</span>
+            <span className="text-[10px] text-stone-400 mt-0.5 block">
+              Règlements &amp; Dépenses
+            </span>
           </div>
 
+          {/* Suppressions & Alertes Critiques */}
           <div className="bg-stone-900/80 border border-rose-900/40 rounded-2xl p-3.5">
             <span className="text-[10px] uppercase font-mono text-rose-400 block font-bold">
-              Annulations
+              Actions Critiques
             </span>
             <span className="text-xl sm:text-2xl font-bold font-mono text-rose-300 mt-1 block">
-              {stats.annulations}
+              {stats.criticalCount}
             </span>
-            <span className="text-[10px] text-stone-400 mt-0.5 block">Avec motif audité</span>
+            <span className="text-[10px] text-rose-400 mt-0.5 block">
+              Suppressions / Annulations
+            </span>
+          </div>
+
+          {/* Dépenses & Sorties de Caisse */}
+          <div className="bg-stone-900/80 border border-orange-900/40 rounded-2xl p-3.5">
+            <span className="text-[10px] uppercase font-mono text-orange-400 block font-bold">
+              Sorties de Caisse
+            </span>
+            <span className="text-xl sm:text-2xl font-bold font-mono text-orange-300 mt-1 block tabular-nums">
+              {formatPrice(stats.depensesMontant)}
+            </span>
+            <span className="text-[10px] text-stone-400 mt-0.5 block">
+              {stats.depensesCount} décaissements audités
+            </span>
+          </div>
+
+          {/* Opérateurs Actifs */}
+          <div className="bg-stone-900/80 border border-sky-900/40 rounded-2xl p-3.5 col-span-2 lg:col-span-1">
+            <span className="text-[10px] uppercase font-mono text-sky-400 block font-bold">
+              Opérateurs Tracés
+            </span>
+            <span className="text-xl sm:text-2xl font-bold font-mono text-sky-300 mt-1 block">
+              {stats.activeUsersCount}
+            </span>
+            <span className="text-[10px] text-stone-400 mt-0.5 block">
+              Comptes &amp; Rôles distincts
+            </span>
           </div>
         </div>
       </div>
@@ -424,7 +709,7 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
             <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Rechercher par client, chambre, utilisateur, motif d'annulation..."
+              placeholder="Rechercher par client, chambre, utilisateur, motif d'annulation, libellé..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition"
@@ -442,6 +727,34 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
 
           {/* Filtres déroulants */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
+            {/* Filtre par Module */}
+            <select
+              value={moduleFilter}
+              onChange={(e) => setModuleFilter(e.target.value as AuditModuleFilter)}
+              className="px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-medium text-stone-700 outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="all">Tous les modules</option>
+              <option value="reservations">Hébergement &amp; Réservations</option>
+              <option value="paiements">Paiements &amp; Règlements</option>
+              <option value="caisse">Caisse &amp; Versements</option>
+              <option value="depenses">Dépenses &amp; Sorties de Caisse</option>
+              <option value="restaurant">Restaurant &amp; KDS</option>
+              <option value="utilisateurs">Sécurité &amp; Rôles RBAC</option>
+              <option value="maintenance">Maintenance &amp; Blocages</option>
+            </select>
+
+            {/* Filtre par Sévérité */}
+            <select
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value as AuditSeverityFilter)}
+              className="px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-medium text-stone-700 outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="all">Toutes les sévérités</option>
+              <option value="critique">Critique (Suppressions / Droits)</option>
+              <option value="financiere">Financière (Paiements / Dépenses)</option>
+              <option value="normale">Standard (Créations / MàJ)</option>
+            </select>
+
             {/* Type d'action */}
             <select
               value={actionFilter}
@@ -451,12 +764,15 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
               <option value="all">Toutes les actions</option>
               <option value="creation">Créations</option>
               <option value="modification">Modifications</option>
+              <option value="paiement">Paiements / Règlements</option>
+              <option value="depense">Dépenses / Sorties Caisse</option>
               <option value="annulation">Annulations</option>
-              <option value="confirmation">Confirmations</option>
+              <option value="suppression">Suppressions</option>
+              <option value="securite_utilisateur">Sécurité Utilisateurs</option>
               <option value="check_in">Check-in</option>
               <option value="check_out">Check-out</option>
-              <option value="paiement">Paiements / Règlements</option>
-              <option value="suppression">Suppressions</option>
+              <option value="confirmation">Confirmations</option>
+              <option value="reactivation">Réactivations</option>
             </select>
 
             {/* Utilisateur */}
@@ -488,22 +804,39 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
         </div>
 
         {/* Indicateur de filtres actifs */}
-        <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between text-xs text-stone-500 pt-2 border-t border-stone-100 flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span>
               Affichage de <strong>{filteredLogs.length}</strong> événement(s) sur {auditLogs.length}
             </span>
             {reservationIdFilter && (
               <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px]">
-                Filtré pour la réservation {reservationIdFilter}
+                Filtré pour le dossier {reservationIdFilter}
+              </span>
+            )}
+            {moduleFilter !== 'all' && (
+              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300 font-mono text-[10px]">
+                Module: {moduleFilter}
+              </span>
+            )}
+            {severityFilter !== 'all' && (
+              <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300 font-mono text-[10px]">
+                Sévérité: {severityFilter}
               </span>
             )}
           </div>
 
-          {(actionFilter !== 'all' || userFilter !== 'all' || periodFilter !== 'all' || searchQuery) && (
+          {(moduleFilter !== 'all' ||
+            severityFilter !== 'all' ||
+            actionFilter !== 'all' ||
+            userFilter !== 'all' ||
+            periodFilter !== 'all' ||
+            searchQuery) && (
             <button
               type="button"
               onClick={() => {
+                setModuleFilter('all');
+                setSeverityFilter('all');
                 setActionFilter('all');
                 setUserFilter('all');
                 setPeriodFilter('all');
@@ -517,29 +850,34 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
         </div>
       </div>
 
-      {/* 4. Tableau du Journal d'Audit */}
+      {/* 4. Tableau du Journal d'Audit & Traçabilité */}
       <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-stone-100 border-b border-stone-200 text-stone-600 font-bold uppercase tracking-wider text-[10px]">
                 <th className="p-3.5">Horodatage</th>
-                <th className="p-3.5">Action</th>
+                <th className="p-3.5">Module &amp; Sévérité</th>
+                <th className="p-3.5">Action Tracée</th>
                 <th className="p-3.5">Utilisateur Responsable</th>
-                <th className="p-3.5">Client &amp; Chambre</th>
-                <th className="p-3.5">Détail des Modifications</th>
-                <th className="p-3.5 text-right">Détails</th>
+                <th className="p-3.5">Dossier / Cible</th>
+                <th className="p-3.5">Détails &amp; Diffs</th>
+                <th className="p-3.5 text-right">Inspecter</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-200">
               {filteredLogs.map((entry) => {
                 const { dateStr, timeStr, relativeStr } = formatDateTime(entry.timestamp);
                 const badge = getActionBadge(entry.action);
+                const resolvedMod = resolveEntryModule(entry);
+                const modBadge = getModuleBadge(resolvedMod);
+                const resolvedSev = resolveEntrySeverity(entry);
+                const sevBadge = getSeverityBadge(resolvedSev);
 
                 return (
                   <tr
                     key={entry.id}
-                    className="hover:bg-amber-50/40 transition-colors cursor-pointer"
+                    className="hover:bg-amber-50/40 transition-colors cursor-pointer group"
                     onClick={() => setSelectedEntry(entry)}
                   >
                     {/* Horodatage */}
@@ -550,6 +888,24 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
                       </div>
                       <div className="text-[11px] text-stone-500 mt-0.5">{dateStr}</div>
                       <div className="text-[10px] text-amber-700 font-mono font-semibold">{relativeStr}</div>
+                    </td>
+
+                    {/* Module & Sévérité */}
+                    <td className="p-3.5 whitespace-nowrap">
+                      <div className="flex flex-col gap-1 items-start">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-semibold ${modBadge.color}`}
+                        >
+                          {modBadge.icon}
+                          <span>{modBadge.label}</span>
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] ${sevBadge.color}`}
+                        >
+                          {sevBadge.icon}
+                          <span>{sevBadge.label}</span>
+                        </span>
+                      </div>
                     </td>
 
                     {/* Action */}
@@ -579,29 +935,38 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
                           {entry.userRole}
                         </span>
                       </div>
+                      {entry.userEmail && (
+                        <div className="text-[10px] text-stone-400 font-mono mt-0.5">
+                          {entry.userEmail}
+                        </div>
+                      )}
                     </td>
 
-                    {/* Client & Chambre */}
+                    {/* Dossier / Cible */}
                     <td className="p-3.5">
-                      <div className="font-bold text-stone-900">{entry.clientNom}</div>
+                      <div className="font-bold text-stone-900">{entry.clientNom || 'N/A'}</div>
                       <div className="text-[11px] text-stone-500 flex items-center gap-2 mt-0.5">
-                        <span className="font-mono font-semibold text-amber-800">
-                          Chambre {entry.chambreNumero}
-                        </span>
+                        {entry.chambreNumero && entry.chambreNumero !== 'N/A' && (
+                          <span className="font-mono font-semibold text-amber-800">
+                            Chambre {entry.chambreNumero}
+                          </span>
+                        )}
                         {entry.montantTotal ? (
-                          <span className="text-stone-400">
-                            • {formatPrice(entry.montantTotal)}
+                          <span className="font-mono font-bold text-emerald-700 tabular-nums">
+                            {formatPrice(entry.montantTotal)}
                           </span>
                         ) : null}
                       </div>
-                      <div className="text-[10px] text-stone-400 font-mono mt-0.5">
-                        Réf: {entry.reservationId}
-                      </div>
+                      {entry.reservationId && (
+                        <div className="text-[10px] text-stone-400 font-mono mt-0.5">
+                          Réf: {entry.reservationId}
+                        </div>
+                      )}
                     </td>
 
                     {/* Détail des modifications (Diffs) */}
                     <td className="p-3.5">
-                      <p className="text-xs text-stone-700 leading-relaxed font-sans mb-1.5">
+                      <p className="text-xs text-stone-700 leading-relaxed font-sans mb-1.5 max-w-md">
                         {entry.details}
                       </p>
 
@@ -643,7 +1008,7 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
 
               {filteredLogs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-stone-500">
+                  <td colSpan={7} className="text-center py-12 text-stone-500">
                     <History className="w-10 h-10 text-stone-300 mx-auto mb-2" />
                     <p className="font-semibold text-sm">Aucun événement d'audit trouvé</p>
                     <p className="text-xs text-stone-400 mt-1">
@@ -661,13 +1026,14 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
       {selectedEntry && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-stone-200 max-h-[90vh] overflow-y-auto space-y-6 animate-in fade-in zoom-in-95 duration-150">
+            {/* Header du Modal */}
             <div className="flex items-start justify-between border-b border-stone-200 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold">
                   {getActionBadge(selectedEntry.action).icon}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-serif font-bold text-lg text-stone-900">
                       {selectedEntry.actionLabel}
                     </h3>
@@ -677,6 +1043,13 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
                       }`}
                     >
                       {selectedEntry.action}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-[10px] border ${
+                        getSeverityBadge(resolveEntrySeverity(selectedEntry)).color
+                      }`}
+                    >
+                      {getSeverityBadge(resolveEntrySeverity(selectedEntry)).label}
                     </span>
                   </div>
                   <p className="text-xs text-stone-500 font-mono mt-0.5">
@@ -707,6 +1080,9 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
                 <div className="text-stone-500 font-mono text-[11px]">
                   ISO : {selectedEntry.timestamp}
                 </div>
+                <div className="text-amber-800 font-mono font-bold text-[11px]">
+                  {formatDateTime(selectedEntry.timestamp).relativeStr}
+                </div>
               </div>
 
               <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200 space-y-2">
@@ -729,26 +1105,32 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
               </div>
             </div>
 
-            {/* Dossier Client & Réservation */}
+            {/* Dossier Client & Réservation / Opération */}
             <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200 space-y-2 text-xs">
               <span className="text-[10px] uppercase font-mono font-bold text-stone-400 block">
-                DOSSIER RÉSERVATION CONCERNÉ
+                DOSSIER &amp; ENCADREMENT DE L'OPÉRATION
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div>
-                  <span className="text-stone-500 block text-[11px]">Client</span>
-                  <span className="font-bold text-stone-900">{selectedEntry.clientNom}</span>
+                  <span className="text-stone-500 block text-[11px]">Client / Tiers</span>
+                  <span className="font-bold text-stone-900">{selectedEntry.clientNom || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="text-stone-500 block text-[11px]">Chambre</span>
                   <span className="font-mono font-bold text-amber-800">
-                    N° {selectedEntry.chambreNumero}
+                    {selectedEntry.chambreNumero ? `N° ${selectedEntry.chambreNumero}` : 'N/A'}
                   </span>
                 </div>
                 <div>
                   <span className="text-stone-500 block text-[11px]">Réf. Dossier</span>
                   <span className="font-mono font-semibold text-stone-700">
-                    {selectedEntry.reservationId}
+                    {selectedEntry.reservationId || 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-stone-500 block text-[11px]">Montant</span>
+                  <span className="font-mono font-bold text-emerald-700 tabular-nums">
+                    {selectedEntry.montantTotal ? formatPrice(selectedEntry.montantTotal) : '0 FCFA'}
                   </span>
                 </div>
               </div>
@@ -757,7 +1139,7 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
             {/* Détails textuels complets */}
             <div>
               <h4 className="text-xs font-bold uppercase font-mono text-stone-500 mb-1.5">
-                Détail de l'Action
+                Détail de l'Action &amp; Contexte
               </h4>
               <div className="p-3.5 rounded-xl bg-stone-100 border border-stone-200 text-xs text-stone-800 leading-relaxed font-sans">
                 {selectedEntry.details}
@@ -809,7 +1191,25 @@ export const ReservationAuditLogTab: React.FC<ReservationAuditLogTabProps> = ({
             )}
 
             {/* Actions du Modal */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200">
+            <div className="flex items-center justify-between pt-4 border-t border-stone-200 flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleCopyEntryJson}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition cursor-pointer"
+              >
+                {copiedNotification ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700 font-bold">Copié dans le presse-papier !</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-stone-500" />
+                    <span>Copier JSON pour rapport</span>
+                  </>
+                )}
+              </button>
+
               <button
                 type="button"
                 onClick={() => setSelectedEntry(null)}

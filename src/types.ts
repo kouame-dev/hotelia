@@ -970,7 +970,7 @@ export interface NotificationCampaign {
 
 export type FNESettings = Record<string, any>;
 
-// 15. Journal d'Audit des Réservations (Traçabilité complète des modifications)
+// 15. Journal d'Audit & Traçabilité (Audit Trail complet des modifications critiques)
 export type AuditActionType =
   | 'creation'
   | 'modification'
@@ -981,7 +981,9 @@ export type AuditActionType =
   | 'reactivation'
   | 'suppression'
   | 'paiement'
-  | 'maintenance';
+  | 'depense'
+  | 'maintenance'
+  | 'securite_utilisateur';
 
 export interface AuditFieldDiff {
   champ: string;
@@ -995,6 +997,8 @@ export interface AuditLogEntry {
   timestamp: string; // ISO 8601 string (ex: 2026-09-27T08:25:00.000Z)
   action: AuditActionType;
   actionLabel: string;
+  module?: 'reservations' | 'paiements' | 'caisse' | 'restaurant' | 'depenses' | 'utilisateurs' | 'maintenance';
+  severite?: 'normale' | 'financiere' | 'critique';
   reservationId: string;
   clientNom: string;
   clientTelephone?: string;

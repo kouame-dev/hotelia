@@ -614,6 +614,52 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const usersList = Object.values(userProfiles);
 
+  // --- Traçabilité & Journal d'Audit Système Centralisé (Audit Trail) ---
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
+    try {
+      const saved = safeGetItem('hotelia_audit_logs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const needsMigration = parsed.some((a: any) => typeof a.montantTotal === 'number' && a.montantTotal < 1000);
+          if (!needsMigration) return parsed;
+        }
+      }
+      return INITIAL_AUDIT_LOGS;
+    } catch {
+      return INITIAL_AUDIT_LOGS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      safeSetItem('hotelia_audit_logs', JSON.stringify(auditLogs));
+    } catch (e) {
+      console.error('Erreur sauvegarde audit logs', e);
+    }
+  }, [auditLogs]);
+
+  const addAuditLog = (
+    entry: Omit<AuditLogEntry, 'id' | 'timestamp'> & { timestamp?: string }
+  ): AuditLogEntry => {
+    const newEntry: AuditLogEntry = {
+      ...entry,
+      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: entry.timestamp || new Date().toISOString()
+    };
+    setAuditLogs((prev) => [newEntry, ...prev]);
+    return newEntry;
+  };
+
+  const clearAuditLogs = () => {
+    setAuditLogs([]);
+    try {
+      safeRemoveItem('hotelia_audit_logs');
+    } catch (e) {
+      console.error('Erreur purge journal audit', e);
+    }
+  };
+
   const updateCurrentUserProfile = (updated: Partial<UserProfile>) => {
     setUserProfiles((prev) => {
       // Résolution infaillible de la clé de profil (clé directe, par ID ou par username)
@@ -676,6 +722,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const updateUserProfile = (id: string, updated: Partial<UserProfile>) => {
+    const userBefore = Object.values(userProfiles).find((u) => u.id === id);
     setUserProfiles((prev) => {
       const next = { ...prev };
       for (const key of Object.keys(next)) {
@@ -702,9 +749,26 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
       return next;
     });
+
+    if (userBefore && (updated.role || updated.status || updated.nom)) {
+      addAuditLog({
+        action: 'securite_utilisateur',
+        actionLabel: `Mise à jour Compte Utilisateur (${userBefore.nom})`,
+        module: 'utilisateurs',
+        severite: updated.role ? 'critique' : 'normale',
+        reservationId: userBefore.id,
+        clientNom: `Utilisateur: ${userBefore.nom}`,
+        chambreNumero: 'Sécurité ACL',
+        userName: currentUserProfile?.nom || 'Administrateur',
+        userRole: currentUserProfile?.role || 'Directeur Général',
+        userEmail: currentUserProfile?.email,
+        details: `Modification du compte ${userBefore.nom} (${userBefore.email}). ${updated.role ? `Rôle: "${userBefore.role}" ➔ "${updated.role}".` : ''} ${updated.status ? `Statut: "${updated.status}".` : ''}`
+      });
+    }
   };
 
   const deleteUserProfile = (id: string) => {
+    const userToDelete = Object.values(userProfiles).find((u) => u.id === id);
     // Cannot delete main super admin
     setUserProfiles((prev) => {
       const next = { ...prev };
@@ -723,6 +787,22 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
     if (currentUserProfile.id === id) {
       setActiveProfileKey('directeur');
+    }
+
+    if (userToDelete && userToDelete.id !== 'usr-1') {
+      addAuditLog({
+        action: 'suppression',
+        actionLabel: `Suppression Compte Utilisateur (${userToDelete.nom})`,
+        module: 'utilisateurs',
+        severite: 'critique',
+        reservationId: userToDelete.id,
+        clientNom: `Utilisateur: ${userToDelete.nom}`,
+        chambreNumero: 'Sécurité ACL',
+        userName: currentUserProfile?.nom || 'Administrateur',
+        userRole: currentUserProfile?.role || 'Directeur Général',
+        userEmail: currentUserProfile?.email,
+        details: `Suppression définitive du compte utilisateur de ${userToDelete.nom} (${userToDelete.email}, rôle: ${userToDelete.role}).`
+      });
     }
   };
 
@@ -1670,7 +1750,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // --- E. Module Dépenses ---
+
+  // --- E. Module Dépenses & Sorties de Caisse ---
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
     try {
       const saved = safeGetItem('hotelia_expenses');
@@ -1706,17 +1787,69 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       statutPiece: newExpense.statutPiece || 'valide'
     };
     setExpenses((prev) => [fullExpense, ...prev]);
+
+    // Audit automatique de la sortie de caisse
+    addAuditLog({
+      action: 'depense',
+      actionLabel: `Sortie de Caisse Enregistrée (${fullExpense.numeroPiece})`,
+      module: 'depenses',
+      severite: 'financiere',
+      reservationId: fullExpense.numeroPiece,
+      clientNom: `Bénéficiaire : ${fullExpense.beneficiaire}`,
+      chambreNumero: 'Caisse',
+      montantTotal: fullExpense.montant,
+      userName: currentUserProfile?.nom || 'Utilisateur Système',
+      userRole: currentUserProfile?.role || 'Opérateur',
+      userEmail: currentUserProfile?.email,
+      details: `Sortie de caisse de ${fullExpense.montant} FCFA (${fullExpense.modePaiement}) pour "${fullExpense.titre}" - Catégorie: ${fullExpense.categorie}. Justificatif: ${fullExpense.numeroPiece}.`
+    });
+
     return fullExpense;
   };
 
   const updateExpense = (id: string, updated: Partial<ExpenseItem>) => {
+    const oldExpense = expenses.find((e) => e.id === id);
     setExpenses((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...updated } : e))
     );
+
+    if (oldExpense) {
+      addAuditLog({
+        action: 'modification',
+        actionLabel: `Sortie de Caisse Modifiée (${oldExpense.numeroPiece})`,
+        module: 'depenses',
+        severite: 'financiere',
+        reservationId: oldExpense.numeroPiece,
+        clientNom: `Bénéficiaire : ${updated.beneficiaire || oldExpense.beneficiaire}`,
+        chambreNumero: 'Caisse',
+        montantTotal: updated.montant !== undefined ? updated.montant : oldExpense.montant,
+        userName: currentUserProfile?.nom || 'Utilisateur Système',
+        userRole: currentUserProfile?.role || 'Opérateur',
+        userEmail: currentUserProfile?.email,
+        details: `Modification du justificatif de dépense ${oldExpense.numeroPiece} : montant ${updated.montant || oldExpense.montant} FCFA.`
+      });
+    }
   };
 
   const deleteExpense = (id: string) => {
+    const target = expenses.find((e) => e.id === id);
     setExpenses((prev) => prev.filter((e) => e.id !== id));
+    if (target) {
+      addAuditLog({
+        action: 'suppression',
+        actionLabel: `Suppression Sortie de Caisse (${target.numeroPiece})`,
+        module: 'depenses',
+        severite: 'critique',
+        reservationId: target.numeroPiece,
+        clientNom: `Bénéficiaire : ${target.beneficiaire}`,
+        chambreNumero: 'Caisse',
+        montantTotal: target.montant,
+        userName: currentUserProfile?.nom || 'Utilisateur Système',
+        userRole: currentUserProfile?.role || 'Opérateur',
+        userEmail: currentUserProfile?.email,
+        details: `Suppression définitive du justificatif de dépense ${target.numeroPiece} d'un montant de ${target.montant} FCFA (${target.titre}).`
+      });
+    }
   };
 
   // --- F. Entrées Financières ---
@@ -1775,51 +1908,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     });
   };
 
-  // --- G. Réservations de Chambres & Traçabilité d'Audit ---
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
-    try {
-      const saved = safeGetItem('hotelia_audit_logs');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const needsMigration = parsed.some((a: any) => typeof a.montantTotal === 'number' && a.montantTotal < 1000);
-          if (!needsMigration) return parsed;
-        }
-      }
-      return INITIAL_AUDIT_LOGS;
-    } catch {
-      return INITIAL_AUDIT_LOGS;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      safeSetItem('hotelia_audit_logs', JSON.stringify(auditLogs));
-    } catch (e) {
-      console.error('Erreur sauvegarde audit logs', e);
-    }
-  }, [auditLogs]);
-
-  const addAuditLog = (
-    entry: Omit<AuditLogEntry, 'id' | 'timestamp'> & { timestamp?: string }
-  ): AuditLogEntry => {
-    const newEntry: AuditLogEntry = {
-      ...entry,
-      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      timestamp: entry.timestamp || new Date().toISOString()
-    };
-    setAuditLogs((prev) => [newEntry, ...prev]);
-    return newEntry;
-  };
-
-  const clearAuditLogs = () => {
-    setAuditLogs([]);
-    try {
-      safeRemoveItem('hotelia_audit_logs');
-    } catch (e) {
-      console.error('Erreur purge journal audit', e);
-    }
-  };
+  // --- G. Réservations de Chambres ---
 
   const [reservations, setReservations] = useState<ReservationItem[]>(() => {
     try {
@@ -2562,6 +2651,23 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
     }
 
+    // Traçabilité Audit Trail
+    addAuditLog({
+      action: fullOrder.acompteVerse > 0 ? 'paiement' : 'creation',
+      actionLabel: `Commande Service Enregistrée (${fullOrder.numeroCommande})`,
+      module: 'paiements',
+      severite: 'financiere',
+      reservationId: fullOrder.numeroCommande,
+      clientNom: fullOrder.clientNom,
+      clientTelephone: fullOrder.clientTelephone,
+      chambreNumero: fullOrder.chambreNumero || 'Service Externe',
+      montantTotal: fullOrder.totalGlobal,
+      userName: currentUserProfile?.nom || 'Utilisateur Système',
+      userRole: currentUserProfile?.role || 'Opérateur',
+      userEmail: currentUserProfile?.email,
+      details: `Création de commande service ${fullOrder.numeroCommande} pour ${fullOrder.clientNom}. Montant: ${fullOrder.totalGlobal} FCFA, Acompte perçu: ${fullOrder.acompteVerse} FCFA (${fullOrder.modePaiement}).`
+    });
+
     return fullOrder;
   };
 
@@ -2588,7 +2694,24 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const deleteServiceOrder = (id: string) => {
+    const target = serviceOrders.find((s) => s.id === id);
     setServiceOrders((prev) => prev.filter((ord) => ord.id !== id));
+    if (target) {
+      addAuditLog({
+        action: 'suppression',
+        actionLabel: `Suppression Commande Service (${target.numeroCommande})`,
+        module: 'paiements',
+        severite: 'critique',
+        reservationId: target.numeroCommande,
+        clientNom: target.clientNom,
+        chambreNumero: target.chambreNumero || 'Service Externe',
+        montantTotal: target.totalGlobal,
+        userName: currentUserProfile?.nom || 'Utilisateur Système',
+        userRole: currentUserProfile?.role || 'Opérateur',
+        userEmail: currentUserProfile?.email,
+        details: `Suppression définitive de la commande service ${target.numeroCommande} d'un montant de ${target.totalGlobal} FCFA pour ${target.clientNom}.`
+      });
+    }
   };
 
   // =========================================================================
@@ -3808,11 +3931,44 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
     }
 
+    // Traçabilité Audit Trail
+    addAuditLog({
+      action: 'paiement',
+      actionLabel: `Vente Directe POS Encaissée (${fullSale.numeroTicket})`,
+      module: 'caisse',
+      severite: 'financiere',
+      reservationId: fullSale.numeroTicket,
+      clientNom: fullSale.clientNom || 'Client Comptoir',
+      chambreNumero: fullSale.chambreNumero || 'Boutique/POS',
+      montantTotal: fullSale.totalGlobal,
+      userName: fullSale.serveurNom || currentUserProfile?.nom || 'Caissier',
+      userRole: currentUserProfile?.role || 'Vendeur',
+      userEmail: currentUserProfile?.email,
+      details: `Vente directe ticket ${fullSale.numeroTicket} (${fullSale.items.length} article(s)). Montant encaissé: ${reelEncaisse} FCFA (${fullSale.modePaiement}).`
+    });
+
     return fullSale;
   };
 
   const deletePosSale = (id: string) => {
+    const target = posSales.find((s) => s.id === id);
     setPosSales((prev) => prev.filter((s) => s.id !== id));
+    if (target) {
+      addAuditLog({
+        action: 'suppression',
+        actionLabel: `Suppression Vente POS (${target.numeroTicket})`,
+        module: 'caisse',
+        severite: 'critique',
+        reservationId: target.numeroTicket,
+        clientNom: target.clientNom || 'Client Comptoir',
+        chambreNumero: target.chambreNumero || 'Boutique/POS',
+        montantTotal: target.totalGlobal,
+        userName: currentUserProfile?.nom || 'Utilisateur Système',
+        userRole: currentUserProfile?.role || 'Opérateur',
+        userEmail: currentUserProfile?.email,
+        details: `Suppression définitive du ticket de vente POS ${target.numeroTicket} d'un montant de ${target.totalGlobal} FCFA.`
+      });
+    }
   };
 
   // =========================================================================
@@ -4394,6 +4550,23 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
     setNotifications((prev) => [orderNotif, ...prev]);
 
+    // Traçabilité Audit Trail
+    addAuditLog({
+      action: created.acompteVerse && created.acompteVerse > 0 ? 'paiement' : 'creation',
+      actionLabel: `Commande Restaurant (${created.numeroCommande})`,
+      module: 'restaurant',
+      severite: 'financiere',
+      reservationId: created.numeroCommande,
+      clientNom: created.clientNom || 'Client Restaurant',
+      clientTelephone: created.clientTelephone,
+      chambreNumero: created.chambreNumero || created.tableNumero || 'Restaurant',
+      montantTotal: created.totalNet,
+      userName: currentUserProfile?.nom || 'Client Web / Conciergerie',
+      userRole: currentUserProfile?.role || 'Opérateur',
+      userEmail: currentUserProfile?.email,
+      details: `Création de commande restaurant ${created.numeroCommande} (${created.tableNumero || 'Comptoir'}). Articles: ${(created.articles || created.items || []).length}. Total: ${created.totalNet} FCFA. Acompte réglé: ${created.acompteVerse || 0} FCFA.`
+    });
+
     return created;
   };
 
@@ -4457,10 +4630,43 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       description: `Règlement commande ${order.numeroCommande} (${order.tableNumero}) - ${modePaiement}`
     };
     setRevenues((prev) => [newRev, ...prev]);
+
+    // Traçabilité Audit Trail
+    addAuditLog({
+      action: 'paiement',
+      actionLabel: `Addition Restaurant Réglée (${order.numeroCommande})`,
+      module: 'restaurant',
+      severite: 'financiere',
+      reservationId: order.numeroCommande,
+      clientNom: order.clientNom || 'Client Restaurant',
+      chambreNumero: chambreNumero || order.chambreNumero || order.tableNumero,
+      montantTotal: order.totalNet,
+      userName: currentUserProfile?.nom || 'Caisse Restaurant',
+      userRole: currentUserProfile?.role || 'Caissier',
+      userEmail: currentUserProfile?.email,
+      details: `Règlement intégral de la commande restaurant ${order.numeroCommande} (${order.tableNumero}) : ${order.totalNet} FCFA encaissés via ${modePaiement}. Table libérée.`
+    });
   };
 
   const deleteRestaurantOrder = (id: string) => {
+    const target = restaurantOrders.find((o) => o.id === id);
     setRestaurantOrders((prev) => prev.filter((o) => o.id !== id));
+    if (target) {
+      addAuditLog({
+        action: 'suppression',
+        actionLabel: `Suppression Commande Restaurant (${target.numeroCommande})`,
+        module: 'restaurant',
+        severite: 'critique',
+        reservationId: target.numeroCommande,
+        clientNom: target.clientNom || 'Client Restaurant',
+        chambreNumero: target.tableNumero || 'Restaurant',
+        montantTotal: target.totalNet,
+        userName: currentUserProfile?.nom || 'Utilisateur Système',
+        userRole: currentUserProfile?.role || 'Opérateur',
+        userEmail: currentUserProfile?.email,
+        details: `Suppression définitive de la commande restaurant ${target.numeroCommande} d'un montant de ${target.totalNet} FCFA.`
+      });
+    }
   };
 
   // --- 14. Espace Client, Programme Fidélité, Coupons Promos, Push & SMS ---

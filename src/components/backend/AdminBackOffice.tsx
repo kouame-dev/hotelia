@@ -2203,10 +2203,10 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                       </span>
                     </div>
                     <h4 className="font-bold text-sm text-white mb-1">
-                      Journal d'Audit des Réservations
+                      Journal d'Audit &amp; Traçabilité Système
                     </h4>
                     <p className="text-xs text-stone-400 leading-relaxed">
-                      Historique infalsifiable de chaque création, modification, règlement et annulation avec auteur, date et motif.
+                      Historique infalsifiable de chaque création, modification, règlement, sortie de caisse, commande restaurant et suppression avec auteur, horodatage ISO et motifs.
                     </p>
                   </div>
                   <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
@@ -2968,6 +2968,43 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   </div>
                   <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-[#C5A880] font-semibold">
                     <span>Gérer les sliders du front-end</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              )}
+
+              {/* Module 6c : Journal d'Audit & Traçabilité Système (Audit Trail) */}
+              {isTabAllowed('audit') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('audit');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between group shadow-sm ${
+                    activeTab === 'audit'
+                      ? 'bg-amber-950/40 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-amber-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform">
+                        <History className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        {auditLogs.length} événements
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-sm text-white mb-1 flex items-center gap-1.5">
+                      <span>Audit Trail &amp; Traçabilité Système</span>
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Journal infalsifiable des modifications critiques (réservations, suppressions, encaissements, sorties de caisse, rôles).
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-amber-300 font-semibold">
+                    <span>Consulter le journal d'audit</span>
                     <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
