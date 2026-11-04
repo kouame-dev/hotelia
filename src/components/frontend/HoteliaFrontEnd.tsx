@@ -322,7 +322,7 @@ export const HoteliaFrontEnd: React.FC<HoteliaFrontEndProps> = ({ onGoToBackend,
                 className="text-[#C5A880] hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 font-bold uppercase tracking-wider bg-[#C5A880]/15 px-3 py-1.5 rounded-lg border border-[#C5A880]/30"
               >
                 <Utensils className="w-3.5 h-3.5" />
-                <span>Restaurant Le Dekouassi</span>
+                <span>Restaurant Le Refuge</span>
               </button>
             )}
             <a href="#services" className="hover:text-[#C5A880] transition-colors">

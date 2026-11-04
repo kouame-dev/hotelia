@@ -813,7 +813,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-serif font-bold text-xl sm:text-2xl text-white tracking-tight">
-                  Restaurant Le Dekouassi &amp; Bar Lounge
+                  Restaurant Le Refuge &amp; Bar Lounge
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
                   {currentUserProfile.role}
@@ -1439,7 +1439,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                 </h2>
               </div>
               <p className="text-xs text-stone-500 mt-0.5">
-                Vue spatiale 2D et statut en direct : Salle Climatisée, Terrasse Jardin &amp; Salon VIP Dekouassi.
+                Vue spatiale 2D et statut en direct : Salle Climatisée, Terrasse Jardin &amp; Salon VIP Le Refuge.
               </p>
             </div>
 
@@ -1499,7 +1499,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                 { id: 'toutes', label: 'Toutes les Zones' },
                 { id: 'salle', label: 'Salle Climatisée' },
                 { id: 'terrasse', label: 'Terrasse Jardin' },
-                { id: 'vip', label: 'Salon VIP Dekouassi' }
+                { id: 'vip', label: 'Salon VIP Le Refuge' }
               ].map((z) => (
                 <button
                   key={z.id}
@@ -1717,7 +1717,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Zone Salon Lounge VIP Dekouassi</span>
+                        <span>Zone Salon Lounge VIP Le Refuge</span>
                       </span>
                       <span className="text-[11px] text-stone-400 font-mono">
                         {restaurantTables.filter((t) => t.zone === 'vip').length} tables
@@ -4047,7 +4047,7 @@ export const RestaurantManagementTab: React.FC<RestaurantManagementTabProps> = (
             <div className="bg-stone-50 border border-stone-300 rounded-xl p-4 font-mono text-xs text-stone-800 space-y-2.5 shadow-inner">
               <div className="text-center border-b border-stone-300 pb-2">
                 <span className="font-bold text-sm block tracking-wider">HOTELIA RESORT &amp; SPA</span>
-                <span className="font-bold text-xs block text-emerald-800">RESTAURANT LE DEKOUASSI</span>
+                <span className="font-bold text-xs block text-emerald-800">RESTAURANT LE REFUGE</span>
                 <span className="text-[10px] text-stone-500 block">Abidjan, Côte d'Ivoire • Tél: +225 07 00 00 00</span>
                 <div className="mt-2 py-0.5 px-2 bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold uppercase rounded">
                   *** REÇU OFFICIEL D'ACOMPTE ***

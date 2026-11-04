@@ -747,7 +747,7 @@ export type RestaurantTableStatus = 'libre' | 'occupee' | 'reservee' | 'addition
 
 export interface RestaurantTable {
   id: string;
-  numero: string; // ex: "Table 01", "Terrasse 02", "VIP Dekouassi 01"
+  numero: string; // ex: "Table 01", "Terrasse 02", "VIP Le Refuge 01"
   nom?: string;
   capacite: number; // 2, 4, 6, 8, 12 personnes
   zone: RestaurantZone;

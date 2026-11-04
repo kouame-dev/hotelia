@@ -28,6 +28,7 @@ import { RoomOccupancyCalendarTab } from './RoomOccupancyCalendarTab.tsx';
 import { RoomOccupancyDashboardTab } from './RoomOccupancyDashboardTab.tsx';
 import { MaintenanceDashboard } from './MaintenanceDashboard.tsx';
 import { CashRegisterManagementTab } from './CashRegisterManagementTab.tsx';
+import { RealtimeAnalyticsDashboardTab } from './RealtimeAnalyticsDashboardTab.tsx';
 import { SoundNotificationModal } from './SoundNotificationModal.tsx';
 import { ErrorBoundary } from '../common/ErrorBoundary.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
@@ -104,6 +105,7 @@ import {
 export type BackOfficeTab =
   | 'dashboard'
   | 'occupancy_dashboard'
+  | 'analytics'
   | 'gantt'
   | 'calendar'
   | 'reservations'
@@ -398,6 +400,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         return { pole: 'Administration', title: 'Tableau de Bord des Revenus & Ventes', icon: <BarChart3 className="w-4 h-4 text-emerald-400" /> };
       case 'occupancy_dashboard':
         return { pole: 'Hébergement', title: 'Dashboard des Occupations des Chambres', icon: <TrendingUp className="w-4 h-4 text-emerald-400" /> };
+      case 'analytics':
+        return { pole: 'Administration', title: 'Tableau de Bord Analytique (Occupation & CA)', icon: <BarChart3 className="w-4 h-4 text-emerald-400" /> };
       case 'gantt':
         return { pole: 'Hébergement', title: 'Tableau de Bord & Gantt 24h', icon: <Calendar className="w-4 h-4 text-blue-400" /> };
       case 'calendar':
@@ -513,6 +517,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const tabFeatureMap: Record<BackOfficeTab, AppFeatureId> = {
     dashboard: 'dashboard',
     occupancy_dashboard: 'gantt',
+    analytics: 'dashboard',
     gantt: 'gantt',
     calendar: 'gantt',
     reservations: 'reservations',
@@ -548,6 +553,16 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         hasPermission('gantt', 'activate') ||
         hasPermission('reservations', 'activate') ||
         hasPermission('chambres', 'activate')
+      );
+    }
+
+    // 1c. Tableau de Bord Analytique (Occupation & CA en temps réel)
+    if (tab === 'analytics') {
+      return (
+        hasPermission('dashboard', 'activate') ||
+        hasPermission('gantt', 'activate') ||
+        hasPermission('finance', 'activate') ||
+        isDG
       );
     }
 
@@ -614,7 +629,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   // Nombre de fonctionnalités autorisées pour la session active
   const authorizedModulesCount = useMemo(() => {
     const list: BackOfficeTab[] = [
-      'dashboard', 'occupancy_dashboard', 'gantt', 'calendar', 'reservations', 'chambres',
+      'dashboard', 'occupancy_dashboard', 'analytics', 'gantt', 'calendar', 'reservations', 'chambres',
       'services', 'facture_globale', 'pos', 'restaurant', 'cuisine',
       'stock', 'stock_alerts', 'finance', 'versements', 'expenses', 'loyalty',
       'profile', 'settings', 'audit', 'maintenance'
@@ -626,6 +641,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   const allowedCandidateTabs = useMemo<BackOfficeTab[]>(() => {
     const candidateTabs: BackOfficeTab[] = [
       'occupancy_dashboard',
+      'analytics',
       'gantt',
       'calendar',
       'reservations',
@@ -1136,6 +1152,27 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 </button>
               )}
 
+              {/* Raccourci Direct : Tableau de Bord Analytique Recharts (Occupation & CA en temps réel) */}
+              {isTabAllowed('analytics') && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('analytics')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'analytics'
+                      ? 'bg-linear-to-r from-emerald-600 to-teal-700 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
+                      : 'bg-stone-900/60 text-emerald-300 border border-emerald-700/60 hover:bg-stone-850 hover:text-white'
+                  }`}
+                  title="Tableau de bord analytique Recharts : Taux d'occupation & Chiffre d'affaires quotidien en temps réel"
+                >
+                  <BarChart3 className="w-4 h-4 text-emerald-400" />
+                  <span>Dashboard Analytique</span>
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                </button>
+              )}
+
               {/* Raccourci Direct : Tableau de Bord des Revenus (uniquement si permission accordée) */}
               {isTabAllowed('dashboard') && (
                 <button
@@ -1532,6 +1569,21 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
               onNavigateToRooms={() => {
                 setActiveTab('chambres');
               }}
+              onNavigateToAnalytics={() => {
+                handleTabClick('analytics');
+              }}
+            />
+          </ErrorBoundary>
+        )}
+
+        {/* Tab 0c : Tableau de Bord Analytique Recharts (Taux d'occupation & CA en temps réel) */}
+        {activeTab === 'analytics' && isTabAllowed('analytics') && (
+          <ErrorBoundary fallbackTitle="Erreur sur le tableau de bord analytique">
+            <RealtimeAnalyticsDashboardTab
+              onNavigateToRooms={() => setActiveTab('chambres')}
+              onNavigateToReservations={() => setActiveTab('reservations')}
+              onNavigateToGantt={() => setActiveTab('gantt')}
+              onNavigateToFinance={() => setActiveTab('finance')}
             />
           </ErrorBoundary>
         )}
@@ -1811,6 +1863,43 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   </div>
                   <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
                     <span>Ouvrir le dashboard des occupations</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              )}
+
+              {/* Module 0b : Tableau de Bord Analytique Recharts (Occupation & CA en temps réel) */}
+              {isTabAllowed('analytics') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('analytics');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'analytics'
+                      ? 'bg-teal-950/40 border-teal-500 shadow-md ring-2 ring-teal-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-teal-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-teal-500/20 text-teal-300">
+                        <BarChart3 className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-teal-300 bg-teal-500/15 px-2 py-0.5 rounded-full border border-teal-500/30 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
+                        <span>Occupation &amp; CA</span>
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Dashboard Analytique Temps Réel
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Graphiques synchronisés Recharts : corrélation entre taux d'occupation des chambres et chiffre d'affaires quotidien en direct.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-teal-300 font-semibold">
+                    <span>Ouvrir l'analyse en temps réel</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -2521,6 +2610,43 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                   </div>
                   <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
                     <span>Ouvrir les KPIs hôteliers &amp; tableau de bord des revenus</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              )}
+
+              {/* Module 0b : Tableau de Bord Analytique Recharts (Occupation & CA en temps réel) */}
+              {isTabAllowed('analytics') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('analytics');
+                    setIsAdministrationModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between md:col-span-2 ${
+                    activeTab === 'analytics'
+                      ? 'bg-linear-to-r from-emerald-950/60 to-teal-950/60 border-emerald-400 shadow-md ring-2 ring-emerald-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-teal-500/20 text-teal-400">
+                        <TrendingUp className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Temps Réel Direct</span>
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Tableau de Bord Analytique (Occupation &amp; CA)
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Graphiques synchronisés Recharts en temps réel : <strong>taux d'occupation des chambres (%)</strong> et <strong>chiffre d'affaires quotidien (FCFA)</strong>, profil horaire du jour, performance par type de chambre et flux d'encaissement.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                    <span>Ouvrir le tableau de bord analytique en temps réel</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>

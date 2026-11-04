@@ -64,10 +64,10 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
   {
     id: 1,
     badge: 'Hôtel & Résidence de Prestige',
-    title: 'Hôtel Refuge de bongouanou',
-    subtitle: 'L’élégance hôtelière signée Dekouassi Holding',
-    description: 'Une parenthèse d’exception au cœur de la ville. Profitez de nos suites haut de gamme réservables à la nuitée (dès 10 000 FCFA) ou pour quelques heures (2 500 FCFA/h).',
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1920&q=80',
+    title: 'Hôtel Le Refuge de Bongouanou',
+    subtitle: 'L’élégance hôtelière et la sérénité au cœur du Moronou',
+    description: 'Une parenthèse d’exception dans un écrin tropical d’exception. Profitez de nos suites haut de gamme réservables à la nuitée (dès 10 000 FCFA) ou pour quelques heures (2 500 FCFA/h).',
+    image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=2000&q=85',
     startingPriceNight: 10000,
     startingPriceHour: 2500,
     isActive: true,
@@ -79,8 +79,8 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
     badge: 'Chambres & Suites Signature',
     title: 'Suites Exécutives & Panoramiques',
     subtitle: 'Confort absolu, literie d’art & technologies modernes',
-    description: 'Des espaces pensés pour les voyageurs exigeants et les séjours d’affaires. Vue imprenable, insonorisation de pointe et service d’étage discret.',
-    image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1920&q=80',
+    description: 'Des espaces pensés pour les voyageurs exigeants et les séjours d’affaires. Vue imprenable sur la nature, insonorisation de pointe et room service d’exception.',
+    image: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=2000&q=85',
     startingPriceNight: 20000,
     startingPriceHour: 2500,
     isActive: true,
@@ -92,8 +92,8 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
     badge: 'Formule Day-Use & Courte Durée',
     title: 'Réservations à l’Heure',
     subtitle: '1h, 2h, 3h ou 4h de sérénité à tarif unique',
-    description: 'Idéal pour une escale, une session de travail en toute quiétude ou un instant de déconnexion. Tarif fixe de 2 500 FCFA par heure.',
-    image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1920&q=80',
+    description: 'Idéal pour une escale, une pause de travail en toute quiétude ou un instant de déconnexion. Tarif fixe et transparent de 2 500 FCFA par heure.',
+    image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=2000&q=85',
     startingPriceNight: 10000,
     startingPriceHour: 2500,
     isActive: true,
@@ -102,11 +102,24 @@ export const DEFAULT_HERO_SLIDES: SlideData[] = [
   },
   {
     id: 4,
+    badge: 'Gastronomie & Art Culinaire',
+    title: 'Restaurant Le Refuge & Bar Lounge',
+    subtitle: 'Haute gastronomie ivoirienne & cocktails signatures',
+    description: 'Dégustez nos kédjénous en canari, poissons braisés nobles et créations gourmandes du Chef, en salle climatisée, sur la terrasse fleurie ou livrés en chambre.',
+    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2000&q=85',
+    startingPriceNight: 10000,
+    startingPriceHour: 2500,
+    isActive: true,
+    ctaNightText: 'Découvrir le Menu',
+    ctaHourText: 'Commander un Repas'
+  },
+  {
+    id: 5,
     badge: 'Bien-Être & Détente',
-    title: 'Piscine & Spa Privé',
+    title: 'Piscine & Spa Privé Oasis',
     subtitle: 'Une oasis de fraîcheur et de volupté',
-    description: 'Bénéficiez d’un accès exclusif à nos installations bien-être lors de votre séjour, de jour comme de nuit.',
-    image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1920&q=80',
+    description: 'Bénéficiez d’un accès exclusif à nos installations bien-être lors de votre séjour, de jour comme sous les étoiles.',
+    image: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=2000&q=85',
     startingPriceNight: 25000,
     startingPriceHour: 2500,
     isActive: true,
@@ -567,7 +580,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...(parsed.fneIvoirienne || {})
           },
           heroSlides:
-            parsed.heroSlides && Array.isArray(parsed.heroSlides) && parsed.heroSlides.length > 0
+            parsed.heroSlides &&
+            Array.isArray(parsed.heroSlides) &&
+            parsed.heroSlides.length > 0 &&
+            !parsed.heroSlides.some((s: any) => s.image && s.image.includes('photo-1566073771259'))
               ? parsed.heroSlides
               : DEFAULT_HERO_SLIDES,
           footerConfig: {

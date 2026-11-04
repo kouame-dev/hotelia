@@ -48,7 +48,8 @@ import {
   Layers,
   ShieldCheck,
   Check,
-  ArrowRight
+  ArrowRight,
+  BarChart3
 } from 'lucide-react';
 
 interface RoomOccupancyDashboardTabProps {
@@ -56,6 +57,7 @@ interface RoomOccupancyDashboardTabProps {
   onNavigateToGantt?: (date?: string) => void;
   onNavigateToCalendar?: () => void;
   onNavigateToRooms?: () => void;
+  onNavigateToAnalytics?: () => void;
 }
 
 const COLORS_ROOM_TYPES = ['#C5A880', '#0B132B', '#10B981', '#F59E0B', '#6366F1', '#EC4899'];
@@ -65,7 +67,8 @@ export const RoomOccupancyDashboardTab: React.FC<RoomOccupancyDashboardTabProps>
   onNavigateToReservation,
   onNavigateToGantt,
   onNavigateToCalendar,
-  onNavigateToRooms
+  onNavigateToRooms,
+  onNavigateToAnalytics
 }) => {
   const { reservations, chambres, roomTypes, blockedRoomsCount } = useHotelData();
   const { formatPrice, settings } = useHotelSettings();
@@ -532,6 +535,18 @@ export const RoomOccupancyDashboardTab: React.FC<RoomOccupancyDashboardTabProps>
             >
               <Calendar className="w-3.5 h-3.5 text-blue-400" />
               <span>Planning Gantt 24h</span>
+            </button>
+          )}
+
+          {onNavigateToAnalytics && (
+            <button
+              type="button"
+              onClick={onNavigateToAnalytics}
+              className="px-4 py-2.5 rounded-xl bg-linear-to-r from-emerald-600 to-teal-700 hover:brightness-110 text-white border border-emerald-400 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+              title="Ouvrir le Tableau de Bord Analytique avec Graphiques Recharts"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-200" />
+              <span>Dashboard Analytique Live</span>
             </button>
           )}
         </div>

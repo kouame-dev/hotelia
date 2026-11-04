@@ -36,44 +36,39 @@ import {
 // Galerie d'images d'hôtellerie de luxe pour sélection rapide
 export const PRESET_HERO_IMAGES = [
   {
-    label: 'Suite Royale & Fauteuils Velours',
-    url: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1920&q=80',
+    label: 'Façade Resort Tropical & Piscine de Nuit',
+    url: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=2000&q=85',
+    category: 'Extérieur & Resort'
+  },
+  {
+    label: 'Suite Royale Signature & Bois Précieux',
+    url: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=2000&q=85',
     category: 'Suites'
   },
   {
-    label: 'Chambre Signature Vue Panoramique',
-    url: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1920&q=80',
+    label: 'Chambre Signature Vue Verdure',
+    url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=2000&q=85',
     category: 'Chambres'
   },
   {
-    label: 'Suite Contemporaine & Bois Chaud',
-    url: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1920&q=80',
+    label: 'Piscine Tropicale Oasis & Palmiers',
+    url: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?auto=format&fit=crop&w=2000&q=85',
+    category: 'Loisirs & Piscine'
+  },
+  {
+    label: 'Restaurant Le Refuge & Table Gastronomique',
+    url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2000&q=85',
+    category: 'Restauration'
+  },
+  {
+    label: 'Suite Contemporaine & Lounge Privatif',
+    url: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=2000&q=85',
     category: 'Chambres'
-  },
-  {
-    label: 'Piscine Tropicale & Palmiers',
-    url: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1920&q=80',
-    category: 'Loisirs'
-  },
-  {
-    label: 'Suite Présidentielle & Terrasse Lounge',
-    url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1920&q=80',
-    category: 'Suites'
-  },
-  {
-    label: 'Chambre Exécutive & Bureau d’Affaires',
-    url: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1920&q=80',
-    category: 'Affaires'
   },
   {
     label: 'Spa & Baignoire Balnéo Privée',
-    url: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1920&q=80',
+    url: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=2000&q=85',
     category: 'Bien-Être'
-  },
-  {
-    label: 'Restaurant Gastronomique & Table d’Art',
-    url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80',
-    category: 'Restauration'
   }
 ];
 

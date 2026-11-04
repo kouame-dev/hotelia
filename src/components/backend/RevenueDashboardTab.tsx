@@ -7,6 +7,7 @@ import { DailyExpensesChart } from './DailyExpensesChart.tsx';
 import { MobileMoneyVsExpensesChart } from './MobileMoneyVsExpensesChart.tsx';
 import { HotelKpisVisualization } from './HotelKpisVisualization.tsx';
 import { MonthlyOccupancyAndRoomTypeRevenueChart } from './MonthlyOccupancyAndRoomTypeRevenueChart.tsx';
+import { RealtimeAnalyticsDashboardTab } from './RealtimeAnalyticsDashboardTab.tsx';
 import {
   BarChart3,
   TrendingUp,
@@ -42,7 +43,7 @@ import {
 } from 'lucide-react';
 import { MultiWarehouseStockDashboardWidget } from './MultiWarehouseStockDashboardWidget.tsx';
 
-export type GranularityView = 'consolidated' | 'kpis' | 'occupancy_room_revenue' | 'daily' | 'monthly' | 'forecast' | 'expenses' | 'mobile_money_expenses' | 'multi_stock';
+export type GranularityView = 'consolidated' | 'kpis' | 'realtime_analytics' | 'occupancy_room_revenue' | 'daily' | 'monthly' | 'forecast' | 'expenses' | 'mobile_money_expenses' | 'multi_stock';
 export type RevenueStreamFilter = 'all' | 'reservations' | 'sales';
 export type ChartDisplayStyle = 'stacked' | 'grouped';
 
@@ -1453,6 +1454,22 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
 
             <button
               type="button"
+              onClick={() => setGranularity('realtime_analytics')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                granularity === 'realtime_analytics'
+                  ? 'bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-extrabold shadow-md scale-[1.02] ring-1 ring-emerald-400'
+                  : 'text-emerald-400 hover:text-white hover:bg-stone-800/80'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>⚡ Dashboard Analytique Temps Réel</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] bg-emerald-500/30 text-emerald-200 font-mono font-bold animate-pulse">
+                Direct
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setGranularity('kpis')}
               className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 granularity === 'kpis'
@@ -1743,6 +1760,14 @@ export const RevenueDashboardTab: React.FC<RevenueDashboardTabProps> = ({ onGoTo
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* 3a-0. TABLEAU DE BORD ANALYTIQUE EN TEMPS RÉEL (OCCUPATION & CA QUOTIDIEN) */}
+      {/* ========================================================================= */}
+      {granularity === 'realtime_analytics' && (
+        <RealtimeAnalyticsDashboardTab />
+      )}
 
       {/* ========================================================================= */}
       {/* 3a. MODULE RECHARTS DES KPIS HÔTELIERS : TAUX D'OCCUPATION & CA JOURNALIER */}
