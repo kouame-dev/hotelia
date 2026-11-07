@@ -62,6 +62,7 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
     deleteReservation,
     chambres,
     roomTypes,
+    housekeepingStates,
     pendingReservationsCount,
     completedReservationsCount,
     cancelledReservationsCount,
@@ -1694,9 +1695,46 @@ export const ReservationManagementTab: React.FC<ReservationManagementTabProps> =
                             {res.chambreType}
                           </span>
                         </div>
-                        <span className="text-[11px] text-stone-500 block mt-0.5">
-                          {res.typeReservation === 'nuit' ? '🌙 Nuitée hôtelière' : '⏱️ Passage (Day-Use)'}
-                        </span>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[11px] text-stone-500">
+                            {res.typeReservation === 'nuit' ? '🌙 Nuitée' : '⏱️ Passage'}
+                          </span>
+                          <span className="text-stone-300 text-[10px]">•</span>
+                          {(() => {
+                            const hk = housekeepingStates[res.chambreNumero];
+                            const status = hk?.statutNettoyage || 'sale';
+                            if (status === 'inspecte') {
+                              return (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" title="Chambre inspectée par la gouvernante et prête pour le client">
+                                  <Sparkles className="w-2.5 h-2.5 text-emerald-700" />
+                                  <span>Prête</span>
+                                </span>
+                              );
+                            }
+                            if (status === 'propre') {
+                              return (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-300" title="Ménage effectué, attente inspection gouvernante">
+                                  <Check className="w-2.5 h-2.5 text-sky-700" />
+                                  <span>Propre</span>
+                                </span>
+                              );
+                            }
+                            if (status === 'en_cours') {
+                              return (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse" title="Ménage en cours par le personnel des étages">
+                                  <Clock className="w-2.5 h-2.5 text-amber-700 animate-spin" />
+                                  <span>Ménage en cours</span>
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300" title="Chambre sale / à nettoyer avant attribution">
+                                <AlertCircle className="w-2.5 h-2.5 text-rose-700" />
+                                <span>À nettoyer</span>
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </td>
 
                       {/* Créneau / Dates & Décompte (Minutes pour nuitées, Jours pour séjours) */}

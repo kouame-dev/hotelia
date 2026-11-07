@@ -96,6 +96,53 @@ export interface ChambreConfig {
   disponibleHeure: boolean;
   disponibleNuit: boolean;
   imageUrl?: string;
+  statutNettoyage?: HousekeepingStatus; // 'sale' | 'en_cours' | 'propre' | 'inspecte'
+  housekeepingDetails?: HousekeepingRoomState;
+}
+
+// =========================================================================
+// TYPES POUR L'ESPACE GOUVERNANTE & SUIVI DU NETTOYAGE DES CHAMBRES
+// =========================================================================
+export type HousekeepingStatus = 'sale' | 'en_cours' | 'propre' | 'inspecte';
+export type HousekeepingType = 'a_blanc' | 'recouche' | 'inspection_routine' | 'remise_en_etat';
+export type HousekeepingPriority = 'urgente' | 'haute' | 'normale' | 'basse';
+
+export interface HousekeepingChecklist {
+  literieDrapsChanges: boolean;
+  salleDeBainDesinfectee: boolean;
+  serviettesRenouvelees: boolean;
+  minibarRecomplete: boolean;
+  solAspireEtLave: boolean;
+  poussieresEtSurfaces: boolean;
+  aereEtParfume: boolean;
+  produitsAccueilDisposes: boolean;
+  equipementsVerifies: boolean; // Climatisation, TV, éclairage
+}
+
+export interface HousekeepingRoomState {
+  chambreNumero: string;
+  chambreNom?: string;
+  typeNom: string;
+  etage: number;
+  statutNettoyage: HousekeepingStatus; // 'sale' | 'en_cours' | 'propre' | 'inspecte'
+  typeNettoyage: HousekeepingType; // 'a_blanc' | 'recouche' | 'inspection_routine'
+  priorite: HousekeepingPriority; // 'urgente' | 'haute' | 'normale' | 'basse'
+  femmeDeChambre?: string;
+  gouvernanteResponsable?: string;
+  dateDerniereModification: string; // ISO ou HH:mm
+  heureDebut?: string;
+  heureFin?: string;
+  dureeEstimeeMinutes?: number;
+  inspectionConforme?: boolean;
+  scoreProprete?: number; // 0 - 100%
+  checklist?: HousekeepingChecklist;
+  notesGouvernante?: string;
+  problemeSignale?: string;
+  clientActuel?: string;
+  dateDepartClient?: string;
+  dateArriveePrevue?: string;
+  isArriveeCeJour?: boolean;
+  isDepartCeJour?: boolean;
 }
 
 // =========================================================================
@@ -172,6 +219,7 @@ export type AppFeatureId =
   | 'expenses'
   | 'loyalty'
   | 'audit'
+  | 'gouvernante'
   | 'profile'
   | 'settings';
 

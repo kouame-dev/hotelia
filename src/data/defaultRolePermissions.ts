@@ -16,6 +16,7 @@ export type AppFeatureId =
   | 'expenses'
   | 'loyalty'
   | 'audit'
+  | 'gouvernante'
   | 'profile'
   | 'settings';
 
@@ -123,6 +124,19 @@ export const APP_FEATURES_METADATA: FeatureMetadata[] = [
       { id: 'audit_sejours', name: 'Audit des Réservations', description: 'Historique des modifications de dates, surclassements et changements de prix.', badge: 'Dossiers' },
       { id: 'audit_derogations', name: 'Traçabilité des Dérogations', description: 'Enregistrement inviolable des remises, avoirs et dérogations de caisse DG.', badge: 'Finances' },
       { id: 'audit_operateurs', name: 'Horodatage & Responsabilité', description: 'Piste d’audit avec nom de l’opérateur, horodatage GMT+0 et empreinte système.', badge: 'Sécurité' }
+    ]
+  },
+  {
+    id: 'gouvernante',
+    name: 'Espace Gouvernante & Nettoyage',
+    category: 'Hébergement',
+    description: 'Suivi temps réel des 6 chambres (Sale, En cours, Propre, Inspecté), assignation gouvernantes et grille 9 points.',
+    iconName: 'Sparkles',
+    subFeatures: [
+      { id: 'hk_tracking', name: 'Suivi Temps Réel 4 États', description: 'Visualisation live des chambres sales, en cours, propres et inspectées.', badge: 'Temps Réel' },
+      { id: 'hk_inspection', name: 'Grille Contrôle 9 Points', description: 'Inspection de conformité de la literie, sanitaires, aération et produits d’accueil.', badge: 'Qualité' },
+      { id: 'hk_affectation', name: 'Affectation des Équipes', description: 'Attribution des chambres aux femmes et valets de chambre avec horaires.', badge: 'Personnel' },
+      { id: 'hk_feuille_route', name: 'Feuille de Route A4', description: 'Génération et impression de la fiche de travail journalière pour les étages.', badge: 'Print' }
     ]
   },
 
@@ -354,6 +368,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, Fea
     audit: createRoleFeaturePerm('audit', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }, {
       audit_operateurs: { canAdd: false, canEdit: false, canDelete: false }
     }),
+    gouvernante: createRoleFeaturePerm('gouvernante', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
     profile: createRoleFeaturePerm('profile', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
     settings: createRoleFeaturePerm('settings', { canActivate: true, canAdd: true, canEdit: true, canDelete: true })
   },
@@ -399,6 +414,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, Fea
       loy_coupons_sms: { canActivate: true, canAdd: false, canEdit: false, canDelete: false }
     }),
     audit: createRoleFeaturePerm('audit', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    gouvernante: createRoleFeaturePerm('gouvernante', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
     profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
@@ -442,6 +458,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, Fea
     expenses: createRoleFeaturePerm('expenses', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
     audit: createRoleFeaturePerm('audit', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    gouvernante: createRoleFeaturePerm('gouvernante', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
@@ -482,6 +499,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, Fea
     }),
     loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
     audit: createRoleFeaturePerm('audit', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    gouvernante: createRoleFeaturePerm('gouvernante', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
@@ -516,6 +534,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, Fea
     expenses: createRoleFeaturePerm('expenses', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
     audit: createRoleFeaturePerm('audit', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    gouvernante: createRoleFeaturePerm('gouvernante', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
@@ -551,6 +570,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, Fea
     expenses: createRoleFeaturePerm('expenses', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: false, canDelete: false }),
     audit: createRoleFeaturePerm('audit', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
+    gouvernante: createRoleFeaturePerm('gouvernante', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
     profile: createRoleFeaturePerm('profile', { canActivate: false, canAdd: false, canEdit: false, canDelete: false }),
     settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
@@ -571,6 +591,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, Fea
     expenses: createRoleFeaturePerm('expenses', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
     loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
     audit: createRoleFeaturePerm('audit', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
+    gouvernante: createRoleFeaturePerm('gouvernante', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
     profile: createRoleFeaturePerm('profile', { canActivate: true, canAdd: false, canEdit: false, canDelete: false }),
     settings: createRoleFeaturePerm('settings', { canActivate: false, canAdd: false, canEdit: false, canDelete: false })
   },
@@ -591,6 +612,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Record<AppFeatureId, Fea
     expenses: createRoleFeaturePerm('expenses', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
     loyalty: createRoleFeaturePerm('loyalty', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
     audit: createRoleFeaturePerm('audit', { canActivate: true, canAdd: true, canEdit: true, canDelete: false }),
+    gouvernante: createRoleFeaturePerm('gouvernante', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
     profile: createRoleFeaturePerm('profile', { canActivate: true, canAdd: true, canEdit: true, canDelete: true }),
     settings: createRoleFeaturePerm('settings', { canActivate: true, canAdd: true, canEdit: true, canDelete: true })
   }

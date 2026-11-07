@@ -29,6 +29,7 @@ import { RoomOccupancyDashboardTab } from './RoomOccupancyDashboardTab.tsx';
 import { MaintenanceDashboard } from './MaintenanceDashboard.tsx';
 import { CashRegisterManagementTab } from './CashRegisterManagementTab.tsx';
 import { RealtimeAnalyticsDashboardTab } from './RealtimeAnalyticsDashboardTab.tsx';
+import { HousekeepingManagementTab } from './HousekeepingManagementTab.tsx';
 import { SoundNotificationModal } from './SoundNotificationModal.tsx';
 import { ErrorBoundary } from '../common/ErrorBoundary.tsx';
 import { useHotelSettings } from '../../context/SettingsContext.tsx';
@@ -109,6 +110,7 @@ export type BackOfficeTab =
   | 'gantt'
   | 'calendar'
   | 'reservations'
+  | 'gouvernante'
   | 'maintenance'
   | 'restaurant'
   | 'cuisine'
@@ -281,7 +283,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
 
   // Identification du pôle actif parmi les 3 pôles principaux
   const currentPole = useMemo<'hebergement' | 'restauration' | 'administration'>(() => {
-    if (['gantt', 'calendar', 'reservations', 'chambres', 'services', 'audit', 'maintenance'].includes(activeTab)) {
+    if (['gantt', 'calendar', 'reservations', 'gouvernante', 'chambres', 'services', 'audit', 'maintenance'].includes(activeTab)) {
       return 'hebergement';
     }
     if (['restaurant', 'cuisine', 'pos', 'stock', 'stock_alerts'].includes(activeTab)) {
@@ -408,6 +410,8 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
         return { pole: 'Hébergement', title: 'Calendrier Mensuel d\'Occupation', icon: <CalendarDays className="w-4 h-4 text-[#C5A880]" /> };
       case 'reservations':
         return { pole: 'Hébergement', title: 'Gestion des Réservations', icon: <CalendarCheck className="w-4 h-4 text-[#FF9900]" /> };
+      case 'gouvernante':
+        return { pole: 'Hébergement', title: 'Espace Gouvernante & Suivi du Nettoyage', icon: <Sparkles className="w-4 h-4 text-emerald-400" /> };
       case 'chambres':
         return { pole: 'Hébergement', title: 'Inventaire des Chambres & Types', icon: <Bed className="w-4 h-4 text-emerald-400" /> };
       case 'maintenance':
@@ -521,6 +525,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
     gantt: 'gantt',
     calendar: 'gantt',
     reservations: 'reservations',
+    gouvernante: 'gouvernante',
     chambres: 'chambres',
     maintenance: 'chambres',
     services: 'services',
@@ -591,6 +596,16 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
       return hasPermission('chambres', 'activate', 'chambres_blocages') || hasPermission('chambres', 'activate');
     }
 
+    // 6b. Espace Gouvernante & Suivi du Nettoyage des Chambres
+    if (tab === 'gouvernante') {
+      return (
+        hasPermission('gouvernante', 'activate') ||
+        hasPermission('chambres', 'activate') ||
+        hasPermission('reservations', 'activate') ||
+        isDG
+      );
+    }
+
     // 7. Vérification dynamique via hasPermission
     const featId = tabFeatureMap[tab];
     if (!featId) return false;
@@ -599,7 +614,7 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
   };
 
   const hebergementAllowedCount = useMemo(() => {
-    const p1Tabs: BackOfficeTab[] = ['occupancy_dashboard', 'gantt', 'calendar', 'reservations', 'chambres', 'services', 'maintenance', 'audit'];
+    const p1Tabs: BackOfficeTab[] = ['occupancy_dashboard', 'gantt', 'calendar', 'reservations', 'gouvernante', 'chambres', 'services', 'maintenance', 'audit'];
     return p1Tabs.filter((t) => isTabAllowed(t)).length;
   }, [isTabAllowed]);
 
@@ -1135,6 +1150,26 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                 </button>
               )}
 
+              {/* Raccourci Direct : Espace Gouvernante & Suivi du Nettoyage */}
+              {isTabAllowed('gouvernante') && (
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('gouvernante')}
+                  className={`flex items-center space-x-2 px-3.5 sm:px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer shadow-md ${
+                    activeTab === 'gouvernante'
+                      ? 'bg-linear-to-r from-emerald-600 to-teal-600 text-white border-2 border-emerald-400 shadow-lg ring-2 ring-emerald-500/35'
+                      : 'bg-stone-900/60 text-emerald-300 border border-emerald-900/60 hover:bg-stone-850 hover:text-white'
+                  }`}
+                  title="Espace Gouvernante : Suivi en direct du nettoyage des 6 chambres (Sale, En cours, Propre, Inspecté)"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  <span>Gouvernante</span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Ménage
+                  </span>
+                </button>
+              )}
+
               {/* Raccourci Direct : Point de Vente POS (uniquement si permission accordée) */}
               {isTabAllowed('pos') && (
                 <button
@@ -1616,6 +1651,13 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
           </ErrorBoundary>
         )}
 
+        {/* Tab Espace Gouvernante & Suivi du Nettoyage des Chambres */}
+        {activeTab === 'gouvernante' && isTabAllowed('gouvernante') && (
+          <ErrorBoundary fallbackTitle="Erreur sur l'espace gouvernante et nettoyage">
+            <HousekeepingManagementTab />
+          </ErrorBoundary>
+        )}
+
         {/* Tab Dédié Restaurant (Plan de Tables, POS Restaurant, Réservations Tables, KDS, Menu) */}
         {activeTab === 'restaurant' && isTabAllowed('restaurant') && (
           <ErrorBoundary fallbackTitle="Erreur sur le module Restaurant">
@@ -2068,6 +2110,42 @@ export const AdminBackOffice: React.FC<AdminBackOfficeProps> = ({
                         Toutes ({Array.isArray(reservations) ? reservations.length : 0})
                       </button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Module 2b : Espace Gouvernante & Suivi du Nettoyage */}
+              {isTabAllowed('gouvernante') && (
+                <div
+                  onClick={() => {
+                    handleTabClick('gouvernante');
+                    setIsHebergementModalOpen(false);
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer text-left flex flex-col justify-between ${
+                    activeTab === 'gouvernante'
+                      ? 'bg-emerald-950/40 border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
+                      : 'bg-stone-900/80 hover:bg-stone-850 border-stone-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        Temps Réel
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-sm text-white mb-1">
+                      Espace Gouvernante &amp; Nettoyage
+                    </h4>
+                    <p className="text-xs text-stone-400 leading-relaxed">
+                      Suivi en 4 états (Sale, En cours, Propre, Inspecté), assignation des gouvernantes, grille 9 points et fiche journalière A4.
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-stone-800/80 text-xs text-emerald-300 font-semibold">
+                    <span>Ouvrir l'espace gouvernante</span>
+                    <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
               )}

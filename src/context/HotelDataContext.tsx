@@ -56,7 +56,10 @@ import {
   MaintenanceTicket,
   VersementCaisse,
   ShiftType,
-  AclDiagnosticItem
+  AclDiagnosticItem,
+  HousekeepingStatus,
+  HousekeepingRoomState,
+  HousekeepingChecklist
 } from '../types.ts';
 import {
   generateConfirmationEmail,
@@ -81,6 +84,10 @@ import {
   INITIAL_MAINTENANCE_TICKETS,
   INITIAL_VERSEMENTS_CAISSE
 } from '../data/mockHotelData.ts';
+import {
+  INITIAL_HOUSEKEEPING_STATES,
+  DEFAULT_HOUSEKEEPING_CHECKLIST
+} from '../data/mockHousekeepingData.ts';
 import {
   INITIAL_PAID_SERVICES,
   INITIAL_ENTREPOTS,
@@ -163,6 +170,22 @@ interface HotelDataContextType {
   addChambre: (newChambre: Omit<ChambreConfig, 'id'>) => void;
   updateChambre: (id: string, updated: Partial<ChambreConfig>) => void;
   deleteChambre: (id: string) => void;
+
+  // 2b. Module Gouvernante & Suivi du Nettoyage des Chambres (Temps Réel)
+  housekeepingStates: Record<string, HousekeepingRoomState>;
+  updateHousekeepingStatus: (
+    chambreNumero: string,
+    statutNettoyage: HousekeepingStatus,
+    extra?: Partial<HousekeepingRoomState>
+  ) => void;
+  assignHousekeepingStaff: (chambreNumero: string, femmeDeChambre: string) => void;
+  performHousekeepingInspection: (
+    chambreNumero: string,
+    checklist: HousekeepingChecklist,
+    notes?: string,
+    conforme?: boolean
+  ) => void;
+  quickResetHousekeepingTour: () => void;
 
   // 3. Utilisateurs & Profils (Gestion Super Admin)
   userProfiles: Record<string, UserProfile>;
@@ -690,6 +713,210 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       } catch {}
 
       return next;
+    });
+  };
+
+  // --- B2. Espace Gouvernante & Suivi du Nettoyage des Chambres (Temps Réel) ---
+  const [housekeepingStates, setHousekeepingStates] = useState<Record<string, HousekeepingRoomState>>(() => {
+    try {
+      const saved = safeGetItem('hotelia_housekeeping_states');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          return parsed;
+        }
+      }
+      return INITIAL_HOUSEKEEPING_STATES;
+    } catch {
+      return INITIAL_HOUSEKEEPING_STATES;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      safeSetItem('hotelia_housekeeping_states', JSON.stringify(housekeepingStates));
+    } catch (e) {
+      console.error('Erreur sauvegarde housekeeping states', e);
+    }
+  }, [housekeepingStates]);
+
+  const updateHousekeepingStatus = (
+    chambreNumero: string,
+    statutNettoyage: HousekeepingStatus,
+    extra?: Partial<HousekeepingRoomState>
+  ) => {
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const operatorName = currentUserProfile?.nom || 'Gouvernante Générale';
+
+    setHousekeepingStates((prev) => {
+      const current = prev[chambreNumero] || {
+        chambreNumero,
+        chambreNom: `Chambre ${chambreNumero}`,
+        typeNom: chambres.find((c) => c.numero === chambreNumero)?.typeNom || 'Chambre Standard',
+        etage: chambres.find((c) => c.numero === chambreNumero)?.etage || 1,
+        statutNettoyage: 'sale',
+        typeNettoyage: 'a_blanc',
+        priorite: 'normale',
+        dateDerniereModification: nowTime
+      };
+
+      const updatedState: HousekeepingRoomState = {
+        ...current,
+        statutNettoyage,
+        dateDerniereModification: nowTime,
+        ...(statutNettoyage === 'en_cours' && !current.heureDebut ? { heureDebut: nowTime } : {}),
+        ...(statutNettoyage === 'inspecte'
+          ? {
+              inspectionConforme: true,
+              heureFin: nowTime,
+              gouvernanteResponsable: operatorName,
+              scoreProprete: current.scoreProprete || 100
+            }
+          : {}),
+        ...extra
+      };
+
+      return {
+        ...prev,
+        [chambreNumero]: updatedState
+      };
+    });
+
+    // Mettre à jour également le statut de la chambre physique dans `chambres`
+    setChambres((prev) =>
+      prev.map((c) => {
+        if (c.numero !== chambreNumero) return c;
+        let newStatut = c.statut;
+        if (statutNettoyage === 'inspecte') {
+          if (c.statut === 'Ménage en cours') newStatut = 'Disponible';
+        } else if (statutNettoyage === 'en_cours') {
+          if (c.statut === 'Disponible') newStatut = 'Ménage en cours';
+        }
+        return {
+          ...c,
+          statut: newStatut,
+          statutNettoyage
+        };
+      })
+    );
+
+    // Audit automatique
+    const statutLabels: Record<HousekeepingStatus, string> = {
+      sale: 'À nettoyer (Sale)',
+      en_cours: 'Nettoyage en cours',
+      propre: 'Propre (En attente inspection)',
+      inspecte: 'Inspectée & Conforme (Prête pour Réception)'
+    };
+
+    addAuditLog({
+      action: 'modification',
+      actionLabel: `Ménage Ch. ${chambreNumero} : ${statutLabels[statutNettoyage]}`,
+      module: 'reservations',
+      severite: 'normale',
+      reservationId: `HK-${chambreNumero}`,
+      clientNom: `Chambre ${chambreNumero}`,
+      chambreNumero,
+      userName: operatorName,
+      userRole: currentUserProfile?.role || 'Gouvernante',
+      userEmail: currentUserProfile?.email,
+      details: `Statut de nettoyage de la chambre ${chambreNumero} passé à "${statutLabels[statutNettoyage]}". Responsable: ${operatorName}.`
+    });
+
+    // Alerte en temps réel pour la Réception
+    if (statutNettoyage === 'inspecte') {
+      const inspectNotif: ReservationNotification = {
+        id: `notif-hk-${Date.now()}`,
+        source: 'hotel',
+        timestamp: "À l'instant",
+        titre: `✨ Chambre ${chambreNumero} Inspectée & Prête`,
+        message: `La gouvernante ${operatorName} a validé la chambre ${chambreNumero}. Prête pour le check-in à la réception !`,
+        clientNom: `Service des Étages (Ch. ${chambreNumero})`,
+        clientTelephone: 'Gouvernante Générale',
+        chambreNumero,
+        montant: 0,
+        modePaiement: 'Non applicable',
+        dateReservation: new Date().toISOString().split('T')[0],
+        lue: false
+      };
+      setNotifications((prev) => [inspectNotif, ...prev]);
+
+      setActiveSoundToast({
+        id: inspectNotif.id,
+        type: 'nouvelle',
+        title: `✨ Chambre ${chambreNumero} Prête`,
+        details: `Inspectée & Certifiée par la Gouvernante`,
+        chambreNumero,
+        timestamp: "À l'instant"
+      });
+    }
+
+    try {
+      window.dispatchEvent(
+        new CustomEvent('hotelia-housekeeping-update', {
+          detail: { chambreNumero, statutNettoyage, timestamp: Date.now() }
+        })
+      );
+    } catch {}
+  };
+
+  const assignHousekeepingStaff = (chambreNumero: string, femmeDeChambre: string) => {
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    setHousekeepingStates((prev) => {
+      const cur = prev[chambreNumero] || {
+        chambreNumero,
+        chambreNom: `Chambre ${chambreNumero}`,
+        typeNom: 'Chambre',
+        etage: 1,
+        statutNettoyage: 'sale',
+        typeNettoyage: 'a_blanc',
+        priorite: 'normale',
+        dateDerniereModification: nowTime
+      };
+      return {
+        ...prev,
+        [chambreNumero]: {
+          ...cur,
+          femmeDeChambre,
+          dateDerniereModification: nowTime
+        }
+      };
+    });
+  };
+
+  const performHousekeepingInspection = (
+    chambreNumero: string,
+    checklist: HousekeepingChecklist,
+    notes?: string,
+    conforme: boolean = true
+  ) => {
+    const values = Object.values(checklist);
+    const score = Math.round((values.filter(Boolean).length / values.length) * 100);
+    const isPassing = conforme && score >= 80;
+
+    updateHousekeepingStatus(chambreNumero, isPassing ? 'inspecte' : 'en_cours', {
+      checklist,
+      inspectionConforme: isPassing,
+      scoreProprete: score,
+      notesGouvernante: notes || (score === 100 ? 'Contrôle parfait 100% conforme.' : `Contrôle effectué, score ${score}%.`),
+      gouvernanteResponsable: currentUserProfile?.nom || 'Gouvernante Générale'
+    });
+  };
+
+  const quickResetHousekeepingTour = () => {
+    const nowTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    setHousekeepingStates((prev) => {
+      const resetMap: Record<string, HousekeepingRoomState> = {};
+      Object.keys(prev).forEach((num) => {
+        resetMap[num] = {
+          ...prev[num],
+          statutNettoyage: 'sale',
+          heureDebut: undefined,
+          heureFin: undefined,
+          inspectionConforme: false,
+          dateDerniereModification: nowTime
+        };
+      });
+      return resetMap;
     });
   };
 
@@ -2277,6 +2504,15 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           : [])
       ]
     });
+
+    // Déclenchement automatique Gouvernante : lors d'un départ client (check-out), la chambre passe immédiatement en statut 'sale' (à blanc)
+    if (isCheckOut && currentRes.chambreNumero) {
+      updateHousekeepingStatus(currentRes.chambreNumero, 'sale', {
+        typeNettoyage: 'a_blanc',
+        priorite: 'haute',
+        notesGouvernante: `Départ client effectué (${currentRes.clientNom}). Ménage à blanc requis avant prochaine réattribution.`
+      });
+    }
   };
 
   const deleteReservation = (id: string) => {
@@ -5773,7 +6009,13 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         versementsCaisse,
         addVersementCaisse,
         updateVersementCaisse,
-        deleteVersementCaisse
+        deleteVersementCaisse,
+        // 17. Espace Gouvernante & Suivi du Nettoyage des Chambres (Temps Réel)
+        housekeepingStates,
+        updateHousekeepingStatus,
+        assignHousekeepingStaff,
+        performHousekeepingInspection,
+        quickResetHousekeepingTour
       }}
     >
       {children}
